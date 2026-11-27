@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
@@ -41,6 +42,9 @@ internal static class ReferenceWindow
         item.GetVisualDescendants().OfType<EditorIcon>().First(icon => icon.FindAncestorOfType<ToggleButton>() is null);
 
     public static void Near(double expected, double actual) => Assert.InRange(actual, expected - 1, expected + 1);
+
+    /// <summary>The text of every text block in the control, in order, such as a worded button's word and key.</summary>
+    public static IEnumerable<string> Texts(Control control) => control.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text ?? "");
 
     // Raises the click event only, so the handlers on it run and the control's own press code does not.
     public static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

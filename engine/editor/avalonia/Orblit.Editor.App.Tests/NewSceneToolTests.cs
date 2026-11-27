@@ -19,12 +19,11 @@ public sealed class NewSceneToolTests
     {
         var tool = new NewSceneTool();
         new Window { Width = 1000, Height = 700, Content = tool.Dialog }.Show();
-        tool.Open(scenes, planar, Classes);
+        tool.Open(scenes, planar, Classes, FileTree.Root);
         tool.Dialog.UpdateLayout();
         return tool;
     }
 
-    static IEnumerable<string> Texts(Control control) => control.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text ?? "");
 
     static ContentPresenter Presenter(Button button) =>
         button.GetVisualDescendants().OfType<ContentPresenter>().Single(presenter => presenter.Name == "PART_ContentPresenter");
@@ -36,8 +35,9 @@ public sealed class NewSceneToolTests
         {
             var tool = Opened();
 
-            Assert.Equal("New Scene", tool.Dialog.Title);
-            Assert.Equal("Pick what the scene is for. You can change its root later.", tool.Dialog.Why.Text);
+            Assert.Equal("New scene", tool.Dialog.Title);
+            Assert.Equal("A scene is a level, a menu or a part you reuse.", tool.Dialog.Why.Text);
+            Assert.Equal("Start with", Texts(tool).First());
             Assert.Equal(420, tool.Dialog.CardWidth);
             Assert.Equal(["Create", "↵"], Texts(tool.CreateButton));
         });
@@ -51,9 +51,13 @@ public sealed class NewSceneToolTests
             var tool = Opened();
 
             Assert.Equal(
-                [["3D scene", "Root Entity3D"], ["2D scene", "Root Entity2D"], ["Empty", "Root Entity"]],
+                [
+                    ["3D scene", "Entity3D", "For a world with depth and a camera."],
+                    ["2D scene", "Entity2D", "For flat games, menus and buttons."],
+                    ["Empty", "Entity", "A plain point. Pick a kind later."],
+                ],
                 tool.Roots.Select(card => Texts(card).ToArray()));
-            Assert.Equal(["Other...", "Any class"], Texts(tool.OtherCard));
+            Assert.Equal(["Something else…", "Pick any kind as the top thing"], Texts(tool.OtherCard));
             Assert.Equal([true, false, false], tool.Roots.Select(card => card.IsChecked == true));
             Assert.False(tool.OtherClasses.IsVisible);
 
@@ -96,7 +100,7 @@ public sealed class NewSceneToolTests
 
             tool.Roots.Last().IsChecked = true;
             tool.Dialog.Close();
-            tool.Open([], planar: false, Classes);
+            tool.Open([], planar: false, Classes, FileTree.Root);
 
             Assert.Equal([true, false, false], tool.Roots.Select(card => card.IsChecked == true));
         });
@@ -130,15 +134,15 @@ public sealed class NewSceneToolTests
         UiThread.Run(() =>
         {
             var tool = Opened();
-            Assert.Equal("", tool.PathBox.Text);
+            Assert.Equal("", tool.SavedLine.Text);
             Assert.False(tool.CreateButton.IsEnabled);
 
             tool.NameBox.Text = "arena";
-            Assert.Equal("res://arena.oscn", tool.PathBox.Text);
+            Assert.Equal("Saved as res://arena.oscn", tool.SavedLine.Text);
             Assert.True(tool.CreateButton.IsEnabled);
 
             tool.NameBox.Text = "   ";
-            Assert.Equal("", tool.PathBox.Text);
+            Assert.Equal("", tool.SavedLine.Text);
             Assert.False(tool.CreateButton.IsEnabled);
         });
     }
@@ -165,6 +169,29 @@ public sealed class NewSceneToolTests
     }
 
     [Fact]
+    public void A_hover_on_Create_says_what_it_waits_for()
+    {
+        UiThread.Run(() =>
+        {
+            var tool = Opened("res://field.oscn");
+            string Line() => ((HoverCard)ToolTip.GetTip(tool.CreateButton)!).Line;
+            Assert.Equal("Give it a name first.", Line());
+
+            tool.NameBox.Text = "field";
+            Assert.Equal("field.oscn already exists. Pick another name.", Line());
+
+            tool.NameBox.Text = "clock";
+            tool.OtherCard.IsChecked = true;
+            tool.OtherClasses.SearchBox.Text = "zzz";
+            Assert.Equal("Pick a kind in the list first.", Line());
+
+            tool.Roots.First().IsChecked = true;
+            Assert.True(tool.CreateButton.IsEnabled);
+            Assert.Equal("Makes the scene and opens it.", Line());
+        });
+    }
+
+    [Fact]
     public void Open_starts_again_with_no_name_and_no_fault()
     {
         UiThread.Run(() =>
@@ -174,7 +201,7 @@ public sealed class NewSceneToolTests
             tool.Say("The engine could not save res://arena.oscn. Error code 7.");
             tool.Dialog.Close();
 
-            tool.Open([], planar: false, Classes);
+            tool.Open([], planar: false, Classes, FileTree.Root);
 
             Assert.True(tool.Dialog.IsVisible);
             Assert.Equal("", tool.NameBox.Text);

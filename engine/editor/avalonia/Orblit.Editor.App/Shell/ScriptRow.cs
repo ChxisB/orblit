@@ -7,12 +7,12 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The Script row at the foot of the inspector: a label and a field that names the attached script's file. The
-/// field opens the slot menu: the project's scripts, then New Script, Load, Edit and Clear.
+/// field opens the slot menu: the project's scripts, then Load, Edit and Clear.
 /// </summary>
 internal sealed class ScriptRow : Grid
 {
     const double RowHeight = 28;
-    const string Empty = "<empty>";
+    const string Empty = "None";
 
     readonly TextBlock _value = new() { Text = Empty, VerticalAlignment = VerticalAlignment.Center };
     readonly MenuFlyout _menu = new();
@@ -22,13 +22,13 @@ internal sealed class ScriptRow : Grid
     {
         ColumnDefinitions = new ColumnDefinitions("*,*");
         Height = RowHeight;
-        Margin = new Thickness(0, 4, 0, 0);
+        Margin = new Thickness(0, Gaps.Tight, 0, 0);
         Field = new Button
         {
             Height = RowHeight,
             MinHeight = 0,
             MinWidth = 0,
-            Padding = new Thickness(12, 0, 9, 0),
+            Padding = new Thickness(Gaps.Group, 0, Gaps.Item, 0),
             BorderThickness = new Thickness(0),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
@@ -40,7 +40,7 @@ internal sealed class ScriptRow : Grid
         };
         _menu.Opening += (_, _) => FillMenu();
         SetColumn(Field, 1);
-        Children.Add(new TextBlock { Text = "Script", Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        Children.Add(new TextBlock { Text = "Script", Margin = new Thickness(Gaps.Item, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
         Children.Add(Field);
     }
 
@@ -75,12 +75,11 @@ internal sealed class ScriptRow : Grid
         _menu.Items.Clear();
         foreach (var path in Choices())
         {
-            var item = new MenuItem { Header = path };
+            var item = new MenuItem { Header = Parts.Literal(path) };
             item.Click += (_, _) => Chosen?.Invoke(path);
             _menu.Items.Add(item);
         }
         _menu.Items.Add(new Separator());
-        _menu.Items.Add(Parts.SoonItem("New Script...", Field));
         _menu.Items.Add(Parts.ActionItem("Load...", () => Loading?.Invoke()));
         var edit = Parts.ActionItem("Edit", () => Editing?.Invoke(_attached!));
         _menu.Items.Add(edit);
@@ -90,10 +89,10 @@ internal sealed class ScriptRow : Grid
         edit.IsEnabled = clear.IsEnabled = _attached is not null;
     }
 
-    // The text, then the load icon and the dropdown arrow 9 pixels apart.
+    // The text, then the load icon and the dropdown arrow an item apart.
     static Grid Value(TextBlock text)
     {
-        var load = new EditorIcon("Load") { Margin = new Thickness(0, 0, 9, 0), VerticalAlignment = VerticalAlignment.Center };
+        var load = new EditorIcon("Load") { Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
         var arrow = new EditorIcon("GuiDropdown") { VerticalAlignment = VerticalAlignment.Center };
         SetColumn(load, 1);
         SetColumn(arrow, 2);

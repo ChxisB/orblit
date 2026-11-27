@@ -34,8 +34,8 @@ public sealed class ShellLayoutTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(6, 46, 280, 611, BoxOf(window.SceneDock, window));
-            AssertBox(6, 663, 280, 610, BoxOf(window.FileDock, window));
+            AssertBox(8, 46, 280, 609, BoxOf(window.SceneDock, window));
+            AssertBox(8, 663, 280, 608, BoxOf(window.FileDock, window));
         });
     }
 
@@ -46,10 +46,10 @@ public sealed class ShellLayoutTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(293, 47, 2818, 39, BoxOf(window.Center.SceneTabs, window));
-            AssertBox(293, 86, 2818, 1142, BoxOf(window.Center.Toolbar, window));
-            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
-            AssertBox(292, 1235, 2820, 38, BoxOf(window.Center.BottomBar, window));
+            AssertBox(297, 47, 2810, 39, BoxOf(window.Center.SceneTabs, window));
+            AssertBox(297, 86, 2810, 1138, BoxOf(window.Center.Toolbar, window));
+            AssertBox(297, 86, 2810, 1138, BoxOf(window.Viewport, window));
+            AssertBox(296, 1233, 2812, 38, BoxOf(window.Center.BottomBar, window));
         });
     }
 
@@ -60,7 +60,7 @@ public sealed class ShellLayoutTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(3118, 46, 316, 1227, BoxOf(window.InspectorDock, window));
+            AssertBox(3116, 46, 316, 1225, BoxOf(window.InspectorDock, window));
         });
     }
 
@@ -100,7 +100,7 @@ public sealed class ShellLayoutTests
             foreach (var pill in new[] { window.Bar.Switcher, window.Bar.Run })
             {
                 Assert.Contains(EditorTheme.Island, pill.Classes);
-                Assert.Equal(new Thickness(3), pill.Padding);
+                Assert.Equal(new Thickness(4), pill.Padding);
                 Assert.Equal(23, BoxOf(pill, window).Center.Y, 0.5);
             }
 
@@ -124,6 +124,27 @@ public sealed class ShellLayoutTests
         });
     }
 
+    // An icon says nothing to someone new, so each one the window shows must open a card on hover.
+    [Fact]
+    public void Every_icon_button_in_every_workspace_has_a_hover_card()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var bare = new List<string>();
+
+            foreach (var tab in window.Bar.Tabs)
+            {
+                ClickOn(tab, window);
+                bare.AddRange(window.GetVisualDescendants().OfType<Button>()
+                    .Where(button => button.IsEffectivelyVisible && button.Content is EditorIcon && ToolTip.GetTip(button) is not HoverCard)
+                    .Select(button => $"{tab.Label}: {ToolTip.GetTip(button) ?? "no tip"} in {button.Parent?.GetType().Name}"));
+            }
+
+            Assert.Empty(bare.Distinct());
+        });
+    }
+
     [Fact]
     public void The_3D_workspace_is_built_so_a_click_says_nothing()
     {
@@ -140,15 +161,13 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void Pause_and_stop_are_off_while_no_game_runs()
+    public void Stop_is_off_while_no_game_runs()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var buttons = window.Bar.GetVisualDescendants().OfType<Button>().Where(button => ToolTip.GetTip(button) is "Pause the game" or "Stop the game");
 
-            Assert.Equal(2, buttons.Count());
-            Assert.All(buttons, button => Assert.False(button.IsEnabled));
+            Assert.False(window.StopButton.IsEnabled);
         });
     }
 
@@ -164,33 +183,20 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_play_button_draws_the_run_triangle_not_a_word()
+    public void The_run_buttons_are_26_high_with_a_rule_before_the_more_menu_and_the_pill_8_from_the_edge()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var play = BoxOf(window.PlayButton, window);
+            var stop = BoxOf(window.StopButton, window);
+            var more = BoxOf(window.Bar.MoreButton, window);
 
-            Assert.Equal("MainPlay", ((EditorIcon)window.PlayButton.Content!).IconName);
-        });
-    }
-
-    [Fact]
-    public void The_run_buttons_are_26_square_with_a_rule_before_the_more_menu_and_the_pill_8_from_the_edge()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var tips = new[] { "Run the project", "Run the current scene", "Pause the game", "Stop the game", "More ways to run" };
-            var boxes = tips
-                .Select(tip => BoxOf(window.Bar.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) as string == tip), window))
-                .ToArray();
-
-            Assert.All(boxes, box => Assert.Equal(new Size(26, 26), box.Size));
-            Assert.Equal(boxes[0].Right + 2, boxes[1].X);
-            Assert.Equal(boxes[1].Right + 2, boxes[2].X);
-            Assert.Equal(boxes[2].Right + 2, boxes[3].X);
-            // The rule is 1 wide with 3 each side, inside the 2 pixel gaps.
-            Assert.Equal(boxes[3].Right + 11, boxes[4].X);
+            Assert.Equal((26d, 26d), (play.Height, stop.Height));
+            Assert.Equal(new Size(26, 26), more.Size);
+            Assert.Equal(play.Right + 2, stop.X);
+            // The rule is 1 wide with 4 each side, inside the 2 pixel gaps.
+            Assert.Equal(stop.Right + 13, more.X);
             Assert.Equal(3440 - 8, BoxOf(window.Bar.Run, window).Right);
         });
     }
@@ -215,7 +221,7 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void Each_workspace_name_is_medium_weight_and_sits_10_pixels_inside_its_tab()
+    public void Each_workspace_name_is_medium_weight_and_sits_8_pixels_inside_its_tab()
     {
         UiThread.Run(() =>
         {
@@ -225,7 +231,7 @@ public sealed class ShellLayoutTests
             {
                 var content = (StackPanel)tab.Content!;
                 Assert.Equal(FontWeight.Medium, content.Children.OfType<TextBlock>().Single().FontWeight);
-                Assert.Equal(BoxOf(tab, window).X + 10 + tab.BorderThickness.Left, BoxOf(content, window).X);
+                Assert.Equal(BoxOf(tab, window).X + 8 + tab.BorderThickness.Left, BoxOf(content, window).X);
             }
         });
     }
@@ -252,7 +258,8 @@ public sealed class ShellLayoutTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var icons = window.GetVisualDescendants().OfType<EditorIcon>().Where(icon => icon.IconName == "Search" && icon.FindAncestorOfType<TitleBar>() is null).ToArray();
+            // The Files panel's empty state draws a Search mark too, outside any box.
+            var icons = window.GetVisualDescendants().OfType<EditorIcon>().Where(icon => icon.IconName == "Search" && icon.FindAncestorOfType<TitleBar>() is null && icon.FindAncestorOfType<TextBox>() is not null).ToArray();
 
             Assert.Equal(3, icons.Length);
             foreach (var icon in icons)
@@ -336,29 +343,60 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_heading_starts_after_the_traffic_lights_and_lets_a_press_through()
+    public void The_heading_starts_after_the_traffic_lights_and_its_card_gives_the_names_in_full()
     {
         UiThread.Run(() =>
         {
-            var window = OpenAtReferenceSize();
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://main.oscn", ProjectName = "view_demo" });
+            window.Poll();
 
             Assert.Equal(92, BoxOf(window.Bar.Heading, window).X);
-            Assert.False(window.Bar.Heading.IsHitTestVisible);
+            Assert.Equal("view_demo / main.oscn", ToolTip.GetTip(window.Bar.Heading));
         });
     }
 
     [Fact]
-    public void The_two_side_gaps_resize_columns_and_the_left_gap_resizes_rows()
+    public void The_gaps_resize_the_side_columns_and_the_groups_in_a_side()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var splitters = window.GetVisualDescendants().OfType<GridSplitter>().ToArray();
 
-            Assert.Equal(3, splitters.Length);
+            Assert.Equal(4, splitters.Length);
             Assert.Equal(2, splitters.Count(splitter => splitter.ResizeDirection == GridResizeDirection.Columns));
-            Assert.Equal(1, splitters.Count(splitter => splitter.ResizeDirection == GridResizeDirection.Rows));
+            // The right side has one group, so only the left side's gap between groups shows.
+            Assert.Equal(2, splitters.Count(splitter => splitter.ResizeDirection == GridResizeDirection.Rows));
+            Assert.Single(splitters, splitter => splitter.ResizeDirection == GridResizeDirection.Rows && splitter.IsEffectivelyVisible);
             Assert.All(splitters, splitter => Assert.Equal(Colors.Transparent, ((ISolidColorBrush)splitter.Background!).Color));
+        });
+    }
+
+    [Fact]
+    public void A_widened_side_gets_its_width_back_after_a_small_window_and_a_fold()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var right = ((Grid)window.RightSide.Parent!).ColumnDefinitions[4];
+            double WidthAt(double windowWidth)
+            {
+                window.Width = windowWidth;
+                window.UpdateLayout();
+                return right.Width.Value;
+            }
+
+            // What a drag on the splitter does.
+            right.Width = new GridLength(900);
+            window.UpdateLayout();
+            Assert.True(WidthAt(1280) < 900);
+
+            Click(window.SceneTabs.PanelsButton);
+            window.UpdateLayout();
+            Click(window.SceneTabs.PanelsButton);
+            window.UpdateLayout();
+
+            Assert.Equal(900, WidthAt(3440));
         });
     }
 
@@ -398,7 +436,7 @@ public sealed class ShellLayoutTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var menu = window.SceneDock.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) is "Dock options");
+            var menu = window.SceneDock.MenuButton;
 
             Assert.Equal(PlacementMode.BottomEdgeAlignedRight, Assert.IsType<MenuFlyout>(menu.Flyout).Placement);
         });
@@ -414,7 +452,7 @@ public sealed class ShellLayoutTests
             var tab = BoxOf(window.SceneDock.Tabs[0], window);
 
             Assert.Equal(26, tab.Height);
-            Assert.Equal(dock.X + 1 + 6, tab.X);
+            Assert.Equal(dock.X + 1 + 8, tab.X);
             Assert.Equal(dock.Y + 1 + 6, tab.Y);
             Assert.Equal(new CornerRadius(6), window.SceneDock.Tabs[0].CornerRadius);
         });

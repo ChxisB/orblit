@@ -31,6 +31,20 @@ internal static class FileTree
         return newer != 0 ? newer : s_byName.Compare(a, b);
     });
 
+    /// <summary>Scenes first, then scripts and graphs, then the imported files, each by name.</summary>
+    public static IComparer<string> ByKind { get; } = Comparer<string>.Create((a, b) =>
+    {
+        var kind = RankOf(a).CompareTo(RankOf(b));
+        return kind != 0 ? kind : s_byName.Compare(a, b);
+    });
+
+    static int RankOf(string path) => KindOf(path) switch
+    {
+        FileKind.Scene => 0,
+        FileKind.Script or FileKind.Graph => 1,
+        _ => 2,
+    };
+
     /// <summary>The kind of a file by its extension. The project lists scenes, C# and graph scripts and the files the engine imports, so any other file is imported.</summary>
     internal static FileKind KindOf(string path) => Path.GetExtension(path) switch
     {

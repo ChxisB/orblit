@@ -86,7 +86,7 @@ public sealed class CodeColoursTests
     }
 
     [Fact]
-    public void The_outline_lists_the_members_with_their_type_or_override()
+    public void The_outline_lists_a_value_with_its_type_and_a_method_as_a_step()
     {
         var members = ScriptMember.Read(Player);
 
@@ -94,7 +94,7 @@ public sealed class CodeColoursTests
             new[]
             {
                 new ScriptMember("JumpHeight", "float", "MemberProperty", Player.IndexOf("JumpHeight", StringComparison.Ordinal)),
-                new ScriptMember("OnFrame", "override", "MethodOverride", Player.IndexOf("OnFrame", StringComparison.Ordinal)),
+                new ScriptMember("OnFrame", "step", "MethodOverride", Player.IndexOf("OnFrame", StringComparison.Ordinal)),
             },
             members);
     }
@@ -113,7 +113,7 @@ public sealed class CodeColoursTests
             """;
 
         Assert.Equal(
-            new[] { ("Lives", "int", "MemberConstant"), ("_speed", "Vector3", "MemberProperty"), ("Go", "void", "MemberMethod") },
+            new[] { ("Lives", "int", "MemberConstant"), ("_speed", "Vector3", "MemberProperty"), ("Go", "step", "MemberMethod") },
             ScriptMember.Read(text).Select(member => (member.Name, member.Detail, member.Icon)));
     }
 }

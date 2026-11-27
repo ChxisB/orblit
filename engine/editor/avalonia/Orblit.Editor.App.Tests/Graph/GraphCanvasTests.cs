@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.Bridge;
 
@@ -11,7 +14,7 @@ public sealed class GraphCanvasTests
     static (FakeGraphSource Source, GraphCanvas Canvas) Open(FakeGraphSource? source = null)
     {
         source ??= FakeGraphSource.Sample();
-        return (source, new GraphCanvas(source));
+        return (source, new GraphCanvas(source, KeyModifiers.Meta));
     }
 
     // Step 4 has an input nothing is wired to, so a drag to it is a wire the engine takes.
@@ -746,20 +749,138 @@ public sealed class GraphCanvasTests
         });
     }
 
+    // A canvas in a window has a size, so showing all of it has room to fit.
+    static GraphCanvas Shown()
+    {
+        var (_, canvas) = Open();
+        new Window { Width = 800, Height = 600, Content = canvas }.Show();
+        canvas.UpdateLayout();
+        return canvas;
+    }
+
+    static bool Press(Interactive target, Key key, KeyModifiers modifiers = KeyModifiers.None)
+    {
+        var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers };
+        target.RaiseEvent(press);
+        return press.Handled;
+    }
+
+    static MenuItem ZoomItem(GraphCanvas canvas, string name) =>
+        canvas.ZoomItems.Single(item => AutomationProperties.GetName(item) == name);
+
     [Fact]
-    public void The_curved_toggle_chooses_the_wire_style_and_the_minimap_toggle_shows_the_minimap()
+    public void Zoom_keys_are_the_command_key_the_canvas_is_given()
+    {
+        UiThread.Run(() =>
+        {
+            var canvas = new GraphCanvas(FakeGraphSource.Sample(), KeyModifiers.Control);
+
+            Assert.Equal(["⌃=", "⌃-", "⌃0"], canvas.ZoomItems.Take(3).Select(item => Shell.Parts.KeyText(item.InputGesture!)));
+        });
+    }
+
+    [Fact]
+    public void A_card_sits_beside_the_map_or_above_it_when_the_canvas_is_narrow()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            var card = new Border();
+            canvas.Carry(card);
+            canvas.Width = 900;
+            new Window { Width = 1000, Height = 500, Content = canvas }.Show();
+            canvas.UpdateLayout();
+            Assert.Equal(new Thickness(12, 12, GraphMinimap.MapWidth + 20, 12), card.Margin);
+
+            canvas.Width = 400;
+            canvas.UpdateLayout();
+            Assert.Equal(new Thickness(12, 12, 12, GraphMinimap.MapHeight + 20), card.Margin);
+
+            ZoomItem(canvas, "Map of the graph").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal(new Thickness(12), card.Margin);
+        });
+    }
+
+    [Fact]
+    public void The_zoom_menu_names_each_command_with_its_key_and_its_ticks_set_the_wires_and_the_map()
     {
         UiThread.Run(() =>
         {
             var (_, canvas) = Open();
 
-            canvas.CurvedToggle.IsChecked = false;
-            canvas.CurvedToggle.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
-            Assert.Equal(WireStyle.Straight, canvas.Scene.Style);
+            Assert.Equal(
+                ["Zoom in", "Zoom out", "Actual size", "Show all", "Zoom to the picked steps", "Curved wires", "Map of the graph"],
+                canvas.ZoomItems.Select(item => AutomationProperties.GetName(item)));
+            Assert.Equal(["⌘=", "⌘-", "⌘0", "F", "⌥F", "", ""], canvas.ZoomItems.Select(item => item.InputGesture is { } key ? Shell.Parts.KeyText(key) : ""));
+            Assert.Equal("100%", canvas.ZoomWord);
 
-            canvas.MapToggle.IsChecked = false;
-            canvas.MapToggle.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
+            ZoomItem(canvas, "Curved wires").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal(WireStyle.Straight, canvas.Scene.Style);
+            Assert.False(ZoomItem(canvas, "Curved wires").IsChecked);
+            ZoomItem(canvas, "Map of the graph").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Assert.False(canvas.Minimap.IsVisible);
+            Assert.False(ZoomItem(canvas, "Map of the graph").IsChecked);
+        });
+    }
+
+    [Fact]
+    public void Zoom_to_the_picked_steps_is_off_until_a_step_is_picked_and_says_so()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            var item = ZoomItem(canvas, "Zoom to the picked steps");
+
+            Assert.False(item.IsEnabled);
+            Assert.Equal(["Zoom to the picked steps", "Pick a step first."], ReferenceWindow.Texts((Control)item.Header!));
+
+            canvas.Select([2]);
+
+            Assert.True(item.IsEnabled);
+            Assert.Equal(["Zoom to the picked steps", "Fills the view with them"], ReferenceWindow.Texts((Control)item.Header!));
+        });
+    }
+
+    [Fact]
+    public void The_zoom_keys_change_the_zoom_and_the_button_shows_it()
+    {
+        UiThread.Run(() =>
+        {
+            var canvas = Shown();
+
+            Assert.True(Press(canvas.Surface, Key.OemPlus, KeyModifiers.Meta));
+            Assert.Equal("125%", canvas.ZoomWord);
+            Press(canvas.Surface, Key.OemMinus, KeyModifiers.Meta);
+            Press(canvas.Surface, Key.OemMinus, KeyModifiers.Meta);
+            Assert.Equal("80%", canvas.ZoomWord);
+            Press(canvas.Surface, Key.D0, KeyModifiers.Meta);
+            Assert.Equal(1, canvas.Viewport.Zoom);
+        });
+    }
+
+    [Fact]
+    public void F_shows_every_step_and_option_F_zooms_to_the_picked_one_but_not_while_typing()
+    {
+        UiThread.Run(() =>
+        {
+            var canvas = Shown();
+            var size = canvas.Surface.Bounds.Size;
+            canvas.Viewport.ZoomAt(default, 3);
+            canvas.Viewport.PanBy(new Vector(5000, 5000));
+
+            Assert.True(Press(canvas.Surface, Key.F));
+            Assert.True(canvas.Viewport.VisibleRect(size).Contains(canvas.Scene.ContentBounds));
+
+            canvas.Viewport.PanBy(new Vector(5000, 5000));
+            canvas.Select([3]);
+            Assert.True(Press(canvas.Surface, Key.F, KeyModifiers.Alt));
+            Assert.True(canvas.Viewport.VisibleRect(size).Contains(canvas.Scene.Find(3)!.Bounds));
+
+            canvas.Viewport.PanBy(new Vector(5000, 5000));
+            var pan = canvas.Viewport.Pan;
+            canvas.FindBar.Open();
+            Assert.False(Press(canvas.Find<TextBox>("find:text")!, Key.F));
+            Assert.Equal(pan, canvas.Viewport.Pan);
         });
     }
 

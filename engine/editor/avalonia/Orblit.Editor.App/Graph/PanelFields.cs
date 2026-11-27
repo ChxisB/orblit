@@ -1,8 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
@@ -46,10 +49,37 @@ internal static class PanelFields
         return box;
     }
 
+    /// <summary>The plain words of a type. A type with no plain words goes by its engine name.</summary>
+    public static string TypeWords(int type) => type switch
+    {
+        1 => "Yes or no",
+        2 => "Whole number",
+        3 => "Number",
+        4 => "Text",
+        _ => VariantTypes.NameOf(type),
+    };
+
+    /// <summary>A list of the Variant types by their plain words, each with its engine name beside it in dim mono.</summary>
+    public static ComboBox TypeList() => new()
+    {
+        ItemsSource = Enumerable.Range(0, VariantTypes.Names.Count).ToList(),
+        ItemTemplate = new FuncDataTemplate<int>((type, _) =>
+        {
+            var words = TypeWords(type);
+            var engine = VariantTypes.NameOf(type);
+            return Parts.Noted(words, null, words == engine ? null : engine);
+        }),
+        SelectedIndex = 0,
+    };
+
     /// <summary>A list of the Variant types, with the type of the id shown. The callback gets the type number.</summary>
     public static ComboBox TypeBox(string id, int type, Action<int> commit)
     {
-        var box = new ComboBox { ItemsSource = VariantTypes.Names, SelectedIndex = type, Tag = id, MinWidth = 90, FontSize = 12 };
+        var box = TypeList();
+        box.SelectedIndex = type;
+        box.Tag = id;
+        box.MinWidth = 90;
+        box.FontSize = 12;
         box.SelectionChanged += (_, _) =>
         {
             if (box.SelectedIndex >= 0 && box.SelectedIndex != type)
@@ -69,7 +99,7 @@ internal static class PanelFields
 
     public static Button Small(string id, string label, Action click)
     {
-        var button = new Button { Content = label, Tag = id, Padding = new Thickness(6, 1), MinHeight = 0, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+        var button = new Button { Content = label, Tag = id, Padding = new Thickness(Gaps.Item, Gaps.Joined), MinHeight = 0, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         button.Click += (_, _) => click();
         return button;
     }
@@ -77,7 +107,7 @@ internal static class PanelFields
     /// <summary>A grip a person drags onto the canvas. The drop carries the kind and the name.</summary>
     public static TextBlock Handle(string id, GraphDrop drop)
     {
-        var handle = new TextBlock { Text = "::", Tag = id, Cursor = new Cursor(StandardCursorType.SizeAll), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) };
+        var handle = new TextBlock { Text = "::", Tag = id, Cursor = new Cursor(StandardCursorType.SizeAll), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, Gaps.Tight, 0) };
         ToolTip.SetTip(handle, "Drag onto the graph.");
         // The drag runs until the drop, so the call is not awaited here. A drag that fails has nothing to report.
         handle.PointerPressed += (_, e) => _ = DragDrop.DoDragDropAsync(e, drop.ToTransfer(), DragDropEffects.Copy);

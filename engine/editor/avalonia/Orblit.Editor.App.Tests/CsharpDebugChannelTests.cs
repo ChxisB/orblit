@@ -211,6 +211,23 @@ public sealed class CsharpDebugChannelTests : IDisposable
     }
 
     [Fact]
+    public void The_games_exit_code_outlives_the_closed_link_until_the_next_end()
+    {
+        Connect();
+        Assert.Null(_channel.ExitCode);
+
+        _dap.Event("exited", """{"exitCode":134}""");
+        _dap.Event("terminated");
+        _channel.Poll();
+        _dap.Closed = true;
+        _channel.Poll();
+
+        Assert.Equal(134, _channel.ExitCode);
+        _channel.End();
+        Assert.Null(_channel.ExitCode);
+    }
+
+    [Fact]
     public void End_asks_netcoredbg_to_end_the_game_too()
     {
         Connect();

@@ -69,13 +69,13 @@ public sealed class VectorRowTests
                 Assert.Equal(Color.FromArgb(0x1F, axes[i].R, axes[i].G, axes[i].B), ((ISolidColorBrush)tag.Background!).Color);
                 Assert.Equal((new[] { "X", "Y", "Z" }[i], axes[i], FontWeight.Bold), (letter.Text, ((ISolidColorBrush)letter.Foreground!).Color, letter.FontWeight));
                 Assert.Equal(BoxOf(tag, window).Right, BoxOf(row.Axes[i], window).X);
-                Assert.Equal(6, row.Axes[i].Padding.Left);
+                Assert.Equal(4, row.Axes[i].Padding.Left);
             }
         });
     }
 
     [Fact]
-    public void The_unit_is_dim_and_ends_7_pixels_inside_its_field()
+    public void The_unit_is_dim_and_ends_8_pixels_inside_its_field()
     {
         UiThread.Run(() =>
         {
@@ -86,7 +86,7 @@ public sealed class VectorRowTests
             Assert.Equal(3, units.Length);
             for (var i = 0; i < 3; i++)
             {
-                Assert.Equal(BoxOf(Fields(row)[i], window).Right - 1 - 7, BoxOf(units[i], window).Right);
+                Assert.Equal(BoxOf(Fields(row)[i], window).Right - 1 - 8, BoxOf(units[i], window).Right);
                 Assert.Equal(BoxOf(units[i], window).X, BoxOf(row.Axes[i], window).Right);
                 Assert.Equal(EditorColors.Unit, ((ISolidColorBrush)units[i].Foreground!).Color);
             }
@@ -136,7 +136,7 @@ public sealed class VectorRowTests
 
             Assert.Equal(["°", "°", "°"], Texts(window.Inspector.Rotation).Where(text => text.Text == "°").Select(text => text.Text));
             Assert.DoesNotContain(Texts(window.Inspector.Scale), text => text.Text is "m" or "°");
-            Assert.Equal("Rotation", window.Inspector.Rotation.Label);
+            Assert.Equal("Turn", window.Inspector.Rotation.Label);
         });
     }
 

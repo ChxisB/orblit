@@ -1,10 +1,13 @@
+using Avalonia.Input;
+using Orblit.Editor.App.Shell;
+
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
 /// Moves the view to a step by a search, an id or a bookmark, and keeps the bookmarks. Each answer is reported as
 /// a line of text for the find bar. Moving the view is not an edit, so nothing here reaches the engine.
 /// </summary>
-internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action redraw)
+internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action redraw, KeyModifiers command)
 {
     /// <summary>Raised with a line that says what the last command found, or empty after one that needs no words.</summary>
     public event Action<string>? Reported;
@@ -15,7 +18,7 @@ internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action r
         var ids = StepSearch.Find(scene.Steps, text);
         if (StepSearch.Cycle(ids, Current(), forward) is not { } id)
         {
-            Reported?.Invoke("No steps match.");
+            Reported?.Invoke("No step matches. Search looks at names and numbers.");
             return;
         }
 
@@ -28,11 +31,11 @@ internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action r
     {
         if (!int.TryParse(text.Trim(), out var id))
         {
-            Reported?.Invoke("Type a step id, a whole number.");
+            Reported?.Invoke("Type a step number, like 12.");
         }
         else if (scene.Find(id) is null)
         {
-            Reported?.Invoke($"This function has no step {id}.");
+            Reported?.Invoke($"No step has the number {id}.");
         }
         else
         {
@@ -46,7 +49,7 @@ internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action r
     {
         if (scene.SelectedSteps.Count != 1)
         {
-            Reported?.Invoke("Select one step to bookmark.");
+            Reported?.Invoke("Pick one step to bookmark.");
             return;
         }
 
@@ -60,13 +63,13 @@ internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action r
     {
         if (scene.SelectedSteps.Count != 1)
         {
-            Reported?.Invoke("Select one step for a breakpoint.");
+            Reported?.Invoke("Pick one step to pause at.");
             return;
         }
 
         var id = scene.SelectedSteps.First();
         redraw();
-        Reported?.Invoke(scene.ToggleBreakpoint(id) ? $"Set a breakpoint on step {id}." : $"Took the breakpoint off step {id}.");
+        Reported?.Invoke(scene.ToggleBreakpoint(id) ? $"The game pauses at step {id}." : $"The game no longer pauses at step {id}.");
     }
 
     /// <summary>Shows the next bookmarked step, or the previous one, wrapping at the ends.</summary>
@@ -75,7 +78,7 @@ internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action r
         var ids = StepSearch.InReadingOrder(scene.Steps.Where(step => scene.Bookmarked.Contains(step.Id)));
         if (StepSearch.Cycle(ids, Current(), forward) is not { } id)
         {
-            Reported?.Invoke("No bookmarks.");
+            Reported?.Invoke($"No bookmarks yet. Bookmark a step with {Parts.KeyText(new KeyGesture(Key.F2, command))}.");
             return;
         }
 

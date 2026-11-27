@@ -1,9 +1,13 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -11,12 +15,25 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class TitleBarTests
 {
+    static IEnumerable<TextBlock> HeadingParts(EditorWindow window) => window.Bar.Heading.GetLogicalDescendants().OfType<TextBlock>();
+
     static string Heading(EditorWindow window) =>
-        string.Join(" ", window.Bar.Heading.Children.OfType<TextBlock>().Where(text => text.IsVisible).Select(text => text.Text));
+        string.Join(" ", HeadingParts(window).Where(text => text.IsVisible).Select(text => text.Text));
 
     static MenuItem[] RunItems(EditorWindow window) => [.. ((MenuFlyout)window.Bar.MoreButton.Flyout!).Items.OfType<MenuItem>()];
 
-    static MenuItem RunItem(EditorWindow window, string header) => RunItems(window).Single(item => (string?)item.Header == header);
+    static MenuItem RunItem(EditorWindow window, string header) => RunItems(window).Single(item => AutomationProperties.GetName(item) == header);
+
+    static string? Note(MenuItem item) => ((Panel)item.Header!).Children.OfType<TextBlock>().Last().Text;
+
+    static string[] Words(Control control) => [.. control.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text ?? "")];
+
+    static HoverCard CardOf(Control control) => Assert.IsType<HoverCard>(ToolTip.GetTip(control));
+
+    static string Keys(EditorWindow window, Key key) => Parts.KeyText(new KeyGesture(key, window.CommandKey));
+
+    static void Press(EditorWindow window, Key key) =>
+        window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = window.CommandKey });
 
     [Fact]
     public void The_bar_shows_project_slash_scene_and_an_orange_dot_while_the_scene_has_edits()
@@ -54,7 +71,7 @@ public sealed class TitleBarTests
     {
         UiThread.Run(() =>
         {
-            var parts = OpenAtReferenceSize().Bar.Heading.Children.OfType<TextBlock>().ToArray();
+            var parts = HeadingParts(OpenAtReferenceSize()).ToArray();
 
             Assert.Equal(FontWeight.SemiBold, parts[0].FontWeight);
             Assert.Equal(EditorColors.Disabled, ((ISolidColorBrush)parts[1].Foreground!).Color);
@@ -79,21 +96,41 @@ public sealed class TitleBarTests
     }
 
     [Fact]
-    public void The_window_bar_lists_the_five_menus_in_soft_26_high_tabs_where_the_system_bar_does_not()
+    public void The_window_bar_lists_the_menus_in_soft_26_high_tabs_where_the_system_bar_does_not()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var menus = window.Bar.Menus.GetVisualDescendants().OfType<MenuItem>().ToArray();
+            string[] orblit = OperatingSystem.IsMacOS() ? [] : ["Orblit"];
 
             Assert.True(window.Bar.Menus.IsEffectivelyVisible);
-            Assert.Equal(["Scene", "Project", "Debug", "Editor", "Help"], menus.Select(item => item.Header as string));
+            Assert.Equal([.. orblit, "File", "Edit", "View", "Play", "Help"], menus.Select(item => item.Header as string));
             Assert.All(menus, item =>
             {
                 Assert.Equal(26, item.Bounds.Height);
                 Assert.Equal(EditorColors.TextSoft, ((ISolidColorBrush)item.Foreground!).Color);
             });
             Assert.True(BoxOf(window.Bar.Menus, window).X > BoxOf(window.Bar.EditedDot, window).Right);
+        });
+    }
+
+    [Fact]
+    public void An_item_of_the_window_bar_shows_its_engine_name_and_its_note_under_its_name()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var file = window.Bar.Menus.GetVisualDescendants().OfType<MenuItem>().Single(item => item.Header as string == "File");
+
+            file.Open();
+            Dispatcher.UIThread.RunJobs();
+            var find = file.GetRealizedContainers().OfType<MenuItem>().Single(item => item.Header as string == "Find a scene…");
+
+            // The key at the right of the item is the menu's own, so only the header's words count here.
+            var words = find.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text).Take(3);
+
+            Assert.Equal(["Find a scene…", "Quick Open Scene…", "Type part of a name to open it"], words);
         });
     }
 
@@ -107,35 +144,10 @@ public sealed class TitleBarTests
 
             Assert.Equal(
                 [
-                    ("Run the project", new KeyGesture(Key.B, command)),
-                    ("Run the current scene", new KeyGesture(Key.R, command)),
-                    ("Run a chosen scene...", new KeyGesture(Key.R, command | KeyModifiers.Shift)),
-                    ("Movie maker mode", null),
-                    ("Customize Run Instances...", null),
+                    ("Play the game", "Starts the scene Play settings pick", new KeyGesture(Key.B, command)),
+                    ("Play this scene", "Starts from the scene you are in", new KeyGesture(Key.R, command)),
                 ],
-                RunItems(window).Select(item => ((string)item.Header!, item.InputGesture)));
-        });
-    }
-
-    [Fact]
-    public void Lines_split_the_more_menu_into_three_groups()
-    {
-        UiThread.Run(() =>
-        {
-            var items = ((MenuFlyout)OpenAtReferenceSize().Bar.MoreButton.Flyout!).Items;
-
-            Assert.Equal(["Item", "Item", "Item", "Line", "Item", "Line", "Item"], items.Select(item => item is Separator ? "Line" : "Item"));
-        });
-    }
-
-    [Fact]
-    public void Only_the_project_and_the_current_scene_lack_the_soon_mark()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-
-            Assert.Equal(["Run the project", "Run the current scene"], RunItems(window).Where(item => !EditorTheme.IsSoon(item)).Select(item => (string)item.Header!));
+                RunItems(window).Select(item => (AutomationProperties.GetName(item), Note(item), item.InputGesture)));
         });
     }
 
@@ -147,7 +159,7 @@ public sealed class TitleBarTests
             var scene = new FakeScene();
             var window = OpenAtReferenceSize(scene);
 
-            RunItem(window, "Run the project").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            RunItem(window, "Play the game").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
             Assert.Equal(1, scene.Plays);
         });
@@ -196,7 +208,7 @@ public sealed class TitleBarTests
 
             var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.R, KeyModifiers = window.CommandKey };
             window.RaiseEvent(press);
-            RunItem(window, "Run the current scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            RunItem(window, "Play this scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
             Assert.True(press.Handled);
             Assert.Equal(2, scene.Plays);
@@ -213,23 +225,97 @@ public sealed class TitleBarTests
 
             Assert.True(window.PlayButton.IsEnabled);
             Assert.False(window.PlaySceneButton.IsEnabled);
-            Assert.False(RunItem(window, "Run the current scene").IsEnabled);
+            Assert.False(RunItem(window, "Play this scene").IsEnabled);
         });
     }
 
-    [Theory]
-    [InlineData("Run a chosen scene...", "Run a chosen scene is not built yet.")]
-    [InlineData("Movie maker mode", "Movie maker mode is not built yet.")]
-    [InlineData("Customize Run Instances...", "Customize Run Instances is not built yet.")]
-    public void A_way_to_run_the_editor_lacks_answers_that_it_is_not_built(string header, string answer)
+    [Fact]
+    public void Play_and_Stop_show_their_icon_and_word_with_the_key_on_the_card()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            RunItem(window, header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal(["Play"], Words(window.PlayButton));
+            Assert.Equal(["Stop"], Words(window.StopButton));
+            Assert.Equal(Keys(window, Key.B), CardOf(window.PlayButton).Key);
+            Assert.Equal(Keys(window, Key.OemPeriod), CardOf(window.StopButton).Key);
+            Assert.Equal("MainPlay", window.PlayButton.GetLogicalDescendants().OfType<EditorIcon>().Single().IconName);
+        });
+    }
 
-            Assert.Equal(answer, window.Status);
+    [Fact]
+    public void Every_control_of_the_bar_has_a_card()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Control[] controls = [.. window.Bar.Tabs, window.PlayButton, window.StopButton, window.Bar.MoreButton, window.Bar.SearchButton];
+
+            Assert.All(controls, control => Assert.False(string.IsNullOrEmpty(CardOf(control).Line)));
+            Assert.Equal(Keys(window, Key.K), CardOf(window.Bar.SearchButton).Key);
+        });
+    }
+
+    [Fact]
+    public void Each_workspace_card_gives_its_name_and_its_number_key()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Assert.Equal(
+                [("2D", Keys(window, Key.D1)), ("3D", Keys(window, Key.D2)), ("Script", Keys(window, Key.D3)), ("Graph", Keys(window, Key.D4)), ("Game", Keys(window, Key.D5))],
+                window.Bar.Tabs.Select(tab => (CardOf(tab).Title, CardOf(tab).Key)));
+            Assert.Equal("Visual script editor", CardOf(window.Bar.Tabs[3]).Engine);
+        });
+    }
+
+    [Theory]
+    [InlineData(Key.D1, "2D")]
+    [InlineData(Key.D2, "3D")]
+    [InlineData(Key.D3, "Script")]
+    [InlineData(Key.D4, "Graph")]
+    [InlineData(Key.D5, "Game")]
+    public void Command_and_a_number_switch_the_workspace(Key key, string workspace)
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Press(window, key);
+
+            Assert.Equal(workspace, window.Bar.Tabs.Single(tab => tab.IsChecked == true).Label);
+        });
+    }
+
+    [Fact]
+    public void Stop_says_why_it_is_off_until_the_game_plays()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+            var card = CardOf(window.StopButton);
+
+            Assert.Equal($"Nothing is playing. Press {Keys(window, Key.B)} first.", card.Line);
+            Click(window.PlayButton);
+
+            Assert.Equal("Closes the game window.", card.Line);
+        });
+    }
+
+    [Fact]
+    public void Command_and_full_stop_stops_the_game()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            Click(window.PlayButton);
+
+            Press(window, Key.OemPeriod);
+
+            Assert.Equal(1, scene.Stops);
         });
     }
 }

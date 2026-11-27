@@ -2,6 +2,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Shell;
@@ -10,25 +11,27 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App;
 
 /// <summary>
-/// The History tab: the open scene, then each step since, oldest first. The step the scene is at is lit and the
-/// undone steps are grayed. A click on a row asks to go to that step. The window does the going, so the scene
+/// The History tab: each step, newest first, then the open scene at the foot. The step the scene is at is lit and
+/// the undone steps are faded. A click on a row asks to go to that step. The window does the going, so the scene
 /// reloads once.
 /// </summary>
 internal sealed class HistoryPane : DockPanel
 {
-    readonly StackPanel _rows = new() { Spacing = 2, Margin = new Thickness(0, 6) };
-    readonly StackPanel _empty = Parts.EmptyState("Past", "Nothing to undo yet", "Each edit to the scene is listed here as a step.");
-    readonly TextBlock _hint = new()
-    {
-        Text = "Click a step to go back to it. Grayed steps are undone.",
-        FontSize = 11,
-        Foreground = EditorBrushes.TextDim,
-        TextWrapping = TextWrapping.Wrap,
-        Margin = new Thickness(12, 4, 12, 12),
-    };
+    // Every time is five mono figures, so a fixed width keeps the names in one column.
+    const double TimeWidth = 40;
 
-    public HistoryPane()
+    readonly StackPanel _rows = new() { Spacing = Gaps.Joined, Margin = new Thickness(0, Gaps.Tight), Classes = { EditorTheme.Joined } };
+    readonly StackPanel _empty = Parts.EmptyState("Past", "Nothing to undo yet", "Each change you make shows here. Click one to go back to it.");
+    readonly WrapPanel _hint = new() { Margin = new Thickness(Gaps.Group, Gaps.Tight, Gaps.Group, Gaps.Group) };
+
+    public HistoryPane(KeyModifiers command)
     {
+        _hint.Children.AddRange([
+            HintText("Faded steps are undone."),
+            Parts.Kbd(Parts.KeyText(new KeyGesture(Key.Z, command | KeyModifiers.Shift))),
+            HintText("redoes them."),
+        ]);
+        _hint.Children[1].Margin = new Thickness(Gaps.Tight, 0);
         SetDock(_hint, Dock.Bottom);
         Children.Add(_hint);
         Children.Add(_empty);
@@ -44,7 +47,7 @@ internal sealed class HistoryPane : DockPanel
 
     internal StackPanel Rows => _rows;
 
-    /// <summary>Lists the steps of this history under a first row for the scene it starts from.</summary>
+    /// <summary>Lists the steps of this history, newest first, over a last row for the scene it starts from.</summary>
     public void Show(EditHistory? history, string opened, DateTimeOffset openedAt)
     {
         _rows.Children.Clear();
@@ -57,18 +60,21 @@ internal sealed class HistoryPane : DockPanel
             return;
         }
 
-        _rows.Children.Add(Row(0, opened, openedAt, history!.Done));
-        for (var i = 0; i < steps.Count; i++)
+        for (var i = steps.Count - 1; i >= 0; i--)
         {
-            _rows.Children.Add(Row(i + 1, steps[i].Label, steps[i].At, history.Done));
+            _rows.Children.Add(Row(i + 1, steps[i].Label, steps[i].At, history!.Done));
         }
+
+        _rows.Children.Add(Row(0, opened, openedAt, history!.Done));
     }
 
-    // Row n is the scene with n steps done, so the first row is the scene as it opened.
+    static TextBlock HintText(string text) => new() { Text = text, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
+
+    // Row n is the scene with n steps done, so row 0 is the scene as it opened.
     Button Row(int done, string label, DateTimeOffset at, int current)
     {
         var lit = done == current;
-        var icon = new EditorIcon(lit ? "StepArrow" : "Past") { Width = 13, Height = 13, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        var icon = new EditorIcon(lit ? "StepArrow" : "Past") { Width = 13, Height = 13, Margin = new Thickness(0, 0, Gaps.Tight, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, lit ? EditorBrushes.Accent : EditorBrushes.TreeIcon);
         var time = new TextBlock
         {
@@ -76,16 +82,16 @@ internal sealed class HistoryPane : DockPanel
             FontFamily = EditorTheme.Mono,
             FontSize = 11,
             Foreground = EditorBrushes.TextDim,
-            Margin = new Thickness(6, 0, 0, 0),
+            Width = TimeWidth,
             VerticalAlignment = VerticalAlignment.Center,
         };
         DockPanel.SetDock(icon, Dock.Left);
-        DockPanel.SetDock(time, Dock.Right);
+        DockPanel.SetDock(time, Dock.Left);
         var row = new Button
         {
             Height = 26,
-            Margin = new Thickness(6, 0),
-            Padding = new Thickness(10, 0, 6, 0),
+            Margin = new Thickness(Gaps.Tight, 0),
+            Padding = new Thickness(Gaps.Item, 0, Gaps.Tight, 0),
             CornerRadius = new CornerRadius(6),
             Focusable = false,
             Opacity = done > current ? 0.45 : 1,

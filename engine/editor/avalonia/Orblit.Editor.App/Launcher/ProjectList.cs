@@ -10,9 +10,12 @@ internal sealed class ProjectList(string file)
 {
     public static ProjectList ForUser() => new(Path.Combine(DataFolder(), "projects.cfg"));
 
+    /// <summary>The editor's own settings, in the folder that holds this list.</summary>
+    public EditorSettings Settings() => new(Path.Combine(Path.GetDirectoryName(file)!, EditorSettings.FileName)); // a full path always has a parent folder
+
     // The engine's data folder on each system. .NET maps LocalApplicationData to Application Support on macOS
     // and to the XDG data folder on Linux, where the engine names its folder in lower case.
-    static string DataFolder() => OperatingSystem.IsWindows()
+    public static string DataFolder() => OperatingSystem.IsWindows()
         ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Orblit")
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), OperatingSystem.IsMacOS() ? "Orblit" : "orblit");
 
@@ -24,9 +27,7 @@ internal sealed class ProjectList(string file)
     /// <summary>Adds the folder as the engine writes it, with favorite off. A folder already listed is left as it is.</summary>
     public void Add(string folder)
     {
-        // The engine keeps forward slashes on Windows too.
-        var name = OperatingSystem.IsWindows() ? folder.Replace('\\', '/') : folder;
-        if (Folders().Contains(name))
+        if (Folders().Contains(Listed(folder)))
         {
             return;
         }
@@ -34,8 +35,40 @@ internal sealed class ProjectList(string file)
         Directory.CreateDirectory(Path.GetDirectoryName(file)!); // a full path always has a parent folder
         var text = File.Exists(file) ? File.ReadAllText(file) : "";
         var gap = text.Length == 0 ? "" : text.EndsWith('\n') ? "\n" : "\n\n";
-        File.AppendAllText(file, $"{gap}[{name.Replace("]", "\\]")}]\n\nfavorite=false\n");
+        File.AppendAllText(file, $"{gap}{Section(folder)}\n\nfavorite=false\n");
     }
+
+    /// <summary>Drops the folder's section and its keys from the list. The folder and its files stay as they are.</summary>
+    public void Remove(string folder)
+    {
+        if (!File.Exists(file))
+        {
+            return;
+        }
+
+        var dropping = false;
+        var kept = new List<string>();
+        foreach (var line in File.ReadLines(file))
+        {
+            if (line.StartsWith('[') && line.EndsWith(']'))
+            {
+                dropping = line == Section(folder);
+            }
+
+            if (!dropping)
+            {
+                kept.Add(line);
+            }
+        }
+
+        var text = string.Join('\n', kept).TrimEnd('\n');
+        File.WriteAllText(file, text.Length == 0 ? "" : text + "\n");
+    }
+
+    // The engine keeps forward slashes on Windows too.
+    static string Listed(string folder) => OperatingSystem.IsWindows() ? folder.Replace('\\', '/') : folder;
+
+    static string Section(string folder) => $"[{Listed(folder).Replace("]", "\\]")}]";
 }
 
 /// <summary>What a launcher card shows of a project folder.</summary>

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Input;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.Bridge;
 
@@ -16,7 +17,7 @@ public sealed class WireHoverTests
             var source = FakeGraphSource.Sample();
             source.Put(FakeGraphSource.MakeStep(4, "constant", 0, 120, [], [FakeGraphSource.Data("value", 4)]));
             source.Put(new GraphWire(4, 0, 3, 1));
-            Canvas = new GraphCanvas(source);
+            Canvas = new GraphCanvas(source, KeyModifiers.Meta);
             Canvas.Scene.Script = Script;
             Debugger = new GraphDebugger(Channel, new GraphBreakpoints());
             Canvas.Probe(Debugger);
@@ -122,7 +123,7 @@ public sealed class WireHoverTests
             var source = FakeGraphSource.Sample();
             source.Put(FakeGraphSource.MakeStep(4, "constant", 0, 120, [], [FakeGraphSource.Data("value", 4)]));
             source.Put(new GraphWire(4, 0, 3, 9));
-            var canvas = new GraphCanvas(source);
+            var canvas = new GraphCanvas(source, KeyModifiers.Meta);
             var channel = new FakeDebugChannel();
             var debugger = new GraphDebugger(channel, new GraphBreakpoints());
             canvas.Probe(debugger);

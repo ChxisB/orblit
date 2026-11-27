@@ -29,12 +29,12 @@ public sealed class EditorWindowTests
         return press;
     }
 
-    // Adds a class under the selected entity, or the root, through the Add an entity dialog.
+    // Adds a class under the selected entity, or the root, through the Add a thing dialog.
     static void AddClass(EditorWindow window, string className)
     {
         Click(window.Tools.AddButton);
         var list = window.Tools.ClassList;
-        Click(list.RowButtons.ElementAt(list.Shown.ToList().FindIndex(choice => choice.Name == className)));
+        Click(list.RowButtons.ElementAt(list.Shown.ToList().FindIndex(choice => EntityTools.ClassOf(choice) == className)));
         Click(window.Tools.AddDialog.MainButton);
     }
 
@@ -702,7 +702,7 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Choosing_a_scene_saves_the_edits_and_shows_the_new_scene()
+    public void Choosing_a_scene_with_edits_asks_and_Save_and_open_saves_them_then_shows_it()
     {
         UiThread.Run(() =>
         {
@@ -712,6 +712,15 @@ public sealed class EditorWindowTests
 
             OpenScene(window, "res://levels/second.oscn");
 
+            var dialog = window.SaveChanges;
+            Assert.True(dialog.IsVisible);
+            Assert.Empty(scene.Opened);
+            Assert.Equal(["Save and open", "↵"], Texts(dialog.MainButton));
+            Assert.EndsWith("Open without saving and they are gone.", dialog.Why.Text);
+            Assert.Equal("Opens and drops every change listed here.", ((HoverCard)ToolTip.GetTip(dialog.LeadButton!)!).Line);
+            Click(dialog.MainButton);
+
+            Assert.False(dialog.IsVisible);
             Assert.Equal(1, scene.Saves);
             Assert.Equal(["res://levels/second.oscn"], scene.Opened);
             Assert.Equal("second", Root(window).Name);
@@ -728,7 +737,9 @@ public sealed class EditorWindowTests
             var window = Open(scene);
             MakeAnEdit(window);
             OpenScene(window, "res://field.oscn");
+            Click(window.SaveChanges.MainButton);
 
+            Assert.True(window.SaveChanges.IsVisible);
             Assert.Empty(scene.Opened);
             Assert.Equal("Field", Root(window).Name);
             Assert.Equal("The engine could not save the scene. Error code 7.", window.Status);
@@ -870,7 +881,7 @@ public sealed class EditorWindowTests
             Assert.Equal(["Sound"], Root(window).Children.Select(c => c.Name));
             Assert.Equal(["Lamp"], Root(window).Children.Single().Children.Select(c => c.Name));
             Assert.Equal("Lamp", ((OutlineNode)window.Outline.SelectedItem!).Name);
-            Assert.Equal("Moved Lamp under Field/Sound.", window.Status);
+            Assert.Equal("Moved Lamp into Field/Sound.", window.Status);
         });
     }
 
@@ -890,7 +901,7 @@ public sealed class EditorWindowTests
 
             var deep = Root(window).Find(FakeScene.Sound.Handle)!.Children.Single();
             Assert.Equal(["Lamp"], deep.Children.Select(c => c.Name));
-            Assert.Equal("Moved Lamp under Field/Sound/Deep.", window.Status);
+            Assert.Equal("Moved Lamp into Field/Sound/Deep.", window.Status);
         });
     }
 
@@ -1175,6 +1186,42 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
+    public void Y_flips_snap_and_the_command_key_with_L_or_G_locks_or_groups_the_selection()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+
+            Assert.True(Press(window, Key.Y).Handled);
+            Assert.True(window.Toolbar.Snaps);
+            Assert.False(Press(window.ScenePane.FilterBox, Key.Y).Handled);
+            Assert.False(Press(window, Key.L, window.CommandKey).Handled);
+
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            Assert.True(Press(window, Key.L, window.CommandKey).Handled);
+            Assert.True(window.Toolbar.LockButton.IsChecked);
+            Assert.True(Press(window, Key.G, window.CommandKey).Handled);
+            Assert.True(window.Toolbar.GroupButton.IsChecked);
+        });
+    }
+
+    [Fact]
+    public void Esc_stops_measuring_and_is_left_alone_otherwise()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+            Assert.False(Press(window, Key.Escape).Handled);
+
+            Click(window.Toolbar.RulerButton);
+            Assert.True(window.Toolbar.Measures);
+
+            Assert.True(Press(window, Key.Escape).Handled);
+            Assert.False(window.Toolbar.Measures);
+        });
+    }
+
+    [Fact]
     public void Q_W_E_and_R_with_a_modifier_or_typed_into_a_box_change_no_mode()
     {
         UiThread.Run(() =>
@@ -1347,15 +1394,38 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Opening_another_scene_starts_without_a_star()
+    public void Don_t_save_opens_another_scene_without_a_save_or_a_star()
     {
         UiThread.Run(() =>
         {
-            var window = Open(new FakeScene());
+            var scene = new FakeScene();
+            var window = Open(scene);
             MakeAnEdit(window);
             OpenScene(window, "res://levels/second.oscn");
+            Click(window.SaveChanges.LeadButton!);
 
+            Assert.False(window.SaveChanges.IsVisible);
+            Assert.Equal(0, scene.Saves);
+            Assert.Equal(["res://levels/second.oscn"], scene.Opened);
             Assert.Equal("second.oscn - Unnamed Project", window.Title);
+        });
+    }
+
+    [Fact]
+    public void Cancel_keeps_the_scene_and_its_edits_when_another_is_chosen()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = Open(scene);
+            MakeAnEdit(window);
+            OpenScene(window, "res://levels/second.oscn");
+            Click(window.SaveChanges.CancelButton);
+
+            Assert.False(window.SaveChanges.IsVisible);
+            Assert.Equal(0, scene.Saves);
+            Assert.Empty(scene.Opened);
+            Assert.Contains("(*)", window.Title);
         });
     }
 
@@ -1368,9 +1438,26 @@ public sealed class EditorWindowTests
             var window = Open(scene);
             MakeAnEdit(window);
             OpenScene(window, "res://levels/second.oscn");
+            Click(window.SaveChanges.MainButton);
 
             Assert.Equal(1, scene.Saves);
             Assert.Equal("Unnamed Project", window.Title);
+        });
+    }
+
+    [Fact]
+    public void Don_t_save_then_a_scene_that_cannot_open_keeps_the_edits_and_the_star()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { OpenFails = true };
+            var window = Open(scene);
+            MakeAnEdit(window);
+            OpenScene(window, "res://levels/second.oscn");
+            Click(window.SaveChanges.LeadButton!);
+
+            Assert.Equal(0, scene.Saves);
+            Assert.Contains("(*)", window.Title);
         });
     }
 
@@ -1502,7 +1589,7 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Save_changes_names_the_scene_and_counts_the_edits_since_it_opened()
+    public void Save_changes_names_the_scene_and_lists_the_edits_since_it_opened()
     {
         UiThread.Run(() =>
         {
@@ -1513,14 +1600,14 @@ public sealed class EditorWindowTests
             window.Close();
 
             var dialog = window.SaveChanges;
-            Assert.Equal("Save changes to main.oscn?", dialog.Title);
-            Assert.Equal("Closing without saving drops them.", dialog.Why.Text);
-            Assert.Equal("2 changes since 16:33.", window.ChangesLine.Text);
-            Assert.Equal("Save and close", dialog.MainButton.Content);
-            Assert.Equal("Keep editing", dialog.CancelButton.Content);
-            Assert.Equal("Close without saving", dialog.LeadButton!.Content);
+            Assert.Equal("Save changes to main?", dialog.Title);
+            Assert.Equal("You made 2 changes since 16:33. Close without saving and they are gone.", dialog.Why.Text);
+            Assert.Equal(["16:33", "Duplicated Lamp", "16:33", "Duplicated Lamp"], Texts(window.ChangesList));
+            Assert.Equal(["Save and close", "↵"], Texts(dialog.MainButton));
+            Assert.Equal(["Cancel", "esc"], Texts(dialog.CancelButton));
+            Assert.Equal("Don't save", dialog.LeadButton!.Content);
+            Assert.Equal("Closes and drops every change listed here.", ((HoverCard)ToolTip.GetTip(dialog.LeadButton)!).Line);
             Assert.False(dialog.CloseButton.IsVisible);
-            Assert.Equal(400, dialog.Card.Width);
         });
     }
 
@@ -1538,7 +1625,8 @@ public sealed class EditorWindowTests
 
             window.Close();
 
-            Assert.Equal("1 change since 16:38.", window.ChangesLine.Text);
+            Assert.Equal("You made 1 change since 16:38. Close without saving and they are gone.", window.SaveChanges.Why.Text);
+            Assert.Equal(["16:38", "Duplicated Lamp"], Texts(window.ChangesList));
         });
     }
 

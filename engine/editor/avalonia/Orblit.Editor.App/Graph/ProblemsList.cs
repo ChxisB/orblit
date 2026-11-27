@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
@@ -20,11 +21,11 @@ internal sealed class ProblemsList : StackPanel
 
     public ProblemsList(GraphDocument document, Action<string, int> jump)
     {
-        Spacing = 2;
+        Spacing = Gaps.Joined;
         var problems = Find(document);
         if (problems.Count == 0)
         {
-            Children.Add(Line("problems:empty", "No problems."));
+            Children.Add(Line("problems:empty", "No problems. A step that needs something shows here."));
         }
 
         for (var at = 0; at < problems.Count; at++)
@@ -65,7 +66,7 @@ internal sealed class ProblemsList : StackPanel
         var id = $"problem:{problem.Function}:{problem.Step}";
         var button = PanelFields.Small(id, $"{(problem.IsError ? "Error" : "Warning")} in {problem.Function}, step {problem.Step}", () => jump(problem.Function, problem.Step));
         button.HorizontalAlignment = HorizontalAlignment.Left;
-        var row = new StackPanel { Margin = new Thickness(16, 0, 0, 0) };
+        var row = new StackPanel { Margin = new Thickness(Gaps.Dialog, 0, 0, 0) };
         row.Children.Add(button);
         row.Children.Add(Line($"{id}:text", problem.Text, problem.IsError));
         return row;

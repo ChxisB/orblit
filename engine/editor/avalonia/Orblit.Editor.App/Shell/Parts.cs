@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
@@ -15,6 +16,12 @@ namespace Orblit.Editor.App.Shell;
 /// <summary>The small controls that more than one area of the shell uses.</summary>
 internal static class Parts
 {
+    // An icon button is a square this wide, with the icon in its middle.
+    internal const double IconButtonSize = 26;
+    internal const double IconInset = (IconButtonSize - EditorIcon.DefaultSize) / 2;
+
+    // The smallest a button should be to hit with ease.
+
     // A glow and a deep tone for each banner, taken in turn so an item keeps its colour as a search narrows the list.
     static readonly (Color Glow, Color Deep)[] s_banners =
     [
@@ -25,18 +32,27 @@ internal static class Parts
 
     public static Button IconButton(string icon, string tip) => Flat(new Button(), icon, tip);
 
+    /// <summary>An icon button with an icon this wide, in the same square as the others.</summary>
+    public static Button IconButton(string icon, string tip, double side)
+    {
+        var button = IconButton(icon, tip);
+        button.Content = new EditorIcon(icon) { Width = side, Height = side };
+        button.Padding = new Thickness((IconButtonSize - side) / 2);
+        return button;
+    }
+
     public static ToggleButton IconToggle(string icon, string tip) => Flat(new ToggleButton(), icon, tip);
 
-    /// <summary>The magnifier at the right of a filter box. Centered, because a stretched icon draws squashed.</summary>
-    public static EditorIcon SearchIcon() => new("Search") { Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+    /// <summary>The magnifier at the right of a filter box.</summary>
+    public static EditorIcon SearchIcon() => new("Search") { Margin = new Thickness(0, 0, Gaps.Item, 0) };
 
     /// <summary>
-    /// The icon of a tree row: pale, 7 pixels clear of the name, and a tint where the row has one. It is
+    /// The icon of a tree row: pale, beside its name, and a tint where the row has one. It is
     /// centered, because a row with an eye button is taller than the icon and a stretched icon draws squashed.
     /// </summary>
     public static EditorIcon RowIcon(string name, IBrush? tint = null)
     {
-        var icon = new EditorIcon(name) { Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
+        var icon = new EditorIcon(name) { Margin = new Thickness(0, 0, Gaps.Tight, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, tint ?? EditorBrushes.TreeIcon);
         return icon;
     }
@@ -44,29 +60,29 @@ internal static class Parts
     /// <summary>A small rounded tag in mono type, such as a version or a kind.</summary>
     public static Border Badge(string text) => new()
     {
-        Padding = new Thickness(6, 2),
+        Padding = new Thickness(Gaps.Item, Gaps.Joined),
         CornerRadius = new CornerRadius(999),
         Background = EditorBrushes.Line,
         VerticalAlignment = VerticalAlignment.Center,
         Child = new TextBlock { Text = text, FontFamily = EditorTheme.Mono, FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft },
     };
 
-    /// <summary>A row of controls on a small island of its own, 2 pixels apart with 3 pixels around them.</summary>
+    /// <summary>A row of controls on a small island of its own, 2 pixels apart with 4 pixels around them.</summary>
     public static Border Pill(IEnumerable<Control> items)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Joined, Classes = { EditorTheme.Joined } };
         row.Children.AddRange(items);
-        return new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(3), VerticalAlignment = VerticalAlignment.Center, Child = row };
+        return new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(Gaps.Tight), VerticalAlignment = VerticalAlignment.Center, Child = row };
     }
 
     /// <summary>
-    /// A pill that floats 10 pixels in from an edge of the viewport, on a see-through fill with a stronger edge and
+    /// A pill that floats 12 pixels in from an edge of the viewport, on a see-through fill with a stronger edge and
     /// a shadow. It does not clip, so the shadow shows.
     /// </summary>
     public static Border Float(IEnumerable<Control> items)
     {
         var pill = Pill(items);
-        pill.Margin = new Thickness(10);
+        pill.Margin = new Thickness(Gaps.Group);
         pill.Background = EditorBrushes.Floating;
         pill.BorderBrush = EditorBrushes.LineStrong;
         pill.BoxShadow = BoxShadows.Parse("0 6 20 0 #59000000");
@@ -74,13 +90,13 @@ internal static class Parts
         return pill;
     }
 
-    /// <summary>A thin upright line between groups in a pill, 18 high and 3 pixels clear on each side.</summary>
-    public static Border Rule() => new() { Width = 1, Height = 18, Margin = new Thickness(3, 0), Background = EditorBrushes.LineStrong };
+    /// <summary>A thin upright line between groups in a pill, 18 high and 4 pixels clear on each side.</summary>
+    public static Border Rule() => new() { Width = 1, Height = 18, Margin = new Thickness(Gaps.Tight, 0), Background = EditorBrushes.LineStrong };
 
     /// <summary>A button 24 pixels square: the icon and 4 pixels of padding, no border.</summary>
     public static Button Tight(Button button)
     {
-        button.Padding = new Thickness(4);
+        button.Padding = new Thickness(Gaps.Tight);
         button.BorderThickness = new Thickness(0);
         return button;
     }
@@ -88,7 +104,7 @@ internal static class Parts
     /// <summary>A field with its name over it in small dim text, and the lines that go under it, such as a fault.</summary>
     public static StackPanel Labeled(string label, params Control[] rows)
     {
-        var group = new StackPanel { Spacing = 4 };
+        var group = new StackPanel { Spacing = Gaps.Tight };
         group.Children.Add(new TextBlock { Text = label, FontSize = 11, Foreground = EditorBrushes.TextDim });
         group.Children.AddRange(rows);
         return group;
@@ -97,39 +113,44 @@ internal static class Parts
     /// <summary>The 14 pixel mark at the left of a field, such as a folder.</summary>
     public static EditorIcon FieldIcon(string name, IBrush tint)
     {
-        var icon = new EditorIcon(name) { Width = 14, Height = 14, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        var icon = new EditorIcon(name) { Width = 14, Height = 14, Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, tint);
+        return icon;
+    }
+
+    /// <summary>An icon at the start of a text box. The box's own padding parts it from the words.</summary>
+    public static EditorIcon LeadIcon(string name)
+    {
+        var icon = FieldIcon(name, EditorBrushes.TextDim);
+        icon.Margin = new Thickness(Gaps.Item, 0, 0, 0);
         return icon;
     }
 
     /// <summary>A key on a small gray cap, as a hint beside the thing it runs.</summary>
     public static Border Kbd(string key) => new()
     {
-        Padding = new Thickness(5, 3),
+        Padding = new Thickness(Gaps.Tight, Gaps.Joined),
         CornerRadius = new CornerRadius(4),
         Background = EditorBrushes.Line,
         VerticalAlignment = VerticalAlignment.Center,
         Child = new TextBlock { Text = key, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.TextSoft },
     };
 
+    /// <summary>Keys on caps and then the word for what they do, as a footer hint such as "↑ ↓ move".</summary>
+    public static StackPanel KeyHint(string what, params string[] keys)
+    {
+        var hint = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, VerticalAlignment = VerticalAlignment.Center };
+        hint.Children.AddRange(keys.Select(Kbd));
+        hint.Children.Add(new TextBlock { Text = what, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
+        return hint;
+    }
+
     /// <summary>A worded button that names the key which runs it, on a shade of the button's fill in the button's own text colour.</summary>
     public static StackPanel Keyed(string word, string key) => new()
     {
         Orientation = Orientation.Horizontal,
-        Spacing = 6,
-        Children =
-        {
-            new TextBlock { Text = word, VerticalAlignment = VerticalAlignment.Center },
-            new Border
-            {
-                Padding = new Thickness(5, 3),
-                CornerRadius = new CornerRadius(4),
-                Background = EditorBrushes.Shade,
-                Opacity = 0.7,
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock { Text = key, FontFamily = EditorTheme.Mono, FontSize = 10.5 },
-            },
-        },
+        Spacing = Gaps.Item,
+        Children = { new TextBlock { Text = word, VerticalAlignment = VerticalAlignment.Center }, Cap(key) },
     };
 
     /// <summary>A key as the macOS menus write it: the modifiers as marks in their fixed order, then the key.</summary>
@@ -138,9 +159,26 @@ internal static class Parts
     {
         string Mark(KeyModifiers modifier, string mark) => gesture.KeyModifiers.HasFlag(modifier) ? mark : "";
 
-        var key = gesture.Key == Key.OemComma ? "," : gesture.Key.ToString();
-        return Mark(KeyModifiers.Control, "⌃") + Mark(KeyModifiers.Alt, "⌥") + Mark(KeyModifiers.Shift, "⇧") + Mark(KeyModifiers.Meta, "⌘") + key;
+        var key = gesture.Key switch
+        {
+            Key.OemComma => ",",
+            Key.OemPeriod => ".",
+            Key.OemQuestion when gesture.KeyModifiers.HasFlag(KeyModifiers.Shift) => "?",
+            Key.OemQuestion => "/",
+            Key.OemPipe => "\\",
+            Key.OemMinus => "-",
+            Key.OemPlus => "=",
+            Key.None => "",
+            >= Key.D0 and <= Key.D9 => $"{gesture.Key - Key.D0}",
+            _ => gesture.Key.ToString(),
+        };
+        // A question mark already holds its shift.
+        var shift = key == "?" ? "" : Mark(KeyModifiers.Shift, "⇧");
+        return Mark(KeyModifiers.Control, "⌃") + Mark(KeyModifiers.Alt, "⌥") + shift + Mark(KeyModifiers.Meta, "⌘") + key;
     }
+
+    /// <summary>A dim line under a field that says what it does.</summary>
+    public static TextBlock Hint(string text) => new() { Text = text, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
 
     /// <summary>The line under a field that says why its value cannot be used. It waits hidden until there is something to say.</summary>
     public static TextBlock FaultLine() => new() { FontSize = 11, Foreground = EditorBrushes.FaultText, TextWrapping = TextWrapping.Wrap, IsVisible = false };
@@ -149,13 +187,17 @@ internal static class Parts
     public static MenuItem MenuHeading(string group) => new()
     {
         IsEnabled = false,
-        MinHeight = 0,
         Header = new TextBlock { Text = group.ToUpperInvariant(), FontSize = 10.5, FontWeight = FontWeight.SemiBold, LetterSpacing = 0.6, Foreground = EditorBrushes.Unit },
     };
 
-    public static MenuItem ActionItem(string header, Action run, KeyGesture? key = null)
+    /// <summary>
+    /// A menu item with its key. A note puts a dim line under the name that says what the item does. The item
+    /// carries its name for a screen reader, because a noted header is not plain text.
+    /// </summary>
+    public static MenuItem ActionItem(string header, Action run, KeyGesture? key = null, string? note = null)
     {
-        var item = new MenuItem { Header = header, InputGesture = key };
+        var item = new MenuItem { Header = note is null ? header : Noted(header, note), InputGesture = key };
+        AutomationProperties.SetName(item, header);
         item.Click += (_, _) => run();
         return item;
     }
@@ -164,25 +206,44 @@ internal static class Parts
     /// An item that presses the button it stands for, so the menus and a key run the same code. The item is on
     /// while the button is on.
     /// </summary>
-    public static MenuItem PressItem(string header, Button button, KeyGesture? key = null)
+    public static MenuItem PressItem(string header, Button button, KeyGesture? key = null, string? note = null)
     {
-        var item = ActionItem(header, () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), key);
+        var item = ActionItem(header, () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), key, note);
         item.Bind(InputElement.IsEnabledProperty, button.GetObservable(InputElement.IsEnabledProperty));
         return item;
     }
 
     /// <summary>
-    /// An item for a command that is not built. It says so from the control, because a menu shows in a popup
-    /// and only a control in the window reaches the window.
+    /// A menu item's header: its name with the engine's name beside it in small dim mono, and its note in a dim
+    /// line under them. Each part shows only when it is given.
     /// </summary>
-    public static MenuItem SoonItem(string header, Control from, KeyGesture? key = null)
+    internal static StackPanel Noted(string name, string? note, string? engine = null)
     {
-        var item = ActionItem(header, () => from.RaiseEvent(new UnbuiltEventArgs($"{header.TrimEnd('.')} is not built yet.")), key);
-        EditorTheme.MarkSoon(item);
-        return item;
+        // The engine's name goes under the plain one where there is no room beside it.
+        var top = new WrapPanel { ItemSpacing = Gaps.Item, Children = { new TextBlock { Text = name, TextWrapping = TextWrapping.Wrap } } };
+        if (engine is not null)
+        {
+            top.Children.Add(new TextBlock { Text = engine, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
+        }
+
+        var header = new StackPanel { Spacing = Gaps.Joined, Children = { top } };
+        if (note is not null)
+        {
+            header.Children.Add(new TextBlock { Text = note, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap });
+        }
+
+        return header;
     }
 
-    /// <summary>An island's top strip, like a dock's: a row with 6 pixels around it and a line under it. Items dock left unless <see cref="Right"/> docked them.</summary>
+    /// <summary>A name that is cut when its room runs out, with the whole of it on its hover card.</summary>
+    public static TextBlock Trimmed(string words, string whole)
+    {
+        var text = new TextBlock { Text = words, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        ToolTip.SetTip(text, whole);
+        return text;
+    }
+
+    /// <summary>An island's top strip, like a dock's: a row with a line under it. Items dock left unless <see cref="Right"/> docked them.</summary>
     public static Border Bar(params Control[] items)
     {
         var row = new DockPanel { LastChildFill = false };
@@ -194,12 +255,24 @@ internal static class Parts
         return new Border
         {
             Height = DockTabs.StripHeight,
-            Padding = new Thickness(6),
+            Padding = new Thickness(Gaps.Item, DockTabs.StripInset),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = row,
         };
     }
+
+    /// <summary>Words for a menu item's header that show as they are. A header reads one underscore as an access key.</summary>
+    public static string? Literal(string? words) => words?.Replace("_", "__", StringComparison.Ordinal);
+
+    /// <summary>Gives a trimmed line its whole text as a tip, and no tip while it says nothing.</summary>
+    public static void TipItsText(TextBlock line) => line.PropertyChanged += (_, change) =>
+    {
+        if (change.Property == TextBlock.TextProperty)
+        {
+            ToolTip.SetTip(line, string.IsNullOrEmpty(line.Text) ? null : line.Text);
+        }
+    };
 
     /// <summary>Docks an item of a <see cref="Bar"/> at its right end.</summary>
     public static Control Right(Control control)
@@ -215,8 +288,8 @@ internal static class Parts
         TextElement.SetForeground(mark, EditorBrushes.Disabled);
         return new StackPanel
         {
-            Spacing = 8,
-            Margin = new Thickness(18, 26),
+            Spacing = Gaps.Item,
+            Margin = new Thickness(Gaps.Dialog, Gaps.Section),
             HorizontalAlignment = HorizontalAlignment.Center,
             Children =
             {
@@ -227,11 +300,18 @@ internal static class Parts
         };
     }
 
+    /// <summary>Gives an <see cref="EmptyState"/> new words.</summary>
+    public static void Reword(StackPanel state, string title, string line)
+    {
+        ((TextBlock)state.Children[1]).Text = title;
+        ((TextBlock)state.Children[2]).Text = line;
+    }
+
     // No border, so the box is the icon and its padding: 26 pixels square.
     static T Flat<T>(T button, string icon, string tip) where T : ContentControl
     {
         button.Content = new EditorIcon(icon);
-        button.Padding = new Thickness(5);
+        button.Padding = new Thickness(IconInset);
         button.BorderThickness = new Thickness(0);
         button.MinWidth = 0;
         button.MinHeight = 0;
@@ -286,11 +366,48 @@ internal static class Parts
         },
     };
 
-    /// <summary>An icon and a word, for the content of a text button.</summary>
-    public static StackPanel Worded(string icon, string text) => new()
+    /// <summary>An icon and a word, for the content of a text button, with the key that runs it when there is one.</summary>
+    public static StackPanel Worded(string icon, string text, string? key = null)
     {
-        Orientation = Orientation.Horizontal,
-        Spacing = 6,
-        Children = { new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
+        var worded = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = Gaps.Tight,
+            Children = { new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
+        };
+        if (key is not null)
+        {
+            worded.Children.Add(Cap(key));
+        }
+
+        return worded;
+    }
+
+    /// <summary>
+    /// Gives a tool its icon alone and puts the card on it. The card gives the tool's name and key on hover, so a
+    /// bar keeps its room. The tool is the 26 pixel square of an icon button, and screen readers read the card's
+    /// title.
+    /// </summary>
+    public static T Dress<T>(T button, string icon, HoverCard card) where T : Button
+    {
+        button.Content = new EditorIcon(icon);
+        button.Height = IconButtonSize;
+        button.MinWidth = 0;
+        button.MinHeight = 0;
+        button.Padding = new Thickness(IconInset);
+        button.BorderThickness = new Thickness(0);
+        AutomationProperties.SetName(button, card.Title);
+        return card.On(button);
+    }
+
+    // The key on a shade of the button's fill, so it reads on a plain button and on the orange one.
+    static Border Cap(string key) => new()
+    {
+        Padding = new Thickness(Gaps.Tight, Gaps.Joined),
+        CornerRadius = new CornerRadius(4),
+        Background = EditorBrushes.Shade,
+        Opacity = 0.7,
+        VerticalAlignment = VerticalAlignment.Center,
+        Child = new TextBlock { Text = key, FontFamily = EditorTheme.Mono, FontSize = 10.5 },
     };
 }

@@ -1,22 +1,26 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
-/// The panels of a graph script: its problems, its variables, its functions with the signature of the one on show,
-/// the locals of that function, its signals, and the steps that use each signal. Each row edits one thing and drags onto the canvas. An edit the engine
-/// refuses is shown as the reason it gave, and the row goes back to what the engine holds.
+/// The panels of a graph script, each in plain words with the engine's name beside it: its problems, its starts,
+/// the values it remembers, its actions, the signature and locals of the function on show, its messages, and the
+/// steps that use each message. A start is a function that overrides a virtual of the base type. Every other
+/// function is an action. Each row edits one thing, and most drag onto the canvas. An edit the engine refuses is
+/// shown as the reason it gave, and the row goes back to what the engine holds.
 /// </summary>
 internal sealed class ScriptPanels : Border
 {
     readonly IScriptDeclarations _script;
-    readonly StackPanel _body = new() { Spacing = 10, Margin = new Thickness(10) };
+    readonly StackPanel _body = new() { Spacing = Gaps.Group, Margin = new Thickness(Gaps.Group) };
     IReadOnlyList<GraphStepEntry>? _overrides;
     readonly TextBlock _notice = new() { Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, IsVisible = false, FontSize = 12 };
     readonly VariableTool _variableTool = new();
@@ -45,7 +49,7 @@ internal sealed class ScriptPanels : Border
     /// <summary>The control with this id, such as <c>variable:total:name</c>. Null when the panels have none.</summary>
     internal T? Find<T>(string id) where T : Control => _body.GetVisualDescendants().OfType<T>().FirstOrDefault(control => (control.Tag as string) == id);
 
-    /// <summary>The popover the Variables add button opens.</summary>
+    /// <summary>The popover the Remembers add button opens.</summary>
     internal VariableTool VariableTool => _variableTool;
 
     void Rebuild()
@@ -53,8 +57,9 @@ internal sealed class ScriptPanels : Border
         _body.Children.Clear();
         _body.Children.Add(_notice);
         AddProblems();
+        AddStarts();
         AddVariables();
-        AddFunctions();
+        AddActions();
         AddLocals();
         AddSignals();
         AddConnections();
@@ -71,22 +76,40 @@ internal sealed class ScriptPanels : Border
         }
     }
 
-    static Grid Header(string title, Button button)
+    // A section's plain name in bold with the engine's name beside it in dim mono, what it holds in a dim line
+    // under them, and its add button on the right.
+    static Grid Header(string title, string? engine, string line, Button? add = null)
     {
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 6, 0, 0) };
-        header.Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center });
-        Grid.SetColumn(button, 1);
-        header.Children.Add(button);
+        // The engine's name goes under the plain one in a narrow list.
+        var name = new WrapPanel { ItemSpacing = Gaps.Item, Children = { new TextBlock { Text = title, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap } } };
+        if (engine is not null)
+        {
+            name.Children.Add(new TextBlock { Text = engine, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
+        }
+
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, Gaps.Item, 0, 0) };
+        header.Children.Add(new StackPanel { Spacing = Gaps.Joined, Children = { name, Dim(line) } });
+        if (add is not null)
+        {
+            add.VerticalAlignment = VerticalAlignment.Top;
+            Grid.SetColumn(add, 1);
+            header.Children.Add(add);
+        }
+
         return header;
     }
+
+    static TextBlock Dim(string line, string? id = null) => new() { Text = line, Tag = id, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
+
+    static Button AddButton(string id, HoverCard card, Action click) => card.On(PanelFields.Small(id, "+ Add", click));
 
     void AddVariables()
     {
         var variables = _script.Document.Variables;
         // The button opens the popover itself. The click starts the popover over with a free name.
-        var add = PanelFields.Small("variable:add", "+", () => _variableTool.Reset(PanelFields.Unique(variables.Select(v => v.Name), "variable")));
+        var add = AddButton("variable:add", new HoverCard("Add a remembered value", "A value the graph keeps between steps, like health."), () => _variableTool.Reset(PanelFields.Unique(variables.Select(v => v.Name), "value")));
         add.Flyout = _variableFlyout;
-        _body.Children.Add(Header("Variables", add));
+        _body.Children.Add(Header("Remembers", "Variables", "Values the graph keeps, like opened.", add));
         foreach (var variable in variables)
         {
             _body.Children.Add(VariableRow(variable));
@@ -115,36 +138,30 @@ internal sealed class ScriptPanels : Border
     {
         var id = $"variable:{variable.Name}";
         var name = variable.Name;
-        var detail = new StackPanel { Spacing = 2, Margin = new Thickness(16, 0, 0, 4) };
-        detail.Children.Add(PanelFields.Box($"{id}:default", variable.Default, text => Apply(_script.SetVariableDefault(name, text)), "default"));
-        detail.Children.Add(PanelFields.Check($"{id}:exported", "Export", variable.Exported, on => Apply(_script.SetVariableExported(name, on))));
-        detail.Children.Add(PanelFields.Box($"{id}:category", variable.Category, text => Apply(_script.SetVariableInfo(name, text, variable.Description)), "category"));
-        detail.Children.Add(PanelFields.Box($"{id}:description", variable.Description, text => Apply(_script.SetVariableInfo(name, variable.Category, text)), "description"));
-        return Row(id, new GraphDrop(GraphDropKind.Variable, name), name, variable.Type, detail, text => _script.RenameVariable(name, text), type => _script.SetVariableType(name, type), () => _script.RemoveVariable(name));
+        var detail = new StackPanel { Spacing = Gaps.Tight, Margin = new Thickness(Gaps.Dialog, 0, 0, Gaps.Tight) };
+        // The type has its own line, because a narrow column cannot hold it beside the name.
+        var type = PanelFields.TypeBox($"{id}:type", variable.Type, picked => Apply(_script.SetVariableType(name, picked)));
+        type.HorizontalAlignment = HorizontalAlignment.Stretch;
+        detail.Children.Add(type);
+        detail.Children.Add(PanelFields.Box($"{id}:default", variable.Default, text => Apply(_script.SetVariableDefault(name, text)), "starts as nothing"));
+        detail.Children.Add(PanelFields.Check($"{id}:exported", "Show in the Inspector", variable.Exported, on => Apply(_script.SetVariableExported(name, on))));
+        detail.Children.Add(PanelFields.Box($"{id}:category", variable.Category, text => Apply(_script.SetVariableInfo(name, text, variable.Description)), "group in the Inspector"));
+        detail.Children.Add(PanelFields.Box($"{id}:description", variable.Description, text => Apply(_script.SetVariableInfo(name, variable.Category, text)), "what it is for"));
+        return Row(id, new GraphDrop(GraphDropKind.Variable, name), detail, text => _script.RenameVariable(name, text), () => _script.RemoveVariable(name));
     }
 
-    // A named thing with a grip, a name, a type and a remove button, and the lines that edit the rest of it.
-    StackPanel Row(string id, GraphDrop drop, string name, int? type, Control? detail, Func<string, GraphEditResult> rename, Func<int, GraphEditResult>? retype, Func<GraphEditResult> remove)
+    // A named thing with a grip, a name and a remove button, and the lines that edit the rest of it.
+    StackPanel Row(string id, GraphDrop drop, Control? detail, Func<string, GraphEditResult> rename, Func<GraphEditResult> remove)
     {
-        var top = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), ColumnSpacing = 4 };
-        var cells = new List<Control>
+        var top = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = Gaps.Tight };
+        Control[] cells = [PanelFields.Handle($"{id}:drag", drop), PanelFields.Box($"{id}:name", drop.Value, text => Apply(rename(text))), RemoveButton(id, drop.Value, remove)];
+        for (var at = 0; at < cells.Length; at++)
         {
-            PanelFields.Handle($"{id}:drag", drop),
-            PanelFields.Box($"{id}:name", name, text => Apply(rename(text))),
-        };
-        if (type is { } current && retype is not null)
-        {
-            cells.Add(PanelFields.TypeBox($"{id}:type", current, picked => Apply(retype(picked))));
-        }
-
-        cells.Add(PanelFields.Small($"{id}:remove", "x", () => Apply(remove())));
-        for (var at = 0; at < cells.Count; at++)
-        {
-            Grid.SetColumn(cells[at], at == cells.Count - 1 ? 3 : at);
+            Grid.SetColumn(cells[at], at);
             top.Children.Add(cells[at]);
         }
 
-        var row = new StackPanel { Spacing = 2 };
+        var row = new StackPanel { Spacing = Gaps.Joined };
         row.Children.Add(top);
         if (detail is not null)
         {
@@ -154,65 +171,145 @@ internal sealed class ScriptPanels : Border
         return row;
     }
 
-    void AddFunctions()
+    // The base type does not change while a script is open, so the engine is asked once.
+    IReadOnlyList<GraphStepEntry> Overrides => _overrides ??= _script.FindOverrides();
+
+    bool IsStart(string function) => Overrides.Any(entry => entry.Label == function);
+
+    void AddStarts()
     {
         var functions = _script.Document.Functions;
-        _body.Children.Add(Header("Functions", PanelFields.Small("function:add", "+", () => Apply(_script.AddFunction(PanelFields.Unique(functions.Select(f => f.Name), "function"))))));
-        if (Overridable(functions) is { Count: > 0 } overridable)
+        var free = Overrides.Where(entry => functions.All(function => function.Name != entry.Label)).DistinctBy(entry => entry.Label).ToList();
+        var card = new HoverCard("Add a start", "Picks what makes the graph run, like every frame.");
+        // The button opens its menu itself.
+        var add = AddButton("start:add", card, () => { });
+        add.Flyout = StartMenu(free);
+        add.IsEnabled = free.Count > 0;
+        card.SaysWhyOff(add, Overrides.Count == 0 ? "This kind of thing has no starts." : "Every start is in the graph already.");
+        _body.Children.Add(Header("Starts when", null, "What makes the graph run.", add));
+        var starts = functions.Where(function => IsStart(function.Name)).ToList();
+        if (starts.Count == 0)
         {
-            _body.Children.Add(OverridePicker(overridable));
+            _body.Children.Add(Dim("Nothing starts this graph yet. Add picks what does, like every frame.", "starts:empty"));
         }
 
-        foreach (var function in functions)
+        foreach (var start in starts)
         {
-            _body.Children.Add(FunctionRow(function));
+            _body.Children.Add(StartRow(start.Name));
+            AddSignatureIfOnShow(start.Name);
+        }
+    }
+
+    // The plain starts by group, then every other start by its engine name, A to Z, for people who know them.
+    MenuFlyout StartMenu(IReadOnlyList<GraphStepEntry> free)
+    {
+        var menu = new MenuFlyout();
+        foreach (var group in StartNames.Rows.Where(row => free.Any(entry => entry.Label == row.Engine)).GroupBy(row => row.Group))
+        {
+            menu.Items.Add(Parts.MenuHeading(group.Key));
+            foreach (var row in group)
+            {
+                menu.Items.Add(StartItem(free.First(entry => entry.Label == row.Engine)));
+            }
         }
 
-        if (FunctionSignature.Of(_script.Function) is { } signature)
+        var rest = free.Where(entry => StartNames.Of(entry.Label) is null).OrderBy(entry => entry.Label, StringComparer.Ordinal).ToList();
+        if (rest.Count > 0)
+        {
+            var all = new MenuItem { Header = Parts.Noted("All starts, A to Z", $"{rest.Count} more, for experts") };
+            AutomationProperties.SetName(all, "All starts, A to Z");
+            foreach (var entry in rest)
+            {
+                all.Items.Add(StartItem(entry));
+            }
+
+            menu.Items.Add(all);
+        }
+
+        return menu;
+    }
+
+    MenuItem StartItem(GraphStepEntry entry)
+    {
+        var row = StartNames.Of(entry.Label);
+        var name = row?.Sentence ?? entry.Label;
+        var item = new MenuItem { Header = Parts.Noted(name, row?.Line, row?.Engine) };
+        AutomationProperties.SetName(item, name);
+        item.Click += (_, _) => AddStart(entry);
+        return item;
+    }
+
+    // Choosing a start adds the function that overrides it and opens that function.
+    void AddStart(GraphStepEntry entry)
+    {
+        var result = _script.AddOverride(entry);
+        Apply(result);
+        if (result.Ok)
+        {
+            Open(entry.Label);
+        }
+    }
+
+    // A start goes by what makes it run. Its name is the engine's, so it has no box to rename it and no grip.
+    Grid StartRow(string name)
+    {
+        var plain = StartNames.Of(name);
+        var label = Parts.Noted(plain?.Sentence ?? name, null, plain?.Engine);
+        label.Tag = $"function:{name}:start";
+        label.VerticalAlignment = VerticalAlignment.Center;
+        var show = ShowButton(name);
+        var remove = RemoveButton($"function:{name}", plain?.Sentence ?? name, () => _script.RemoveFunction(name));
+        Grid.SetColumn(show, 1);
+        Grid.SetColumn(remove, 2);
+        return new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = Gaps.Tight, Children = { label, show, remove } };
+    }
+
+    void AddActions()
+    {
+        var functions = _script.Document.Functions;
+        var card = new HoverCard("New action", "A set of steps you can run from many places, like open_door.");
+        _body.Children.Add(Header("My actions", "Functions", "Sets of steps to reuse.", AddButton("function:add", card, () => Apply(_script.AddFunction(PanelFields.Unique(functions.Select(f => f.Name), "action"))))));
+        var actions = functions.Where(function => !IsStart(function.Name)).ToList();
+        if (actions.Count == 0)
+        {
+            _body.Children.Add(Dim("An action is a set of steps you can run from many places, like open_door.", "actions:empty"));
+        }
+
+        foreach (var action in actions)
+        {
+            _body.Children.Add(ActionRow(action.Name));
+            AddSignatureIfOnShow(action.Name);
+        }
+    }
+
+    Control ActionRow(string name)
+    {
+        var row = Row($"function:{name}", new GraphDrop(GraphDropKind.Function, name), null, text => _script.RenameFunction(name, text), () => _script.RemoveFunction(name));
+        row.Children.Add(ShowButton(name));
+        return row;
+    }
+
+    // The function on show is the one the canvas holds, so its button is off and says so.
+    Button ShowButton(string name)
+    {
+        var isOpen = name == _script.Function?.Name;
+        var card = new HoverCard("Show", "Shows its steps on the canvas.");
+        var show = card.On(PanelFields.Small($"function:{name}:open", isOpen ? "Showing" : "Show", () => Open(name)));
+        show.IsEnabled = !isOpen;
+        card.SaysWhyOff(show, "Its steps are on the canvas already.");
+        return show;
+    }
+
+    Button RemoveButton(string id, string name, Func<GraphEditResult> remove) =>
+        new HoverCard("Remove", $"Takes {name} out of the graph.").On(PanelFields.Small($"{id}:remove", "x", () => Apply(remove())));
+
+    // The signature edits sit under the row of the function on show.
+    void AddSignatureIfOnShow(string name)
+    {
+        if (name == _script.Function?.Name && FunctionSignature.Of(_script.Function) is { } signature)
         {
             _body.Children.Add(SignatureEditor(signature));
         }
-    }
-
-    // The base type does not change while a script is open, so the engine is asked once.
-    List<GraphStepEntry> Overridable(IReadOnlyList<GraphFunction> functions)
-    {
-        _overrides ??= _script.FindOverrides();
-        var taken = functions.Select(f => f.Name).ToHashSet();
-        return _overrides.Where(entry => !taken.Contains(entry.Label)).DistinctBy(entry => entry.Label).ToList();
-    }
-
-    // Choosing a virtual adds the function that overrides it and opens that function.
-    ComboBox OverridePicker(List<GraphStepEntry> entries)
-    {
-        var box = new ComboBox { ItemsSource = entries.Select(entry => $"{entry.Label} ({entry.Group})").ToList(), PlaceholderText = "Override a virtual", Tag = "function:override", MinWidth = 90, FontSize = 12 };
-        box.SelectionChanged += (_, _) =>
-        {
-            if (box.SelectedIndex < 0)
-            {
-                return;
-            }
-
-            var entry = entries[box.SelectedIndex];
-            var result = _script.AddOverride(entry);
-            Apply(result);
-            if (result.Ok)
-            {
-                Open(entry.Label);
-            }
-        };
-        return box;
-    }
-
-    Control FunctionRow(GraphFunction function)
-    {
-        var name = function.Name;
-        var isOpen = name == _script.Function?.Name;
-        var open = PanelFields.Small($"function:{name}:open", isOpen ? "Open" : "Show", () => Open(name));
-        open.IsEnabled = !isOpen;
-        var row = Row($"function:{name}", new GraphDrop(GraphDropKind.Function, name), name, null, null, text => _script.RenameFunction(name, text), null, () => _script.RemoveFunction(name));
-        row.Children.Add(open);
-        return row;
     }
 
     void Open(string name)
@@ -225,12 +322,13 @@ internal sealed class ScriptPanels : Border
     // The arguments, the type returned and the description live on the Entry step of the function on show.
     Control SignatureEditor(FunctionSignature signature)
     {
-        var stack = new StackPanel { Spacing = 2, Margin = new Thickness(16, 0, 0, 4) };
-        stack.Children.Add(new TextBlock { Text = $"{_script.Function!.Name} takes", FontSize = 12 });
+        var stack = new StackPanel { Spacing = Gaps.Tight, Margin = new Thickness(Gaps.Dialog, 0, 0, Gaps.Tight) };
+        stack.Children.Add(new TextBlock { Text = "It gets", FontSize = 12 });
         stack.Children.Add(new TypedListEditor("function:arguments", signature.Arguments, null, list => Apply(Set(signature, "arguments", GraphTyped.WriteList(list)))));
-        stack.Children.Add(new TextBlock { Text = "and returns", FontSize = 12 });
+        stack.Children.Add(new TextBlock { Text = "It gives back", FontSize = 12 });
         stack.Children.Add(PanelFields.TypeBox("function:returns", signature.Returns, type => Apply(Set(signature, "returns", type.ToString()))));
-        stack.Children.Add(PanelFields.Box("function:description", signature.Description, text => Apply(Set(signature, "description", VariantText.Quote(text))), "description"));
+        stack.Children.Add(new TextBlock { Text = "What it does", FontSize = 12 });
+        stack.Children.Add(PanelFields.Box("function:description", signature.Description, text => Apply(Set(signature, "description", VariantText.Quote(text))), "Shows in the step list and on hover."));
         return stack;
     }
 
@@ -243,19 +341,19 @@ internal sealed class ScriptPanels : Border
             return;
         }
 
-        _body.Children.Add(new TextBlock { Text = $"Locals of {_script.Function!.Name}", FontWeight = FontWeight.Bold, Margin = new Thickness(0, 6, 0, 0) });
+        _body.Children.Add(Header($"Values only {_script.Function!.Name} uses", "Locals", "They start fresh each time it runs."));
         _body.Children.Add(new TypedListEditor("local", signature.Locals, GraphDropKind.Local, list => Apply(Set(signature, "locals", GraphTyped.WriteList(list)))));
     }
 
     void AddProblems()
     {
-        _body.Children.Add(new TextBlock { Text = "Problems", FontWeight = FontWeight.Bold, Margin = new Thickness(0, 6, 0, 0) });
+        _body.Children.Add(Header("Problems", null, "What is wrong, and at which step. Click one to go there."));
         _body.Children.Add(new ProblemsList(_script.Document, Reveal));
     }
 
     void AddConnections()
     {
-        _body.Children.Add(new TextBlock { Text = "Connections", FontWeight = FontWeight.Bold, Margin = new Thickness(0, 6, 0, 0) });
+        _body.Children.Add(Header("Where messages are used", null, "The steps that send or wait for each message."));
         _body.Children.Add(new ConnectionsList(_script.Document, Reveal));
     }
 
@@ -273,13 +371,14 @@ internal sealed class ScriptPanels : Border
     void AddSignals()
     {
         var signals = _script.Document.Signals;
-        _body.Children.Add(Header("Signals", PanelFields.Small("signal:add", "+", () => Apply(_script.AddSignal(PanelFields.Unique(signals.Select(s => s.Name), "signal"))))));
+        var card = new HoverCard("New message", "Something the graph can tell other things, like opened.");
+        _body.Children.Add(Header("Messages", "Signals", "What the graph can tell other things.", AddButton("signal:add", card, () => Apply(_script.AddSignal(PanelFields.Unique(signals.Select(s => s.Name), "message"))))));
         foreach (var signal in signals)
         {
             var name = signal.Name;
             var arguments = new TypedListEditor($"signal:{name}:arguments", signal.Arguments, null, list => Apply(_script.SetSignalArguments(name, list)));
-            arguments.Margin = new Thickness(16, 0, 0, 4);
-            var row = Row($"signal:{name}", new GraphDrop(GraphDropKind.Signal, name), name, null, arguments, text => _script.RenameSignal(name, text), null, () => _script.RemoveSignal(name));
+            arguments.Margin = new Thickness(Gaps.Dialog, 0, 0, Gaps.Tight);
+            var row = Row($"signal:{name}", new GraphDrop(GraphDropKind.Signal, name), arguments, text => _script.RenameSignal(name, text), () => _script.RemoveSignal(name));
             _body.Children.Add(row);
         }
     }

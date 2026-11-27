@@ -50,7 +50,7 @@ public sealed class ScriptWorkspaceTests
             Assert.True(window.Script.IsVisible);
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.False(window.Viewport.IsEffectivelyVisible);
-            AssertBox(56, 46, 3328, 1183, BoxOf(window.Script, window));
+            AssertBox(8, 46, 3424, 1179, BoxOf(window.Script, window));
             Assert.Equal(["res://spin.cs", "res://enemies/slime.cs"], (IEnumerable<string>)window.Script.List.ItemsSource!);
         });
     }
@@ -85,8 +85,9 @@ public sealed class ScriptWorkspaceTests
             Assert.True(window.IsVisible);
             Assert.True(window.SaveChanges.IsVisible);
             // The scene has no edits, so the scene's name would point at the wrong file.
-            Assert.Equal("Save changes to the open scripts?", window.SaveChanges.Title);
-            Assert.StartsWith("1 change since ", window.ChangesLine.Text);
+            Assert.Equal("Save spin.cs?", window.SaveChanges.Title);
+            Assert.Equal("It has changes that are not saved.", window.SaveChanges.Why.Text);
+            Assert.Equal(["spin.cs", "res://spin.cs · 1 line changed"], Texts(window.ChangesList));
         });
     }
 
@@ -192,11 +193,32 @@ public sealed class ScriptWorkspaceTests
 
             Assert.Equal(0, scene.Plays);
             var card = Assert.Single(window.Toasts.Cards);
-            Assert.Equal("The script could not be saved", card.Title);
+            Assert.Equal("Couldn't save the script", card.Title);
             Assert.Equal("The disk is full.", card.Line.Text);
             scene.ScriptWriteFails = false;
-            Click(card.ActionButton!);
+            Click(card.ActionButtons[0]);
             Assert.Equal([(Spin, "class Spin { int turns; }")], scene.ScriptsWritten);
+        });
+    }
+
+    [Fact]
+    public void Shift_Command_B_checks_the_scripts_and_Find_a_script_opens_Search()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(SceneWithScripts());
+            ShowScript(window);
+            var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.B, KeyModifiers = window.CommandKey | KeyModifiers.Shift };
+
+            window.RaiseEvent(press);
+
+            Assert.True(press.Handled);
+            Assert.Equal("No problems", window.Script.ProblemsText);
+
+            Click(window.Script.FindScriptButton);
+
+            Assert.True(window.Search.Picker.IsVisible);
+            Assert.False(window.Search.ScenesChip.IsVisible);
         });
     }
 
@@ -218,7 +240,7 @@ public sealed class ScriptWorkspaceTests
     }
 
     [Fact]
-    public void Script_folds_both_sides_to_rails_until_a_rail_button_opens_one()
+    public void Script_hides_both_sides_and_gives_the_script_the_whole_width()
     {
         UiThread.Run(() =>
         {
@@ -228,27 +250,15 @@ public sealed class ScriptWorkspaceTests
             window.UpdateLayout();
 
             Assert.False(window.Center.Stage.IsVisible);
-            Assert.Equal(["Scene dock", "FileSystem dock"], window.LeftSide.RailButtons.Select(button => ToolTip.GetTip(button) as string));
-            Assert.Equal(["Inspector dock"], window.RightSide.RailButtons.Select(button => ToolTip.GetTip(button) as string));
-            Assert.False(window.SceneDock.IsEffectivelyVisible);
-            Assert.Equal(DockSide.RailWidth, window.LeftSide.Rail.Bounds.Width);
-
-            Click(window.LeftSide.RailButtons.First());
-            window.UpdateLayout();
-
-            Assert.True(window.SceneDock.IsEffectivelyVisible);
-            Assert.True(window.RightSide.IsFolded);
+            Assert.False(window.LeftSide.IsVisible);
+            Assert.False(window.RightSide.IsVisible);
+            Assert.Equal(window.Bounds.Width - 16, BoxOf(window.Center, window).Width);
 
             ClickOn(window.Bar.Tabs.Single(tab => tab.Label == TitleBar.Spatial), window);
             window.UpdateLayout();
 
-            Assert.False(window.RightSide.IsFolded);
             Assert.True(window.InspectorDock.IsEffectivelyVisible);
             Assert.True(window.Center.Stage.IsVisible);
-
-            ShowScript(window);
-
-            Assert.True(window.LeftSide.IsFolded);
         });
     }
 }

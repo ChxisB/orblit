@@ -1,69 +1,46 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Headless;
 using Avalonia.Input;
-using Avalonia.LogicalTree;
-using Avalonia.Media;
+using Avalonia.Input.Platform;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
+using Orblit.Editor.App.Launcher;
 using Orblit.Editor.App.Shell;
-using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
 
 public sealed class EditorMenuTests
 {
-    // The old editor's menus, read from its source. A submenu's items are indented and "-" is a separator.
-    static readonly string[] SceneItems =
-    [
-        "New Scene", "New Inherited Scene...", "Open Scene...", "Reopen Closed Scene",
-        "Open Recent", "  No Recent Scenes",
-        "-", "Save Scene", "Save Scene As...", "Save All Scenes",
-        "-", "Quick Open...", "Quick Open Scene...", "Quick Open Script...",
-        "-", "Export As...", "  MeshLibrary...",
-        "-", "Undo", "Redo",
-        "-", "Reload Saved Scene", "Close Scene", "Close All Scenes",
-    ];
+    // The built items of each menu. A submenu's items are indented and "-" is a separator.
+    static readonly Dictionary<string, string[]> Items = new()
+    {
+        ["Orblit"] = ["About Orblit Engine", "-", "Settings…", "-", "Quit Orblit Engine"],
+        ["File"] =
+        [
+            "New scene…", "Find a scene…", "Open recent", "  Scenes you open show here",
+            "-", "Save",
+            "-", "Export game…",
+        ],
+        ["Edit"] = ["Undo", "Redo", "-", "Search"],
+        ["View"] =
+        [
+            "Panels", "  Scene", "  Import", "  Files", "  History", "  Inspector", "  Signals",
+            "-", "Hide panels", "Lock layout", "Full screen",
+        ],
+        ["Play"] =
+        [
+            "Play the game", "Play this scene", "Stop",
+            "-", "Show while playing", "  Collision shapes", "  Paths", "  Navigation", "  Avoidance", "  -", "  2D redraws",
+        ],
+        ["Help"] = ["All keys"],
+    };
 
-    static readonly string[] ProjectItems =
-    [
-        "Project Settings...", "Find in Files...", "Replace in Files...",
-        "-", "Version Control", "  Create/Override Version Control Metadata...", "  Version Control Settings...",
-        "-", "Export...", "Pack Project as ZIP...", "Setup Android Build...", "Open User Data Folder",
-        "-", "Tools", "  Orphan Resource Explorer...", "  Engine Compilation Configuration Editor...", "  Upgrade Project Files...", "  Clear Project Cache...",
-        "-", "Reload Current Project", "Quit to Project List",
-    ];
+    static readonly string[] ScreenBarMenus = ["File", "Edit", "View", "Play", "Help"];
 
-    static readonly string[] DebugItems =
-    [
-        "Deploy with Remote Debug", "Small Deploy with Network Filesystem",
-        "-", "Visible Collision Shapes", "Visible Paths", "Visible Navigation", "Visible Avoidance",
-        "-", "Debug CanvasItem Redraws",
-        "-", "Synchronize Scene Changes", "Synchronize Script Changes", "Keep Debug Server Open",
-        "-", "Customize Run Instances...",
-    ];
+    static string[] MenusOn(bool global) => global ? ScreenBarMenus : ["Orblit", .. ScreenBarMenus];
 
-    static readonly string[] EditorItems =
-    [
-        "Editor Settings...", "Command Palette...",
-        "-", "Editor Docks", "  Scene", "  Import", "  FileSystem", "  History", "  Inspector", "  Signals",
-        "Editor Layout", "  Save Layout...", "  Delete Layout...", "  -", "  Layouts", "  Default",
-        "-", "Take Screenshot", "Toggle Fullscreen",
-        "-", "Open Editor Data Folder", "Open Editor Settings Folder",
-        "-", "Manage Editor Features...", "Manage Export Templates...", "Configure FBX Importer...",
-    ];
-
-    static readonly string[] HelpItems =
-    [
-        "Search Help...",
-        "-", "Online Documentation", "Forum", "Community",
-        "-", "Copy System Info", "Report a Bug", "Suggest a Feature", "Send Docs Feedback",
-        "-", "Support Orblit Development",
-    ];
-
-    static NativeMenu Build(bool global = true, KeyModifiers command = KeyModifiers.Meta, Dictionary<string, MenuAction>? actions = null, Action<string>? unbuilt = null) =>
-        EditorMenu.Build(global, command, actions ?? [], unbuilt ?? (_ => { }));
+    static NativeMenu Build(bool global = true, KeyModifiers command = KeyModifiers.Meta, Dictionary<string, MenuAction>? actions = null) =>
+        EditorMenu.Build(global, command, actions ?? []);
 
     static NativeMenuItem Top(NativeMenu bar, string title) => bar.Items.OfType<NativeMenuItem>().Single(item => item.Header == title);
 
@@ -91,6 +68,10 @@ public sealed class EditorMenuTests
     static IEnumerable<NativeMenuItem> All(NativeMenu menu) =>
         menu.Items.OfType<NativeMenuItem>().SelectMany(item => item.Menu is { } sub ? All(sub).Prepend(item) : [item]);
 
+    // Every item that is not a separator or a menu of the bar itself.
+    static IEnumerable<NativeMenuItem> Named(NativeMenu bar) =>
+        bar.Items.OfType<NativeMenuItem>().SelectMany(menu => All(menu.Menu!)).Where(item => item is not NativeMenuItemSeparator);
+
     static NativeMenuItem Find(NativeMenu bar, string label) => All(bar).Single(item => item.Header == label);
 
     static void Press(NativeMenuItem item) => item.Command!.Execute(item.CommandParameter);
@@ -98,123 +79,153 @@ public sealed class EditorMenuTests
     static NativeMenuItem Under(NativeMenu bar, string submenu, string label) =>
         Find(bar, submenu).Menu!.Items.OfType<NativeMenuItem>().Single(item => item.Header == label);
 
-    static NativeMenuItem Docks(EditorWindow window, string label) => Under(NativeMenu.GetMenu(window)!, "Editor Docks", label);
+    static NativeMenuItem Panel(EditorWindow window, string label) => Under(NativeMenu.GetMenu(window)!, "Panels", label);
 
     static string[] Recent(EditorWindow window) =>
-        [.. Find(NativeMenu.GetMenu(window)!, "Open Recent").Menu!.Items.Select(entry => entry is NativeMenuItem item ? item.Header! : "-")];
+        [.. Find(NativeMenu.GetMenu(window)!, "Open recent").Menu!.Items.Select(entry => entry is NativeMenuItem item ? item.Header! : "-")];
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void The_bar_has_its_menus_in_order_and_Orblit_only_off_the_screen_bar(bool global)
+    {
+        UiThread.Run(() =>
+        {
+            Assert.Equal(MenusOn(global), Build(global).Items.OfType<NativeMenuItem>().Select(item => item.Header));
+        });
+    }
+
+    [Theory]
+    [InlineData("Orblit")]
+    [InlineData("File")]
+    [InlineData("Edit")]
+    [InlineData("View")]
+    [InlineData("Play")]
+    [InlineData("Help")]
+    public void Each_menu_lists_its_built_items(string menu)
+    {
+        UiThread.Run(() =>
+        {
+            Assert.Equal(Items[menu], Dump(Top(Build(global: false), menu)));
+        });
+    }
 
     [Fact]
-    public void The_bar_has_the_five_menus_of_the_old_editor_in_order()
+    public void Each_item_notes_what_it_does()
+    {
+        UiThread.Run(() =>
+        {
+            var notes = Named(Build(global: false)).Select(item => $"{item.Header}: {EditorMenu.NoteOf(item)}");
+
+            Assert.Equal(
+                [
+                    $"About Orblit Engine: Version {BottomBar.Version}. Click to copy it for a bug report",
+                    "Settings…: Where new projects go, and every key",
+                    "Quit Orblit Engine: Asks first if anything is unsaved",
+                    "New scene…: Pick what it is for and where it goes",
+                    "Find a scene…: Type part of a name to open it",
+                    "Open recent: ",
+                    "Scenes you open show here: ",
+                    "Save: Saves the open scene",
+                    "Export game…: Makes a game people can play on Mac, Windows or Linux",
+                    "Undo: Every change can be undone. History lists them.",
+                    "Redo: Puts back the change you undid",
+                    "Search: Files, things, settings and actions in one place",
+                    "Panels: Show or hide a panel",
+                    "Scene: Things in the open scene",
+                    "Import: How the picked file comes in",
+                    "Files: Every file in the project",
+                    "History: Every change, to undo back to",
+                    "Inspector: Settings for the picked thing",
+                    "Signals: Messages things send each other",
+                    "Hide panels: Gives the view the whole window",
+                    "Lock layout: Stops panels moving by accident",
+                    "Full screen: ",
+                    "Play the game: Starts the scene Play settings pick",
+                    "Play this scene: Starts from the scene you are in",
+                    "Stop: Closes the game window",
+                    "Show while playing: Draws hidden shapes and paths in the game",
+                    "Collision shapes: The shapes things bump into",
+                    "Paths: Lines that things follow",
+                    "Navigation: Where characters can walk",
+                    "Avoidance: How characters steer round others",
+                    "2D redraws: Flashes each 2D thing as it redraws",
+                    "All keys: Every shortcut on one sheet",
+                ],
+                notes);
+        });
+    }
+
+    [Fact]
+    public void An_item_with_a_new_name_keeps_the_engine_s_name_beside_it()
+    {
+        UiThread.Run(() =>
+        {
+            var engines = All(Build()).Where(item => EditorMenu.EngineOf(item) is not null).Select(item => $"{item.Header}={EditorMenu.EngineOf(item)}");
+
+            Assert.Equal(
+                [
+                    "Find a scene…=Quick Open Scene…",
+                    "Collision shapes=Visible Collision Shapes",
+                    "Paths=Visible Paths",
+                    "Navigation=Visible Navigation",
+                    "Avoidance=Visible Avoidance",
+                    "2D redraws=Debug CanvasItem Redraws",
+                ],
+                engines);
+        });
+    }
+
+    [Fact]
+    public void The_screen_bar_tip_holds_the_note_and_then_the_engine_s_name()
     {
         UiThread.Run(() =>
         {
             var bar = Build();
 
-            Assert.Equal(["Scene", "Project", "Debug", "Editor", "Help"], bar.Items.OfType<NativeMenuItem>().Select(item => item.Header));
-            Assert.Equal(5, bar.Items.Count);
+            Assert.Equal("Type part of a name to open it\nQuick Open Scene…", Find(bar, "Find a scene…").ToolTip);
+            Assert.Equal("Saves the open scene", Find(bar, "Save").ToolTip);
+            Assert.Null(Find(bar, "Full screen").ToolTip);
         });
     }
 
     [Fact]
-    public void The_scene_menu_lists_the_old_items()
+    public void The_All_keys_note_names_its_key_where_the_screen_bar_cannot_hold_it()
     {
         UiThread.Run(() =>
         {
-            Assert.Equal(SceneItems, Dump(Top(Build(), "Scene")));
+            var item = Find(Build(global: true), "All keys");
+
+            Assert.Null(item.Gesture);
+            Assert.Equal("Every shortcut on one sheet. Press ? to open it", EditorMenu.NoteOf(item));
         });
     }
 
     [Fact]
-    public void Quit_joins_the_scene_menu_when_the_menu_is_not_the_screen_bar()
-    {
-        UiThread.Run(() =>
-        {
-            Assert.Equal([.. SceneItems, "-", "Quit"], Dump(Top(Build(global: false), "Scene")));
-        });
-    }
-
-    [Fact]
-    public void The_project_menu_lists_the_old_items()
-    {
-        UiThread.Run(() =>
-        {
-            Assert.Equal(ProjectItems, Dump(Top(Build(), "Project")));
-        });
-    }
-
-    [Fact]
-    public void The_debug_menu_lists_the_old_items()
-    {
-        UiThread.Run(() =>
-        {
-            Assert.Equal(DebugItems, Dump(Top(Build(), "Debug")));
-        });
-    }
-
-    [Fact]
-    public void The_editor_menu_lists_the_old_items()
-    {
-        UiThread.Run(() =>
-        {
-            Assert.Equal(EditorItems, Dump(Top(Build(), "Editor")));
-        });
-    }
-
-    [Fact]
-    public void The_help_menu_lists_the_old_items()
-    {
-        UiThread.Run(() =>
-        {
-            Assert.Equal(HelpItems, Dump(Top(Build(), "Help")));
-        });
-    }
-
-    [Fact]
-    public void About_joins_the_help_menu_when_the_menu_is_not_the_screen_bar()
-    {
-        UiThread.Run(() =>
-        {
-            var items = Dump(Top(Build(global: false), "Help"));
-
-            Assert.Equal(["-", "About Orblit...", "Support Orblit Development"], items[^3..]);
-            Assert.Equal(HelpItems.Length + 1, items.Length);
-        });
-    }
-
-    [Fact]
-    public void Shortcuts_match_the_old_editor_on_macOS()
+    public void Shortcuts_follow_the_macOS_editors()
     {
         UiThread.Run(() =>
         {
             var shortcuts = All(Build(global: false))
                 .Where(item => item.Gesture is not null)
-                .Select(item => $"{item.Header}={item.Gesture!.Key}+{item.Gesture.KeyModifiers}");
+                .Select(item => $"{item.Header}={Parts.KeyText(item.Gesture!)}");
 
             Assert.Equal(
                 [
-                    "New Scene=N+Meta",
-                    "New Inherited Scene...=N+Shift, Meta",
-                    "Open Scene...=O+Meta",
-                    "Reopen Closed Scene=T+Shift, Meta",
-                    "Save Scene=S+Meta",
-                    "Save Scene As...=S+Shift, Meta",
-                    "Save All Scenes=S+Alt, Shift, Meta",
-                    "Quick Open...=O+Control, Meta",
-                    "Quick Open Scene...=O+Shift, Meta",
-                    "Quick Open Script...=O+Alt, Meta",
-                    "Undo=Z+Meta",
-                    "Redo=Z+Shift, Meta",
-                    "Close Scene=W+Meta",
-                    "Quit=Q+Meta",
-                    "Project Settings...=OemComma+Shift, Meta",
-                    "Find in Files...=F+Shift, Meta",
-                    "Replace in Files...=R+Shift, Meta",
-                    "Quit to Project List=Q+Alt, Control, Meta",
-                    "Editor Settings...=OemComma+Meta",
-                    "Command Palette...=P+Shift, Meta",
-                    "Take Screenshot=F12+Meta",
-                    "Toggle Fullscreen=F+Control, Meta",
-                    "Search Help...=Space+Alt",
+                    "Settings…=⌘,",
+                    "Quit Orblit Engine=⌘Q",
+                    "New scene…=⌘N",
+                    "Find a scene…=⇧⌘O",
+                    "Save=⌘S",
+                    "Undo=⌘Z",
+                    "Redo=⇧⌘Z",
+                    "Search=⌘K",
+                    "Hide panels=⌘\\",
+                    "Full screen=⌃⌘F",
+                    "Play the game=⌘B",
+                    "Play this scene=⌘R",
+                    "Stop=⌘.",
+                    "All keys=?",
                 ],
                 shortcuts);
         });
@@ -227,14 +238,27 @@ public sealed class EditorMenuTests
         {
             var bar = Build(command: KeyModifiers.Control);
 
-            Assert.Equal(KeyModifiers.Control, Find(bar, "Save Scene").Gesture!.KeyModifiers);
+            Assert.Equal(KeyModifiers.Control, Find(bar, "Save").Gesture!.KeyModifiers);
             Assert.Equal(KeyModifiers.Control | KeyModifiers.Shift, Find(bar, "Redo").Gesture!.KeyModifiers);
-            Assert.Equal(KeyModifiers.Control | KeyModifiers.Alt, Find(bar, "Quit to Project List").Gesture!.KeyModifiers);
         });
     }
 
     [Fact]
-    public void The_debug_options_are_check_items_and_the_two_sync_options_start_on()
+    public void The_keys_list_holds_each_keyed_item_under_its_menu_in_bar_order()
+    {
+        UiThread.Run(() =>
+        {
+            var keys = EditorMenu.Keys(global: true, KeyModifiers.Meta).ToList();
+
+            Assert.Equal([("Orblit", "Settings…", "⌘,"), ("Orblit", "Quit Orblit Engine", "⌘Q"), ("File", "New scene…", "⌘N")], keys[..3]);
+            Assert.Contains(("Play", "Play the game", "⌘B"), keys);
+            Assert.DoesNotContain(keys, key => key.Name == "All keys");
+            Assert.Contains(("Help", "All keys", "?"), EditorMenu.Keys(global: false, KeyModifiers.Meta));
+        });
+    }
+
+    [Fact]
+    public void The_run_flags_start_off_and_the_panels_start_shown()
     {
         UiThread.Run(() =>
         {
@@ -244,88 +268,95 @@ public sealed class EditorMenuTests
 
             Assert.Equal(
                 [
-                    "Deploy with Remote Debug=False",
-                    "Small Deploy with Network Filesystem=False",
-                    "Visible Collision Shapes=False",
-                    "Visible Paths=False",
-                    "Visible Navigation=False",
-                    "Visible Avoidance=False",
-                    "Debug CanvasItem Redraws=False",
-                    "Synchronize Scene Changes=True",
-                    "Synchronize Script Changes=True",
-                    "Keep Debug Server Open=False",
                     "Scene=True",
                     "Import=True",
-                    "FileSystem=True",
+                    "Files=True",
                     "History=True",
                     "Inspector=True",
                     "Signals=True",
+                    "Lock layout=False",
+                    "Collision shapes=False",
+                    "Paths=False",
+                    "Navigation=False",
+                    "Avoidance=False",
+                    "2D redraws=False",
                 ],
                 checks);
         });
     }
 
     [Fact]
-    public void The_empty_recent_list_and_the_layouts_heading_are_dim_and_everything_else_is_live()
+    public void Only_the_empty_recent_list_is_dim()
     {
         UiThread.Run(() =>
         {
             var off = All(Build()).Where(item => !item.IsEnabled).Select(item => item.Header);
 
-            Assert.Equal(["No Recent Scenes", "Layouts"], off);
+            Assert.Equal(["Scenes you open show here"], off);
         });
     }
 
     [Fact]
-    public void An_item_with_no_feature_answers_that_it_is_not_built()
+    public void A_wired_item_runs_its_action()
     {
         UiThread.Run(() =>
         {
-            var said = new List<string>();
-            var bar = Build(unbuilt: said.Add);
-
-            Press(Find(bar, "Open Scene..."));
-            Press(Find(bar, "Engine Compilation Configuration Editor..."));
-            Press(Find(bar, "Forum"));
-
-            Assert.Equal(
-                [
-                    "Open Scene is not built yet.",
-                    "Engine Compilation Configuration Editor is not built yet.",
-                    "Forum is not built yet.",
-                ],
-                said);
-        });
-    }
-
-    [Fact]
-    public void A_wired_item_runs_its_action_and_says_nothing()
-    {
-        UiThread.Run(() =>
-        {
-            var said = new List<string>();
             var ran = 0;
-            var bar = Build(actions: new() { ["Save Scene"] = new(() => ran++) }, unbuilt: said.Add);
+            var bar = Build(actions: new() { ["Save"] = new(() => ran++) });
 
-            Press(Find(bar, "Save Scene"));
+            Press(Find(bar, "Save"));
 
             Assert.Equal(1, ran);
-            Assert.Empty(said);
         });
     }
 
     [Fact]
-    public void A_wired_item_is_on_only_while_its_switch_is()
+    public void An_item_with_the_engine_s_name_runs_the_action_under_that_name()
+    {
+        UiThread.Run(() =>
+        {
+            var ran = 0;
+            var bar = Build(actions: new() { ["Quick Open Scene…"] = new(() => ran++) });
+
+            Press(Find(bar, "Find a scene…"));
+
+            Assert.Equal(1, ran);
+        });
+    }
+
+    [Fact]
+    public void A_wired_item_is_on_only_while_its_switch_is_and_its_note_says_why_while_off()
     {
         UiThread.Run(() =>
         {
             var switchButton = new Button { IsEnabled = false };
-            var bar = Build(actions: new() { ["Save Scene"] = new(() => { }, switchButton.GetObservable(InputElement.IsEnabledProperty)) });
-            var save = Find(bar, "Save Scene");
+            var bar = Build(actions: new() { ["Save"] = new(() => { }, switchButton.GetObservable(InputElement.IsEnabledProperty)) });
+            var save = Find(bar, "Save");
 
             Assert.False(save.IsEnabled);
+            Assert.Equal("Open a scene first.", EditorMenu.NoteOf(save));
+            Assert.Equal("Open a scene first.", save.ToolTip);
+
             switchButton.IsEnabled = true;
+
             Assert.True(save.IsEnabled);
+            Assert.Equal("Saves the open scene", EditorMenu.NoteOf(save));
+        });
+    }
+
+    [Fact]
+    public void A_named_item_takes_the_name_its_action_gives()
+    {
+        UiThread.Run(() =>
+        {
+            var source = new Button { Content = "Undo Moved Box" };
+            var bar = Build(actions: new() { ["Undo"] = new(() => { }, Name: source.GetObservable(ContentControl.ContentProperty, content => content as string ?? "")) });
+
+            Assert.Contains(All(bar), item => item.Header == "Undo Moved Box");
+
+            source.Content = "Undo";
+
+            Assert.Contains(All(bar), item => item.Header == "Undo");
         });
     }
 
@@ -337,21 +368,23 @@ public sealed class EditorMenuTests
             var window = OpenAtReferenceSize();
 
             var bar = NativeMenu.GetMenu(window)!;
-            Assert.Equal(["Scene", "Project", "Debug", "Editor", "Help"], bar.Items.OfType<NativeMenuItem>().Select(item => item.Header));
+            Assert.Equal(MenusOn(OperatingSystem.IsMacOS()), bar.Items.OfType<NativeMenuItem>().Select(item => item.Header));
         });
     }
 
     [Fact]
-    public void Save_Scene_is_off_until_a_scene_is_open_and_then_saves_it()
+    public void Save_is_off_until_a_scene_is_open_and_then_saves_it()
     {
         UiThread.Run(() =>
         {
             var empty = new EditorWindow();
-            Assert.False(Find(NativeMenu.GetMenu(empty)!, "Save Scene").IsEnabled);
+            var off = Find(NativeMenu.GetMenu(empty)!, "Save");
+            Assert.False(off.IsEnabled);
+            Assert.Equal("Open a scene first.", EditorMenu.NoteOf(off));
 
             var scene = new FakeScene();
             var window = OpenAtReferenceSize(scene);
-            var save = Find(NativeMenu.GetMenu(window)!, "Save Scene");
+            var save = Find(NativeMenu.GetMenu(window)!, "Save");
             Assert.True(save.IsEnabled);
 
             Press(save);
@@ -362,25 +395,84 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
-    public void A_menu_item_with_no_feature_shows_its_answer_in_the_status_bar()
+    public void Undo_and_Redo_name_the_step_they_act_on_and_say_why_while_off()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var bar = NativeMenu.GetMenu(window)!;
+            var undo = Find(bar, "Undo");
+            var redo = Find(bar, "Redo");
+            Assert.Equal("Nothing to undo yet.", EditorMenu.NoteOf(undo));
+            Assert.Equal("Nothing to redo yet.", EditorMenu.NoteOf(redo));
 
-            Press(Find(NativeMenu.GetMenu(window)!, "Editor Settings..."));
+            MakeAnEdit(window);
 
-            Assert.Equal("Editor Settings is not built yet.", window.Status);
+            Assert.StartsWith("Undo Duplicated ", undo.Header);
+            Assert.Equal("Every change can be undone. History lists them.", EditorMenu.NoteOf(undo));
+            var step = undo.Header!["Undo ".Length..];
+
+            Press(undo);
+
+            Assert.Equal(("Undo", $"Redo {step}"), (undo.Header, redo.Header));
+            Assert.Equal("Puts back the change you undid", EditorMenu.NoteOf(redo));
         });
     }
 
     [Fact]
-    public void Toggle_Fullscreen_switches_the_window_in_and_out()
+    public void Play_and_Stop_are_off_with_a_reason_until_they_can_run()
+    {
+        UiThread.Run(() =>
+        {
+            var bar = NativeMenu.GetMenu(new EditorWindow())!;
+
+            Assert.Equal(
+                [
+                    ("Play the game", false, "Open a scene first."),
+                    ("Play this scene", false, "Open a saved scene first."),
+                    ("Stop", false, "Nothing is playing."),
+                ],
+                new[] { "Play the game", "Play this scene", "Stop" }.Select(label => Find(bar, label)).Select(item => (item.Header, item.IsEnabled, EditorMenu.NoteOf(item))));
+        });
+    }
+
+    [Fact]
+    public void Play_the_game_runs_the_project()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+
+            Press(Find(NativeMenu.GetMenu(window)!, "Play the game"));
+
+            Assert.Equal(1, scene.Plays);
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Every_item_of_the_window_s_bar_runs_something(bool global)
+    {
+        UiThread.Run(() =>
+        {
+            var window = new EditorWindow(globalMenu: global);
+
+            // The empty recent list holds only its dim line until a scene opens.
+            var idle = All(NativeMenu.GetMenu(window)!).Where(item => item.Menu is null && item is not NativeMenuItemSeparator && item.Command is null);
+
+            Assert.Equal(["Scenes you open show here"], idle.Select(item => item.Header));
+        });
+    }
+
+    [Fact]
+    public void Full_screen_switches_the_window_in_and_out()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var item = Find(NativeMenu.GetMenu(window)!, "Toggle Fullscreen");
+            var item = Find(NativeMenu.GetMenu(window)!, "Full screen");
             var before = window.WindowState;
 
             Press(item);
@@ -392,7 +484,36 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
-    public void Export_opens_the_export_dialog_with_the_project_s_presets()
+    public void Hide_panels_hides_both_sides_and_brings_them_back()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var item = Find(NativeMenu.GetMenu(window)!, "Hide panels");
+
+            Press(item);
+            Assert.False(window.LeftSide.IsVisible || window.RightSide.IsVisible);
+
+            Press(item);
+            Assert.True(window.LeftSide.IsVisible && window.RightSide.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Search_opens_the_search()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Press(Find(NativeMenu.GetMenu(window)!, "Search"));
+
+            Assert.True(window.Search.Picker.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Export_game_opens_the_export_dialog_with_the_project_s_presets()
     {
         UiThread.Run(() =>
         {
@@ -400,7 +521,7 @@ public sealed class EditorMenuTests
             scene.ExportList.Add(new ExportPreset("Desktop", "Linux", "/games/a/build/Game.x86_64"));
             var window = OpenAtReferenceSize(scene);
 
-            Press(Find(NativeMenu.GetMenu(window)!, "Export..."));
+            Press(Find(NativeMenu.GetMenu(window)!, "Export game…"));
 
             Assert.True(window.Export.Dialog.IsVisible);
             Assert.Equal(["Desktop"], window.Export.PresetBox.Items.Cast<string>());
@@ -408,7 +529,70 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
-    public void Quit_closes_the_window_on_a_platform_without_the_screen_bar()
+    public void About_Orblit_copies_the_version()
+    {
+        UiThread.Run(async () =>
+        {
+            var window = new EditorWindow(globalMenu: false);
+            window.Show();
+
+            Press(Find(NativeMenu.GetMenu(window)!, "About Orblit Engine"));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(BottomBar.Version, await window.Clipboard!.TryGetTextAsync());
+        });
+    }
+
+    [Fact]
+    public void The_app_menu_of_macOS_holds_About_and_Settings_on_the_command_key()
+    {
+        UiThread.Run(() =>
+        {
+            var asked = new List<string>();
+            var menu = EditorMenu.AppMenu(new Dictionary<string, MenuAction>
+            {
+                ["About Orblit Engine"] = new(() => asked.Add("About")),
+                ["Editor Settings…"] = new(() => asked.Add("Settings")),
+            });
+            var settings = Find(menu, "Settings…");
+
+            Assert.Equal(["About Orblit Engine", "-", "Settings…"], Lines(menu, ""));
+            Assert.Equal(("⌘,", "Where new projects go, and every key", "Editor Settings…"), (Parts.KeyText(settings.Gesture!), EditorMenu.NoteOf(settings), EditorMenu.EngineOf(settings)));
+            Press(Find(menu, "About Orblit Engine"));
+            Press(settings);
+            Assert.Equal(["About", "Settings"], asked);
+        });
+    }
+
+    [Fact]
+    public void Settings_opens_from_the_Orblit_menu_and_its_key_and_All_keys_leads_to_the_sheet()
+    {
+        UiThread.Run(() =>
+        {
+            var folder = Path.Combine(Path.GetTempPath(), $"orblit_settings_{Guid.NewGuid():N}");
+            var window = new EditorWindow(globalMenu: false, settings: new EditorSettings(Path.Combine(folder, EditorSettings.FileName)));
+            window.Show();
+            var settings = window.Settings;
+
+            Press(Find(NativeMenu.GetMenu(window)!, "Settings…"));
+            Assert.True(settings.Dialog.IsVisible);
+            Assert.Equal("~/Games", settings.FolderBox.Text);
+            settings.Dialog.Cancel();
+            window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.OemComma, KeyModifiers = window.CommandKey });
+            Assert.True(settings.Dialog.IsVisible);
+
+            settings.FolderBox.Text = "~/Kept";
+            settings.AllKeysButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Assert.False(settings.Dialog.IsVisible);
+            Assert.True(window.Keys.Dialog.IsVisible);
+            Assert.Contains(("Orblit", "Settings…", Parts.KeyText(new KeyGesture(Key.OemComma, window.CommandKey))), window.Keys.Rows);
+            Assert.Equal("~/Kept", new EditorSettings(Path.Combine(folder, EditorSettings.FileName)).ProjectsFolder());
+            Directory.Delete(folder, recursive: true);
+        });
+    }
+
+    [Fact]
+    public void Quit_Orblit_closes_the_window_on_a_platform_without_the_screen_bar()
     {
         UiThread.Run(() =>
         {
@@ -417,20 +601,9 @@ public sealed class EditorMenuTests
             var closed = false;
             window.Closed += (_, _) => closed = true;
 
-            Press(Find(NativeMenu.GetMenu(window)!, "Quit"));
+            Press(Find(NativeMenu.GetMenu(window)!, "Quit Orblit Engine"));
 
             Assert.True(closed);
-        });
-    }
-
-    [Fact]
-    public void The_screen_bar_has_no_quit_because_the_system_app_menu_has_it()
-    {
-        UiThread.Run(() =>
-        {
-            var window = new EditorWindow(globalMenu: true);
-
-            Assert.DoesNotContain(All(NativeMenu.GetMenu(window)!), item => item.Header == "Quit");
         });
     }
 
@@ -454,72 +627,13 @@ public sealed class EditorMenuTests
         {
             var headers = All(Build(global: false)).Where(item => item.Menu is not null).ToList();
 
-            Assert.Contains(headers, item => item.Header == "Open Recent");
+            Assert.Equal(["Orblit", "File", "Open recent", "Edit", "View", "Panels", "Play", "Show while playing", "Help"], headers.Select(item => item.Header));
             Assert.All(headers, item => Assert.Null(item.Command));
         });
     }
 
     [Fact]
-    public void The_window_takes_the_screen_bar_layout_on_macOS_only()
-    {
-        UiThread.Run(() =>
-        {
-            var window = new EditorWindow();
-
-            Assert.Equal(!OperatingSystem.IsMacOS(), All(NativeMenu.GetMenu(window)!).Any(item => item.Header == "Quit"));
-        });
-    }
-
-    [Fact]
-    public void Default_is_the_layout_in_use()
-    {
-        UiThread.Run(() =>
-        {
-            var layout = Under(Build(), "Editor Layout", "Default");
-
-            Assert.Equal(MenuItemToggleType.Radio, layout.ToggleType);
-            Assert.True(layout.IsChecked);
-        });
-    }
-
-    [Fact]
-    public void An_item_with_no_feature_carries_the_soon_mark_and_a_wired_one_does_not()
-    {
-        UiThread.Run(() =>
-        {
-            var bar = Build(actions: new() { ["Save Scene"] = new(() => { }) });
-
-            Assert.True(EditorTheme.IsSoon(Find(bar, "Save Scene As...")));
-            Assert.False(EditorTheme.IsSoon(Find(bar, "Save Scene")));
-            Assert.False(EditorTheme.IsSoon(Find(bar, "No Recent Scenes")));
-            Assert.False(EditorTheme.IsSoon(Find(bar, "Open Recent")));
-        });
-    }
-
-    [Fact]
-    public void The_window_bar_draws_Soon_where_the_key_of_an_unbuilt_item_would_be()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var scene = window.Bar.Menus.GetVisualDescendants().OfType<MenuItem>().First();
-            scene.Open();
-            Dispatcher.UIThread.RunJobs();
-            MenuItem Item(string header) => scene.GetLogicalDescendants().OfType<MenuItem>().Single(item => (string?)item.Header == header);
-            TextBlock Text(MenuItem item, Func<TextBlock, bool> which) => item.GetVisualDescendants().OfType<TextBlock>().Single(which);
-            static Color ColorOf(TextBlock text) => ((ISolidColorBrush)text.Foreground!).Color;
-
-            var unbuilt = Item("Save Scene As...");
-            var soon = Text(unbuilt, text => text.Name == "PART_InputGestureText");
-            Assert.Equal("Soon", soon.Text);
-            Assert.Equal(EditorColors.Warn, ColorOf(soon));
-            Assert.Equal(EditorColors.Unbuilt, ColorOf(Text(unbuilt, text => text.Text == "Save Scene As...")));
-            Assert.NotEqual("Soon", Text(Item("Save Scene"), text => text.Name == "PART_InputGestureText").Text);
-        });
-    }
-
-    [Fact]
-    public void Open_Recent_lists_the_scenes_opened_this_session_newest_first_and_opens_a_pick()
+    public void Open_recent_lists_the_scenes_opened_this_session_newest_first_and_opens_a_pick()
     {
         UiThread.Run(() =>
         {
@@ -527,63 +641,65 @@ public sealed class EditorMenuTests
             var window = OpenAtReferenceSize(scene);
             OpenScene(window, "res://levels/second.oscn");
 
-            Assert.Equal(["Recent", "second.oscn", "field.oscn", "-", "Clear Recent Scenes"], Recent(window));
+            Assert.Equal(["second", "field", "-", "Clear the list"], Recent(window));
+            Assert.Equal("levels/second.oscn", EditorMenu.NoteOf(Under(NativeMenu.GetMenu(window)!, "Open recent", "second")));
 
-            Press(Under(NativeMenu.GetMenu(window)!, "Open Recent", "field.oscn"));
+            Press(Under(NativeMenu.GetMenu(window)!, "Open recent", "field"));
 
             Assert.Equal("res://field.oscn", scene.SceneFile);
-            Assert.Equal(["Recent", "field.oscn", "second.oscn", "-", "Clear Recent Scenes"], Recent(window));
+            Assert.Equal(["field", "second", "-", "Clear the list"], Recent(window));
         });
     }
 
     [Fact]
-    public void Clear_Recent_Scenes_empties_the_list_and_an_edit_does_not_refill_it()
+    public void Clear_the_list_empties_it_and_an_edit_does_not_refill_it()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://field.oscn" });
 
-            Press(Under(NativeMenu.GetMenu(window)!, "Open Recent", "Clear Recent Scenes"));
+            Press(Under(NativeMenu.GetMenu(window)!, "Open recent", "Clear the list"));
             MakeAnEdit(window);
 
-            Assert.Equal(["No Recent Scenes"], Recent(window));
+            Assert.Equal(["Scenes you open show here"], Recent(window));
         });
     }
 
     [Theory]
     [InlineData("Scene", "Scene", 0)]
     [InlineData("Import", "Scene", 1)]
-    [InlineData("FileSystem", "FileSystem", 0)]
-    [InlineData("History", "FileSystem", 1)]
+    [InlineData("Files", "Files", 0)]
+    [InlineData("History", "Files", 1)]
     [InlineData("Inspector", "Inspector", 0)]
     [InlineData("Signals", "Inspector", 1)]
-    public void An_Editor_Docks_check_hides_its_own_tab(string label, string dock, int tab)
+    public void A_Panels_check_hides_its_own_tab(string label, string dock, int tab)
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-
-            Press(Docks(window, label));
-
             var docks = new[] { window.SceneDock, window.FileDock, window.InspectorDock };
-            Assert.All(docks, each => Assert.Equal([each.Title != dock || tab != 0, each.Title != dock || tab != 1], each.Tabs.Select(border => border.IsVisible)));
-            Assert.False(Docks(window, label).IsChecked);
+            // A group takes the name of its first tab that shows, so each one's name is read before a tab hides.
+            var names = docks.Select(each => each.Title).ToArray();
+
+            Press(Panel(window, label));
+
+            Assert.All(docks.Zip(names), each => Assert.Equal([each.Second != dock || tab != 0, each.Second != dock || tab != 1], each.First.Tabs.Select(border => border.IsVisible)));
+            Assert.False(Panel(window, label).IsChecked);
         });
     }
 
     [Fact]
-    public void A_run_flag_in_the_Debug_menu_flips_the_Game_tabs_switch_and_ticks_with_it()
+    public void A_Show_while_playing_check_flips_the_Game_tabs_switch_and_ticks_with_it()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var paths = Find(NativeMenu.GetMenu(window)!, "Visible Paths");
+            var paths = Find(NativeMenu.GetMenu(window)!, "Paths");
 
             Press(paths);
 
             Assert.True(window.Game.SwitchOf("Visible Paths").IsChecked);
             Assert.True(paths.IsChecked);
-            Assert.False(EditorTheme.IsSoon(paths));
 
             window.Game.SwitchOf("Visible Paths").IsChecked = false;
 
@@ -599,16 +715,105 @@ public sealed class EditorMenuTests
             var window = OpenAtReferenceSize();
             var dock = window.SceneDock;
 
-            Press(Docks(window, "Import"));
+            Press(Panel(window, "Import"));
             Assert.True(dock.IsVisible);
-            Press(Docks(window, "Scene"));
+            Press(Panel(window, "Scene"));
             Assert.False(dock.IsVisible);
 
-            Press(Docks(window, "Import"));
+            Press(Panel(window, "Import"));
             Assert.True(dock.IsVisible);
             Assert.Equal(1, dock.SelectedIndex);
             Assert.Equal(DockSlot.UpperLeft, dock.Slot);
-            Assert.True(Docks(window, "Import").IsChecked);
+            Assert.True(Panel(window, "Import").IsChecked);
+        });
+    }
+
+    [Fact]
+    public void A_Panels_check_turned_on_shows_the_hidden_panels()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Click(window.SceneTabs.PanelsButton);
+
+            Press(Panel(window, "Import"));
+            Assert.False(window.SceneDock.IsEffectivelyVisible);
+            Press(Panel(window, "Import"));
+            window.UpdateLayout();
+
+            Assert.True(window.SceneDock.IsEffectivelyVisible);
+        });
+    }
+
+    [Fact]
+    public void All_keys_opens_a_sheet_of_the_menu_keys_and_the_keys_of_the_window_s_own_buttons()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Press(Find(NativeMenu.GetMenu(window)!, "All keys"));
+
+            Assert.True(window.Keys.Dialog.IsVisible);
+            var key = (Key k) => Parts.KeyText(new KeyGesture(k, window.CommandKey));
+            var rows = window.Keys.Rows.ToList();
+            Assert.Contains(("Play", "Play the game", key(Key.B)), rows);
+            Assert.Contains(("In the window", "3D", key(Key.D2)), rows);
+            Assert.Single(rows, row => row.Key == key(Key.B));
+        });
+    }
+
+    [Fact]
+    public void Settings_from_the_app_menu_waits_while_the_keys_sheet_is_open()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Press(Find(NativeMenu.GetMenu(window)!, "All keys"));
+            window.OpenSettings();
+            Assert.False(window.Settings.Dialog.IsVisible);
+
+            window.Keys.Dialog.MainButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            window.OpenSettings();
+            Assert.True(window.Settings.Dialog.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Menu_items_wait_while_the_keys_sheet_is_open()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var bar = NativeMenu.GetMenu(window)!;
+
+            Press(Find(bar, "All keys"));
+            Press(Find(bar, "New scene…"));
+            Press(Find(bar, "Search"));
+            Assert.False(window.NewScene.Dialog.IsVisible || window.Search.Picker.IsVisible);
+
+            window.Keys.Dialog.MainButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Press(Find(bar, "New scene…"));
+            Assert.True(window.NewScene.Dialog.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void A_question_mark_opens_the_keys_sheet_but_not_from_a_text_box()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            window.ScenePane.FilterBox.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.OemQuestion, KeyModifiers = KeyModifiers.Shift });
+            Assert.False(window.Keys.Dialog.IsVisible);
+
+            window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.OemQuestion, KeyModifiers = KeyModifiers.Shift });
+            Assert.True(window.Keys.Dialog.IsVisible);
+
+            window.Keys.Dialog.MainButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Assert.False(window.Keys.Dialog.IsVisible);
         });
     }
 }

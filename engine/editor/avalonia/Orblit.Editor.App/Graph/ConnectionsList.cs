@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
@@ -29,7 +30,7 @@ internal sealed class ConnectionsList : StackPanel
 
     public ConnectionsList(GraphDocument document, Action<string, int> jump)
     {
-        Spacing = 2;
+        Spacing = Gaps.Joined;
         var links = Find(document).ToLookup(link => link.Signal);
         var names = document.Signals.Select(signal => signal.Name).Concat(links.Select(group => group.Key)).Distinct().ToList();
         if (names.Count == 0)
@@ -66,7 +67,7 @@ internal sealed class ConnectionsList : StackPanel
     void AddSignal(string name, IReadOnlyList<SignalLink> links, Action<string, int> jump)
     {
         var shown = name == "" ? NoSignal : name;
-        Children.Add(new TextBlock { Text = shown, Tag = $"connections:{name}", FontSize = 12, Margin = new Thickness(0, 4, 0, 0) });
+        Children.Add(new TextBlock { Text = shown, Tag = $"connections:{name}", FontSize = 12, Margin = new Thickness(0, Gaps.Tight, 0, 0) });
         if (links.Count == 0)
         {
             Children.Add(Note($"connections:{name}:none", "No links."));
@@ -76,10 +77,10 @@ internal sealed class ConnectionsList : StackPanel
         {
             var row = PanelFields.Small($"connection:{link.Function}:{link.Step}", $"{link.Function}: {link.Verb} {shown}", () => jump(link.Function, link.Step));
             row.HorizontalAlignment = HorizontalAlignment.Left;
-            row.Margin = new Thickness(16, 0, 0, 0);
+            row.Margin = new Thickness(Gaps.Dialog, 0, 0, 0);
             Children.Add(row);
         }
     }
 
-    static TextBlock Note(string id, string text) => new() { Text = text, Tag = id, FontSize = 12, Margin = new Thickness(16, 0, 0, 0), Opacity = 0.7 };
+    static TextBlock Note(string id, string text) => new() { Text = text, Tag = id, FontSize = 12, Margin = new Thickness(Gaps.Dialog, 0, 0, 0), Opacity = 0.7 };
 }

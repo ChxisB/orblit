@@ -156,12 +156,12 @@ public sealed class SelectionFlagsTests
             Assert.False(scene.KeepChildren);
             Assert.False(window.Toolbar.KeepChildrenButton.IsChecked);
 
-            ClickOn(window.Toolbar.KeepChildrenButton, window);
+            Click(window.Toolbar.KeepChildrenButton);
             Assert.True(scene.KeepChildren);
             Assert.True(window.Toolbar.KeepChildrenButton.IsChecked);
             Assert.DoesNotContain("not built", window.Status);
 
-            ClickOn(window.Toolbar.KeepChildrenButton, window);
+            Click(window.Toolbar.KeepChildrenButton);
             Assert.False(scene.KeepChildren);
         });
     }
@@ -175,7 +175,7 @@ public sealed class SelectionFlagsTests
             window.Show();
             window.UpdateLayout();
 
-            ClickOn(window.Toolbar.KeepChildrenButton, window);
+            Click(window.Toolbar.KeepChildrenButton);
             var scene = new FakeScene();
             window.Load(scene);
 
@@ -192,14 +192,14 @@ public sealed class SelectionFlagsTests
             var window = OpenSelected(scene, FieldHandle);
             var lamp = Rows(window)[1];
             Assert.Equal(["GuiVisibilityVisible"], IconsOf(EyeOf(lamp)));
-            Assert.Equal([1, 1], [lamp.GetVisualDescendants().OfType<TextBlock>().Single().Opacity, ClassIconOf(lamp).Opacity]);
+            Assert.Equal([1, 1], [lamp.GetVisualDescendants().OfType<TextBlock>().First().Opacity, ClassIconOf(lamp).Opacity]);
 
             ClickOn(EyeOf(lamp), window);
 
             lamp = Rows(window)[1];
             Assert.True(scene.Outline()!.Find(LampHandle)!.Hidden);
             Assert.Equal(["GuiVisibilityHidden"], IconsOf(EyeOf(lamp)));
-            Assert.True(lamp.GetVisualDescendants().OfType<TextBlock>().Single().Opacity < 1);
+            Assert.True(lamp.GetVisualDescendants().OfType<TextBlock>().First().Opacity < 1);
             Assert.True(ClassIconOf(lamp).Opacity < 1);
             Assert.Equal("Hid Lamp. Save keeps the change.", window.Status);
             Assert.StartsWith("(*)", window.Title);
@@ -220,7 +220,7 @@ public sealed class SelectionFlagsTests
             var lamp = Rows(window)[1];
             Assert.False(scene.Outline()!.Find(LampHandle)!.Hidden);
             Assert.Equal(["GuiVisibilityVisible"], IconsOf(EyeOf(lamp)));
-            Assert.Equal([1, 1], [lamp.GetVisualDescendants().OfType<TextBlock>().Single().Opacity, ClassIconOf(lamp).Opacity]);
+            Assert.Equal([1, 1], [lamp.GetVisualDescendants().OfType<TextBlock>().First().Opacity, ClassIconOf(lamp).Opacity]);
             Assert.Equal("Showed Lamp. Save keeps the change.", window.Status);
         });
     }
@@ -265,13 +265,13 @@ public sealed class SelectionFlagsTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var plain = BoxOf(Rows(window)[1].GetVisualDescendants().OfType<TextBlock>().Single(), window);
+            var plain = BoxOf(Rows(window)[1].GetVisualDescendants().OfType<TextBlock>().First(), window);
 
             var scene = new FakeScene();
             scene.SetLocked(LampHandle, true);
             var locked = OpenAtReferenceSize(scene);
 
-            Assert.Equal(plain.X, BoxOf(Rows(locked)[1].GetVisualDescendants().OfType<TextBlock>().Single(), locked).X);
+            Assert.Equal(plain.X, BoxOf(Rows(locked)[1].GetVisualDescendants().OfType<TextBlock>().First(), locked).X);
         });
     }
 }

@@ -37,7 +37,7 @@ public sealed class GraphClipboardTests
     static GraphCanvas Open(FakeGraphSource source, MemoryClipboard clipboard)
     {
         _ = source.History;
-        return new GraphCanvas(source, clipboard);
+        return new GraphCanvas(source, KeyModifiers.Meta, clipboard);
     }
 
     static void Pick(GraphCanvas canvas, params int[] ids) => canvas.Select(ids);
@@ -90,6 +90,27 @@ public sealed class GraphClipboardTests
 
             Assert.Equal(before, into.GetSnapshot());
             Assert.False(history.CanUndo);
+        });
+    }
+
+    [Fact]
+    public void The_paste_question_keeps_its_answers_inside_a_narrow_graph()
+    {
+        UiThread.Run(() =>
+        {
+            var clipboard = new MemoryClipboard();
+            var from = Open(Reader(), clipboard);
+            var target = Open(Reader(totalType: 3), clipboard);
+            new Window { Width = 280, Height = 400, Content = target }.Show();
+            Pick(from, 2, 3);
+            from.Clipboard.Copy().GetAwaiter().GetResult();
+
+            target.Clipboard.Paste(new Point(0, 0)).GetAwaiter().GetResult();
+            target.UpdateLayout();
+
+            Assert.All(
+                ["paste:keep_both", "paste:reuse", "paste:cancel"],
+                id => Assert.InRange(target.Find<Button>(id)!.TranslatePoint(new Point(target.Find<Button>(id)!.Bounds.Width, 0), target)!.Value.X, 1, target.Bounds.Width));
         });
     }
 
@@ -272,7 +293,7 @@ public sealed class GraphClipboardTests
             Assert.Equal(3, source.Function.Steps.Count);
             Press(canvas, Key.Z, KeyModifiers.Meta | KeyModifiers.Shift);
             Assert.Equal(5, source.Function.Steps.Count);
-            Press(canvas, Key.Y, KeyModifiers.Control);
+            Press(canvas, Key.Z, KeyModifiers.Control | KeyModifiers.Shift);
             Assert.Equal(7, source.Function.Steps.Count);
         });
     }

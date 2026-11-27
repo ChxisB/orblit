@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Presenters;
@@ -88,13 +89,22 @@ public sealed class ScriptViewTests
 
     static ScriptView Open(Files files)
     {
-        var view = new ScriptView();
+        var view = new ScriptView(KeyModifiers.Meta);
         new Window { Content = view, Width = 800, Height = 600 }.Show();
         view.Show(files);
         return view;
     }
 
     static void Pick(ScriptView view, string path) => view.List.SelectedItem = path;
+
+    [Theory]
+    [InlineData("a\nb\nc", "a\nb\nc", 0)]
+    [InlineData("a\nb\nc", "a\nB\nc", 1)]
+    [InlineData("a\nb", "a\nb\nc\nd", 2)]
+    [InlineData("a\nb\nc\nd", "a", 3)]
+    [InlineData("a\nb\nc", "c\nb\na", 0)]
+    public void A_changed_line_counts_once_and_a_moved_line_not_at_all(string saved, string text, int changed) =>
+        Assert.Equal(changed, ScriptView.LinesChanged(saved, text));
 
     [Fact]
     public void It_starts_with_the_files_listed_and_none_open()
@@ -113,7 +123,27 @@ public sealed class ScriptViewTests
     }
 
     [Fact]
-    public void Save_is_a_small_primary_button_that_holds_its_whole_key()
+    public void The_name_and_status_have_a_tip_only_when_they_say_something()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+
+            Assert.Null(ToolTip.GetTip(view.Heading));
+            Assert.Null(ToolTip.GetTip(view.Status));
+
+            Pick(view, "res://spin.cs");
+            view.Editor.Text += "// edit\n";
+            view.Save();
+
+            Assert.Equal("res://spin.cs", ToolTip.GetTip(view.Heading));
+            Assert.NotEqual("", view.Status.Text);
+            Assert.Equal(view.Status.Text, ToolTip.GetTip(view.Status));
+        });
+    }
+
+    [Fact]
+    public void Save_is_a_small_primary_icon_with_its_key_on_its_card()
     {
         UiThread.Run(() =>
         {
@@ -123,10 +153,10 @@ public sealed class ScriptViewTests
             view.UpdateLayout();
 
             Assert.Same(EditorBrushes.Accent, view.SaveButton.Background);
-            Assert.Equal(26, view.SaveButton.Bounds.Height);
-            var key = view.SaveButton.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "⌘S");
-            var box = BoxOf(key, view.SaveButton);
-            Assert.True(box.Top >= 1 && box.Bottom <= view.SaveButton.Bounds.Height - 1, $"the key lies at {box} in a button {view.SaveButton.Bounds.Height} high");
+            Assert.Equal((26, 26), (view.SaveButton.Bounds.Width, view.SaveButton.Bounds.Height));
+            Assert.Equal("Save", view.SaveButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+            Assert.Equal("Save", AutomationProperties.GetName(view.SaveButton));
+            Assert.Equal("⌘S", ((HoverCard)ToolTip.GetTip(view.SaveButton)!).Key);
         });
     }
 
@@ -143,7 +173,7 @@ public sealed class ScriptViewTests
             var fill = row.GetVisualDescendants().OfType<ContentPresenter>().First().Background;
             Assert.Equal(EditorColors.AccentSoft, ((ISolidColorBrush)fill!).Color);
             Assert.Equal((26.0, EditorTheme.Corners), (row.Bounds.Height, ((ListBoxItem)row).CornerRadius));
-            Assert.Equal(6, BoxOf(row, view.List).X);
+            Assert.Equal(4, BoxOf(row, view.List).X);
         });
     }
 
@@ -456,7 +486,7 @@ public sealed class ScriptViewTests
             var view = OpenPlayer();
 
             Assert.Equal("Line 1, column 1", view.CaretText.Text);
-            Assert.Equal("Spaces: 4", view.IndentText.Text);
+            Assert.Equal("Spaces 4", view.IndentText.Text);
 
             view.Editor.Text = "class A\n{\n\tint b;\n}";
             view.Editor.CaretIndex = 12;
@@ -534,17 +564,21 @@ public sealed class ScriptViewTests
             Pick(view, "res://spin.cs");
             view.Editor.Text = "class Spin { }";
 
-            Assert.Equal("Check problems", view.ProblemsText);
+            Assert.False(view.ProblemsButton.IsVisible);
             Assert.True(view.Check().IsCompletedSuccessfully);
 
             Assert.Equal([("res://spin.cs", "class Spin { }")], files.Written);
-            Assert.Equal("1 error, 1 warning", view.ProblemsText);
+            Assert.True(view.ProblemsButton.IsVisible);
+            Assert.Equal("2 problems", view.ProblemsText);
             Assert.Same(EditorBrushes.FaultText, view.ProblemsButton.Foreground);
             var items = view.ProblemList().Items.OfType<MenuItem>().ToList();
-            Assert.Equal(["slime.cs:1  CS1002: ; expected", "CS8032: An analyzer could not load", "Check again"], items.Select(item => item.Header is TextBlock text ? text.Text : item.Header));
-            Assert.False(items[1].IsEnabled);
+            Assert.Equal("1 ERROR, 1 WARNING", ((TextBlock)items[0].Header!).Text);
+            Assert.Equal(["; expected", "An analyzer could not load", "Check again"], items.Skip(1).Select(AutomationProperties.GetName));
+            Assert.Equal(["; expected", "CS1002", "slime.cs, line 1."], Texts((Control)items[1].Header!));
+            Assert.Equal(["An analyzer could not load", "CS8032"], Texts((Control)items[2].Header!));
+            Assert.False(items[2].IsEnabled);
 
-            items[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            items[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
             Assert.Equal("res://slime.cs", view.Heading.Text);
             Assert.Equal(6, view.Editor.CaretIndex);
@@ -559,7 +593,7 @@ public sealed class ScriptViewTests
             var files = new Files();
             var view = Open(files);
 
-            view.ProblemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Click(view.CheckButton);
 
             Assert.Equal(1, files.Checks);
             Assert.Equal("No problems", view.ProblemsText);
@@ -568,9 +602,10 @@ public sealed class ScriptViewTests
             files.CheckFails = true;
             view.ProblemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-            Assert.Equal("Check problems", view.ProblemsText);
+            Assert.Equal("Not checked", view.ProblemsText);
             Assert.Equal("dotnet was not found.", view.Status.Text);
             Assert.True(view.ProblemsButton.IsEnabled);
+            Assert.True(view.CheckButton.IsEnabled);
         });
     }
 
@@ -588,7 +623,7 @@ public sealed class ScriptViewTests
             Click(view.NewButton);
 
             Assert.True(view.CreateDialog.IsVisible);
-            Assert.Equal("New C# Script", view.CreateDialog.Title);
+            Assert.Equal("New C# script", view.CreateDialog.Title);
             Assert.Equal(["Entity", "Entity3D"], view.Form.ExtendsBox.Items.Cast<string>());
 
             view.Form.NameBox.Text = "Mover";
@@ -630,12 +665,114 @@ public sealed class ScriptViewTests
             Click(view.SortButton);
 
             Assert.Equal(["res://slime.cs", "res://spin.cs"], (IEnumerable<string>)view.List.ItemsSource!);
-            Assert.Equal("Sort the scripts A to Z", ToolTip.GetTip(view.SortButton));
+            Assert.Equal("Sort the scripts A to Z", ((HoverCard)ToolTip.GetTip(view.SortButton)!).Title);
 
             Click(view.SortButton);
 
             Assert.Equal(["res://spin.cs", "res://slime.cs"], (IEnumerable<string>)view.List.ItemsSource!);
-            Assert.Equal("Sort the scripts Z to A", ToolTip.GetTip(view.SortButton));
+            Assert.Equal("Sort the scripts Z to A", ((HoverCard)ToolTip.GetTip(view.SortButton)!).Title);
+        });
+    }
+
+    [Fact]
+    public void With_no_script_open_the_middle_says_what_scripts_are_and_offers_two_ways_in()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+
+            Assert.True(view.Empty.IsVisible);
+            Assert.Equal(["No script is open", "Scripts tell things what to do. Pick one from the list, or make one."], Texts(view.Empty).Take(2));
+            Assert.Equal("New script", view.StartButton.Content);
+            Assert.Equal(["Find a script", "⌘K"], Texts(view.FindScriptButton));
+            Assert.Equal("Type part of a name to open it.", ((HoverCard)ToolTip.GetTip(view.FindScriptButton)!).Line);
+
+            Click(view.StartButton);
+
+            Assert.True(view.CreateDialog.IsVisible);
+            Assert.Equal("New C# script", view.CreateDialog.Title);
+        });
+    }
+
+    [Fact]
+    public void Close_saves_the_open_script_and_shows_the_middle_again()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files();
+            var view = Open(files);
+            Pick(view, "res://spin.cs");
+            view.Editor.Text = "class Spin { int turns; }";
+
+            Assert.False(view.Empty.IsVisible);
+
+            Click(view.CloseButton);
+
+            Assert.Equal([("res://spin.cs", "class Spin { int turns; }")], files.Written);
+            Assert.True(view.Empty.IsVisible);
+            Assert.Null(view.List.SelectedItem);
+            Assert.Equal("Pick a script.", view.Heading.Text);
+
+            Pick(view, "res://spin.cs");
+
+            Assert.Equal("res://spin.cs", view.Heading.Text);
+        });
+    }
+
+    [Fact]
+    public void The_keys_are_the_command_key_the_view_is_given()
+    {
+        UiThread.Run(() =>
+        {
+            var view = new ScriptView(KeyModifiers.Control);
+            HoverCard Card(Control control) => (HoverCard)ToolTip.GetTip(control)!;
+
+            Assert.Equal(["Find a script", "⌃K"], Texts(view.FindScriptButton));
+            Assert.Equal(("⌃F", "⌃⇧B"), (Card(view.FindButton).Key, Card(view.CheckButton).Key));
+        });
+    }
+
+    [Fact]
+    public void Find_Save_and_Check_say_what_they_do_and_why_they_are_off()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+            HoverCard Card(Control control) => (HoverCard)ToolTip.GetTip(control)!;
+
+            Assert.Equal(("Find", "⌘F", "Open a script first."), (Card(view.FindButton).Title, Card(view.FindButton).Key, Card(view.FindButton).Line));
+            Assert.Equal(("Save", "Nothing new to save."), (Card(view.SaveButton).Title, Card(view.SaveButton).Line));
+            Assert.Equal(("Check for problems", "⇧⌘B"), (Card(view.CheckButton).Title, Card(view.CheckButton).Key));
+
+            Pick(view, "res://spin.cs");
+            view.Editor.Text = "class Spin { int turns; }";
+
+            Assert.Equal("Finds words in this script.", Card(view.FindButton).Line);
+            Assert.Equal("Writes the script to its file.", Card(view.SaveButton).Line);
+        });
+    }
+
+    [Fact]
+    public void Match_case_counts_only_the_same_letters_and_Option_C_turns_it_on()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files { Text = { ["res://ab.cs"] = "ab Ab\nAB" } };
+            var view = Open(files);
+            Pick(view, "res://ab.cs");
+            Click(view.FindButton);
+            view.Finder.Text.Text = "ab";
+            Press(view.Finder.Text, Key.Enter);
+
+            Press(view.Finder.Text, Key.C, KeyModifiers.Alt);
+
+            Assert.True(view.Finder.CaseButton.IsChecked);
+            Assert.Equal("1 of 1", view.Finder.Count);
+            Assert.Equal(("Match case", "⌥C"), (((HoverCard)ToolTip.GetTip(view.Finder.CaseButton)!).Title, ((HoverCard)ToolTip.GetTip(view.Finder.CaseButton)!).Key));
+
+            view.Finder.CaseButton.IsChecked = false;
+
+            Assert.Equal("1 of 3", view.Finder.Count);
         });
     }
 
@@ -746,6 +883,21 @@ public sealed class ScriptViewTests
 
             Assert.Contains("var v = Vector3.Zero }", view.Editor.Text);
             Assert.False(view.Completions.Popup.IsOpen);
+        });
+    }
+
+    [Fact]
+    public void A_suggestion_line_is_the_summary_of_its_member_or_its_signature_when_it_has_none()
+    {
+        UiThread.Run(async () =>
+        {
+            var files = new Files { Text = { ["res://api.cs"] = "namespace Orblit { public struct Vector3 {\n/// <summary>The point at the middle.</summary>\npublic static Vector3 Zero => default;\npublic static Vector3 One => default; } }" } };
+            const string text = "using Orblit;\nclass Spin { void F() { var v = Vector3. } }";
+
+            var set = (await ScriptCompletion.For(files).Complete("res://spin.cs", text, text.IndexOf("3.", StringComparison.Ordinal) + 2))!;
+
+            Assert.Equal("The point at the middle.", await set.LineOf(set.Items.First(item => item.DisplayText == "Zero")));
+            Assert.StartsWith("Vector3 Vector3.One", await set.LineOf(set.Items.First(item => item.DisplayText == "One")));
         });
     }
 

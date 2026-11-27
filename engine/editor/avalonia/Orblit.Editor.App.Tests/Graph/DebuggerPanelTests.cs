@@ -1,6 +1,11 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Orblit.Editor.App.Graph;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Tests.Graph;
@@ -13,7 +18,7 @@ public sealed class DebuggerPanelTests
     {
         var channel = new FakeDebugChannel();
         var debugger = new GraphDebugger(channel, new GraphBreakpoints());
-        return (channel, debugger, new DebuggerPanel(debugger, _ => null));
+        return (channel, debugger, new DebuggerPanel(debugger, _ => null, KeyModifiers.Meta));
     }
 
     static void Hear(FakeDebugChannel channel, GraphDebugger debugger, DebugState state)
@@ -28,6 +33,8 @@ public sealed class DebuggerPanelTests
 
     static string Status(DebuggerPanel panel) => panel.Find<TextBlock>("debugger:status")!.Text!;
 
+    static HoverCard Card(DebuggerPanel panel, string id) => (HoverCard)ToolTip.GetTip(panel.Find<Button>($"debugger:{id}")!)!;
+
     [Fact]
     public void With_no_game_the_panel_says_so_and_every_command_is_off()
     {
@@ -35,11 +42,72 @@ public sealed class DebuggerPanelTests
         {
             var (_, _, panel) = Open();
 
-            Assert.Equal("No game is connected.", Status(panel));
+            Assert.Equal("The game is not running", Status(panel));
             foreach (var id in new[] { "pause", "continue", "step", "next", "out" })
             {
                 Assert.False(panel.Find<Button>($"debugger:{id}")!.IsEnabled, id);
             }
+        });
+    }
+
+    [Fact]
+    public void Every_run_button_is_its_icon_with_its_name_and_key_on_its_card_in_the_order_a_pause_is_stepped_through()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, panel) = Open();
+            var buttons = panel.GetVisualDescendants().OfType<Button>().Where(button => button.Tag is string id && !id.StartsWith("debugger:frame:", StringComparison.Ordinal)).ToArray();
+
+            Assert.Equal(["Pause", "DebugContinue", "DebugNext", "DebugStep", "DebugOut"], buttons.Select(button => ((EditorIcon)button.Content!).IconName));
+            Assert.Equal(["Pause", "Carry on", "Next step", "Go into", "Come out"], buttons.Select(AutomationProperties.GetName));
+
+            Assert.Equal(
+                [("Pause", "⌘Y"), ("Carry on", "F12"), ("Next step", "F10"), ("Go into", "F11"), ("Come out", "⇧F11")],
+                buttons.Select(button => (HoverCard)ToolTip.GetTip(button)!).Select(card => (card.Title, card.Key)));
+        });
+    }
+
+    [Fact]
+    public void The_keys_are_the_command_key_the_panel_is_given()
+    {
+        UiThread.Run(() =>
+        {
+            var panel = new DebuggerPanel(new GraphDebugger(new FakeDebugChannel(), new GraphBreakpoints()), _ => null, KeyModifiers.Control);
+
+            Assert.Equal(("⌃Y", "Nothing is playing. Press ⌃B first."), (Card(panel, "pause").Key, Card(panel, "pause").Line));
+        });
+    }
+
+    [Fact]
+    public void With_no_game_a_line_says_how_to_start_one_and_every_card_says_why_it_is_off()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, panel) = Open();
+
+            Assert.Equal("Nothing is playing. Press ⌘B, and these step through the graph one step at a time.", panel.Find<TextBlock>("debugger:hint")!.Text);
+            foreach (var id in new[] { "pause", "continue", "step", "next", "out" })
+            {
+                Assert.Equal("Nothing is playing. Press ⌘B first.", Card(panel, id).Line);
+            }
+        });
+    }
+
+    [Fact]
+    public void A_running_game_says_to_pause_first_and_a_paused_one_says_it_is_paused_already()
+    {
+        UiThread.Run(() =>
+        {
+            var (channel, debugger, panel) = Open();
+
+            Hear(channel, debugger, FakeDebugChannel.Running());
+            Assert.Null(panel.Find<TextBlock>("debugger:hint"));
+            Assert.Equal("Stops the game at the next step it runs.", Card(panel, "pause").Line);
+            Assert.Equal("Pause the game first.", Card(panel, "next").Line);
+
+            Hear(channel, debugger, Stopped());
+            Assert.Equal("The game is paused already.", Card(panel, "pause").Line);
+            Assert.Equal("Runs this step and stops at the next one.", Card(panel, "next").Line);
         });
     }
 
@@ -84,13 +152,13 @@ public sealed class DebuggerPanelTests
         {
             var channel = new FakeDebugChannel();
             var debugger = new GraphDebugger(channel, new GraphBreakpoints());
-            var panel = new DebuggerPanel(debugger, place => place == new DebugPlace(Script, "helper", 7) ? "Rotate y" : null);
+            var panel = new DebuggerPanel(debugger, place => place == new DebugPlace(Script, "helper", 7) ? "Rotate y" : null, KeyModifiers.Meta);
 
             Hear(channel, debugger, Stopped());
-            Assert.Equal("Paused at Rotate y.", Status(panel));
+            Assert.Equal("Paused at step 7, Rotate y.", Status(panel));
 
             Hear(channel, debugger, debugger.State with { Level = 1 });
-            Assert.Equal("Paused at Rotate y.", Status(panel));
+            Assert.Equal("Paused at step 7, Rotate y.", Status(panel));
         });
     }
 

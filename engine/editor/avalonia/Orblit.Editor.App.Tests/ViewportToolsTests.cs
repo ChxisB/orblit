@@ -65,7 +65,7 @@ public sealed class ViewportToolsTests
             var (window, _, _) = OpenIn3D();
             var toolbar = window.Toolbar;
 
-            ClickOn(toolbar.ListSelectButton, window);
+            Click(toolbar.ListSelectButton);
             Assert.True(toolbar.ListSelects);
 
             ClickOn(toolbar.RulerButton, window);
@@ -87,7 +87,7 @@ public sealed class ViewportToolsTests
 
             ClickFrame(window, viewport, new Vector2(10, 5));
 
-            Assert.Equal("Click a second point to measure to.", window.Status);
+            Assert.Equal("Click a second point. Esc stops measuring.", window.Status);
             Assert.Null(viewport.RulerSource!()!.To);
 
             // The fake scene's ground point is the frame point, so the clicks lie 30 by 40 apart.
@@ -148,7 +148,7 @@ public sealed class ViewportToolsTests
         {
             var (window, scene, viewport) = OpenIn3D();
             scene.PickAllResult.Add(FakeScene.Lamp.Handle);
-            ClickOn(window.Toolbar.ListSelectButton, window);
+            Click(window.Toolbar.ListSelectButton);
 
             ClickFrame(window, viewport, new Vector2(40, 20));
 

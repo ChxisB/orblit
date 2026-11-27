@@ -1,77 +1,122 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// One side of the window's body: its docks, or a narrow rail with a button for each dock when the side is folded.
-/// A workspace that needs the width, such as Script, folds the sides. A press on a rail button opens the side again
-/// until another workspace is chosen.
+/// One side of the window's body: a column with a place over and a place under. An empty place gives its room to the
+/// other, and a side with neither in use takes no width.
 /// </summary>
-internal sealed class DockSide : Panel
+internal sealed class DockSide : Grid
 {
-    internal const double RailWidth = 44;
+    const double LeastRow = 120;
 
-    readonly Control _docks;
-    readonly Func<IEnumerable<DockTabs>> _onSide;
-    readonly StackPanel _buttons = new() { Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center };
+    readonly Control[] _places;
+    readonly GridSplitter _between = new() { Background = Brushes.Transparent, ResizeDirection = GridResizeDirection.Rows };
+    // The height of each row and the width of the column while they are hidden.
+    readonly GridLength[] _heights = new GridLength[2];
     GridLength _width;
+    double? _least;
 
-    /// <param name="docks">What the side shows when it is open.</param>
-    /// <param name="onSide">The docks on the side now, because a dock can move to the other side.</param>
-    public DockSide(Control docks, Func<IEnumerable<DockTabs>> onSide)
+    public DockSide(Control upper, Control lower)
     {
-        _docks = docks;
-        _onSide = onSide;
-        Rail = new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(0, 8), IsVisible = false, Child = _buttons };
-        Children.Add(_docks);
-        Children.Add(Rail);
+        _places = [upper, lower];
+        RowDefinitions = [new(GridLength.Star) { MinHeight = LeastRow }, new(Gaps.Item, GridUnitType.Pixel), new(GridLength.Star) { MinHeight = LeastRow }];
+        SetRow(_between, 1);
+        Splitter.DragCompleted += (_, _) => Resized?.Invoke();
+        _between.DragCompleted += (_, _) => Resized?.Invoke();
+        SetRow(lower, 2);
+        Children.AddRange([upper, _between, lower]);
     }
 
-    /// <summary>The splitter between this side and the middle. It hides while the side is folded.</summary>
+    /// <summary>Raised when a drag of either splitter ends.</summary>
+    public event Action? Resized;
+
+    /// <summary>The upper place's share of the height the two places split between them.</summary>
+    internal double Split
+    {
+        get => RowHeight(0).Value / (RowHeight(0).Value + RowHeight(1).Value);
+        set
+        {
+            SetShare(0, value);
+            SetShare(1, 1 - value);
+        }
+    }
+
+    /// <summary>The splitter between this side and the middle. It hides while the side shows nothing.</summary>
     internal GridSplitter Splitter { get; } = new() { Background = Brushes.Transparent, ResizeDirection = GridResizeDirection.Columns };
 
-    internal Border Rail { get; }
-
-    internal bool IsFolded => Rail.IsVisible;
-
-    /// <summary>The rail's buttons, one for each dock on the side, in order.</summary>
-    internal IEnumerable<Button> RailButtons => _buttons.Children.OfType<Button>();
-
-    /// <summary>Folds the side to its rail, or opens it at the width it had.</summary>
-    public void Fold(bool fold)
+    /// <summary>While true, neither splitter moves.</summary>
+    internal bool Locked
     {
-        if (fold == IsFolded)
+        set => Splitter.IsEnabled = _between.IsEnabled = !value;
+    }
+
+    /// <summary>Lays out the side for the groups it shows now.</summary>
+    /// <param name="upper">The group shown over, or none.</param>
+    /// <param name="lower">The group shown under, or none.</param>
+    internal void Show(DockTabs? upper, DockTabs? lower)
+    {
+        ShowRow(0, upper is not null);
+        ShowRow(1, lower is not null);
+        _between.IsVisible = upper is not null && lower is not null;
+        RowDefinitions[1].Height = new GridLength(_between.IsVisible ? Gaps.Item : 0);
+        ShowColumn(upper is not null || lower is not null);
+    }
+
+    void ShowRow(int at, bool shown)
+    {
+        if (_places[at].IsVisible == shown)
         {
             return;
         }
 
-        // The window puts the side in a column of the body grid.
-        var column = ((Grid)Parent!).ColumnDefinitions[Grid.GetColumn(this)];
-        if (fold)
+        var row = RowDefinitions[at * 2];
+        if (!shown)
         {
-            _width = column.Width;
-            column.Width = new GridLength(RailWidth);
-            _buttons.Children.Clear();
-            _buttons.Children.AddRange(_onSide().Where(dock => dock.IsVisible).Select(RailButton));
+            _heights[at] = row.Height;
+        }
+
+        row.MinHeight = shown ? LeastRow : 0;
+        row.Height = shown ? _heights[at] : new GridLength(0);
+        _places[at].IsVisible = shown;
+    }
+
+    GridLength RowHeight(int at) => _places[at].IsVisible ? RowDefinitions[at * 2].Height : _heights[at];
+
+    void SetShare(int at, double share)
+    {
+        var height = new GridLength(share, GridUnitType.Star);
+        if (_places[at].IsVisible)
+        {
+            RowDefinitions[at * 2].Height = height;
         }
         else
+        {
+            _heights[at] = height;
+        }
+    }
+
+    // The window puts the side and its splitter in columns of the body grid.
+    void ShowColumn(bool shown)
+    {
+        var body = (Grid)Parent!;
+        var column = body.ColumnDefinitions[GetColumn(this)];
+        _least ??= column.MinWidth;
+        if (IsVisible && !shown)
+        {
+            _width = column.Width;
+            column.Width = new GridLength(0);
+        }
+        else if (!IsVisible && shown)
         {
             column.Width = _width;
         }
 
-        _docks.IsVisible = !fold;
-        Rail.IsVisible = fold;
-        Splitter.IsVisible = !fold;
-    }
-
-    Button RailButton(DockTabs dock)
-    {
-        var button = Parts.IconButton(dock.Icon, $"{dock.Title} dock");
-        button.Click += (_, _) => Fold(false);
-        return button;
+        column.MinWidth = shown ? _least.Value : 0;
+        body.ColumnDefinitions[GetColumn(Splitter)].Width = new GridLength(shown ? Gaps.Item : 0);
+        IsVisible = shown;
+        Splitter.IsVisible = shown;
     }
 }

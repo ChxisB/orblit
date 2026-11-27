@@ -159,6 +159,7 @@ class OS_MacOS_NSApp : public OS_MacOS {
 	id delegate = nullptr;
 	bool should_terminate = false;
 	bool main_started = false;
+	bool runs_app = false;
 
 	CFRunLoopObserverRef pre_wait_observer = nil;
 
@@ -168,6 +169,7 @@ public:
 	void start_main(); // Initializes and runs Orblit main loop.
 	void cleanup();
 	bool os_should_terminate() const { return should_terminate; }
+	bool is_running_app() const { return runs_app; }
 	int get_cmd_argc() const { return argc; }
 
 	virtual void run() override;

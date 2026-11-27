@@ -540,7 +540,8 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         if (Frame is null || Frame.PixelSize != size)
         {
             Frame?.Dispose();
-            Frame = new WriteableBitmap(size, new Vector(96, 96), PixelFormat.Rgba8888, AlphaFormat.Opaque);
+            // Rgb32 skips the fourth byte, which the engine leaves at zero.
+            Frame = new WriteableBitmap(size, new Vector(96, 96), PixelFormats.Rgb32, AlphaFormat.Opaque);
         }
 
         using (var pixels = Frame.Lock())

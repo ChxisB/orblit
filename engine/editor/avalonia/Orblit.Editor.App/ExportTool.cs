@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -27,30 +28,56 @@ internal interface IExportGame
 }
 
 /// <summary>
-/// The Export dialog: the project's export presets, a preset for this computer, the templates the engine builds
-/// from, and the export itself. The export runs in an engine of its own, so the editor stays usable meanwhile.
+/// The Export game dialog: the places the game will run, which the engine calls export presets, one for this
+/// computer, the build parts the engine builds from, and the export itself. The export runs in an engine of its
+/// own, so the editor stays usable meanwhile.
 /// </summary>
 internal sealed class ExportTool
 {
-    const string NoPresets = "The project has no export presets. Add one for this computer.";
+    internal const string NoPlace = "Add a place to export to first.";
+    internal const string NoPath = "Pick where to save the app first.";
+
+    // The word for the computer the editor runs on, as a place the game will run.
+    internal static readonly string ThisMachine = OperatingSystem.IsMacOS() ? "this Mac" : "this computer";
 
     readonly ComboBox _presets = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
-    readonly TextBox _path = new() { PlaceholderText = "Where the game goes" };
+    readonly TextBox _path = new() { PlaceholderText = "Where the app goes" };
     readonly TextBlock _status = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
+    readonly TextBlock _why = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _download = new() { Content = "Download", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, IsEnabled = false };
-    readonly Button _install = new() { Content = "Install from File...", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, IsEnabled = false };
+    readonly Button _install = new() { Content = "Install from a file…", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, IsEnabled = false };
+    readonly Button _change = new() { Content = "Change…", Classes = { EditorTheme.TextButton, EditorTheme.Ghost } };
+    readonly StackPanel _none;
+    readonly StackPanel _places;
     IReadOnlyList<ExportPreset> _list = [];
     IExportGame? _project;
     bool _exporting;
 
     public ExportTool()
     {
-        AddPresetButton = new Button { Content = "Add Preset for This Computer", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, HorizontalAlignment = HorizontalAlignment.Left };
-        ToolTip.SetTip(_download, "Download the export templates for this version of the engine from orblitengine.com");
-        ToolTip.SetTip(_install, "Unpack a .tpz of export templates for this version of the engine");
-        var templates = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _download, _install } };
-        var body = new StackPanel { Spacing = 10, Children = { Parts.Labeled("Preset", _presets, AddPresetButton), Parts.Labeled("Export to", _path), Parts.Labeled("Templates", templates), _status } };
-        Dialog = new Dialog("Export", "Build the game as a program that runs without the editor.", body) { MainText = "Export" };
+        AddPresetButton = new Button { Content = $"Add {ThisMachine}", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, HorizontalAlignment = HorizontalAlignment.Left };
+        Card(AddPresetButton, $"Add {ThisMachine}", "Makes a place the game will run, with its own settings.", $"{Capital(ThisMachine)} already has one.");
+        Card(_download, "Download", "Gets the build parts for this version from orblitengine.com.", "Downloading now. It can take a few minutes.");
+        Card(_install, "Install from a file…", "Unpacks a .tpz file of build parts you already have.", "Wait for the download to finish.");
+        new HoverCard("Change…", "Pick the folder and name of the app.").On(_change);
+        _none = new StackPanel
+        {
+            Spacing = Gaps.Tight,
+            Children =
+            {
+                new TextBlock { Text = "Nowhere to export to yet", FontWeight = FontWeight.SemiBold },
+                new TextBlock { Text = $"Add a place the game will run, like {ThisMachine}. Each one keeps its own settings.", FontSize = 12, Foreground = EditorBrushes.TextSoft, TextWrapping = TextWrapping.Wrap },
+            },
+        };
+        _places = Parts.Labeled("Runs on", _presets);
+        DockPanel.SetDock(_change, Dock.Right);
+        _change.Margin = new Thickness(Gaps.Item, 0, 0, 0);
+        var saveTo = new DockPanel { Children = { _change, _path } };
+        var parts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Children = { _download, _install } };
+        var partsLine = new TextBlock { Text = "Orblit needs these once per version to build apps. Called export templates.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
+        var body = new StackPanel { Spacing = Gaps.Group, Children = { _none, _places, AddPresetButton, Parts.Labeled("Save the app to", saveTo), Parts.Labeled("Build parts", parts, partsLine), _status } };
+        Dialog = new Dialog("Export game", "Builds your game as an app that runs without Orblit.", body) { MainText = "Export", EngineName = "Export", Hint = _why };
+        new HoverCard("Export", "Builds the app in the place you picked.").On(Dialog.MainButton);
         _presets.SelectionChanged += (_, _) =>
         {
             _path.Text = Picked?.Path ?? "";
@@ -65,6 +92,13 @@ internal sealed class ExportTool
             }
         };
         AddPresetButton.Click += (_, _) => AddPreset();
+        _change.Click += async (_, _) =>
+        {
+            if (await PickPathAsync() is { } path)
+            {
+                _path.Text = path;
+            }
+        };
         _download.Click += async (_, _) => await DownloadAsync();
         _install.Click += async (_, _) =>
         {
@@ -89,6 +123,13 @@ internal sealed class ExportTool
 
     internal TextBlock Status => _status;
 
+    /// <summary>The footer line that says why Export is off.</summary>
+    internal TextBlock WhyOff => _why;
+
+    internal Control NoneYet => _none;
+
+    internal Button ChangeButton => _change;
+
     ExportPreset? Picked => _presets.SelectedIndex >= 0 && _presets.SelectedIndex < _list.Count ? _list[_presets.SelectedIndex] : null;
 
     public void Show(IExportGame project)
@@ -105,7 +146,7 @@ internal sealed class ExportTool
         // A run that is still going keeps its line.
         if (!_exporting)
         {
-            _status.Text = _list.Count == 0 ? NoPresets : "";
+            _status.Text = "";
         }
 
         Dialog.Open();
@@ -116,6 +157,8 @@ internal sealed class ExportTool
         _list = _project?.Presets() ?? [];
         _presets.ItemsSource = _list.Select(preset => preset.Name).ToArray();
         _presets.SelectedIndex = _list.Count > 0 ? pick : -1;
+        _none.IsVisible = _list.Count == 0;
+        _places.IsVisible = _list.Count > 0;
         Refresh();
     }
 
@@ -123,6 +166,8 @@ internal sealed class ExportTool
     void Refresh()
     {
         Dialog.MainButton.IsEnabled = !_exporting && Picked is not null && !string.IsNullOrWhiteSpace(_path.Text);
+        _why.Text = _exporting ? "" : Picked is null ? NoPlace : string.IsNullOrWhiteSpace(_path.Text) ? NoPath : "";
+        _why.IsVisible = _why.Text != "";
         AddPresetButton.IsEnabled = _project is not null && _list.All(preset => preset.Platform != ExportPresets.ThisComputer.Platform);
     }
 
@@ -133,11 +178,11 @@ internal sealed class ExportTool
             _project!.AddPreset();
             // The new preset is the last one.
             ShowPresets(_list.Count);
-            _status.Text = $"Added a preset for {ExportPresets.ThisComputer.Platform}.";
+            _status.Text = $"Added {ThisMachine}. It keeps its own settings.";
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _status.Text = $"The preset was not added. {error.Message}";
+            _status.Text = $"{Capital(ThisMachine)} was not added. {error.Message}";
         }
     }
 
@@ -171,7 +216,7 @@ internal sealed class ExportTool
         try
         {
             _project!.InstallTemplates(tpz);
-            _status.Text = $"Installed the templates from {name}.";
+            _status.Text = $"Installed the build parts from {name}.";
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException)
         {
@@ -181,20 +226,20 @@ internal sealed class ExportTool
 
     async Task DownloadAsync()
     {
-        _download.IsEnabled = false;
-        _status.Text = "Downloading the export templates. They are large, so this can take a few minutes.";
+        _download.IsEnabled = _install.IsEnabled = false;
+        _status.Text = "Downloading the build parts. They are large, so this can take a few minutes.";
         try
         {
             await _project!.DownloadTemplates();
-            _status.Text = "Downloaded and installed the export templates.";
+            _status.Text = "Downloaded and installed the build parts.";
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or Win32Exception)
         {
-            _status.Text = $"The templates were not downloaded. {error.Message}";
+            _status.Text = $"The build parts were not downloaded. {error.Message}";
         }
         finally
         {
-            _download.IsEnabled = true;
+            _download.IsEnabled = _install.IsEnabled = true;
         }
     }
 
@@ -205,8 +250,29 @@ internal sealed class ExportTool
             return null;
         }
 
-        var options = new FilePickerOpenOptions { Title = "Install export templates", FileTypeFilter = [new FilePickerFileType("Export templates") { Patterns = ["*.tpz"] }] };
+        var options = new FilePickerOpenOptions { Title = "Install build parts", FileTypeFilter = [new FilePickerFileType("Build parts") { Patterns = ["*.tpz"] }] };
         var picked = await top.StorageProvider.OpenFilePickerAsync(options);
         return picked.Count > 0 ? picked[0].TryGetLocalPath() : null;
     }
+
+    async Task<string?> PickPathAsync()
+    {
+        if (TopLevel.GetTopLevel(Dialog) is not { } top)
+        {
+            return null;
+        }
+
+        var options = new FilePickerSaveOptions { Title = "Save the app to", SuggestedFileName = Path.GetFileName(_path.Text ?? "") };
+        var picked = await top.StorageProvider.SaveFilePickerAsync(options);
+        return picked?.TryGetLocalPath();
+    }
+
+    static void Card(Button button, string title, string does, string whyOff)
+    {
+        var card = new HoverCard(title, does);
+        card.SaysWhyOff(button, whyOff);
+        card.On(button);
+    }
+
+    static string Capital(string words) => char.ToUpperInvariant(words[0]) + words[1..];
 }

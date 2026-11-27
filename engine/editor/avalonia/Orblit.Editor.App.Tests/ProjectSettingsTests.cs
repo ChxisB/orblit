@@ -104,4 +104,15 @@ public sealed class ProjectSettingsTests : IDisposable
 
         Assert.Equal("[application]\n\nconfig/name=\"crate\"\n\n[rendering]\n\ntextures/etc2=true\n", Text());
     }
+
+    [Fact]
+    public void A_name_with_a_quote_and_a_backslash_is_written_escaped_and_reads_back_as_typed()
+    {
+        Write("[application]\n\nconfig/name=\"crate\"\nrun/main_scene=\"res://main.oscn\"\n");
+
+        ProjectSettings.SetName(_folder, "The \"Big\" C:\\Crate");
+
+        Assert.Equal("[application]\n\nconfig/name=\"The \\\"Big\\\" C:\\\\Crate\"\nrun/main_scene=\"res://main.oscn\"\n", Text());
+        Assert.Equal("The \"Big\" C:\\Crate", ProjectSettings.NameOf(_folder));
+    }
 }

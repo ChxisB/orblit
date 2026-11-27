@@ -7,6 +7,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Microsoft.CodeAnalysis.Completion;
 using Orblit.Editor.App.Theme;
@@ -14,8 +15,9 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The completions at a code box's caret, in a list under it. Ctrl+Space or a typed dot asks for them. Up and Down
-/// move, Enter and Tab put the pick in, Escape closes, and typing a name narrows the list.
+/// The completions at a code box's caret, in a list under it. Each row has a line on what it is, read when the row
+/// is built. Ctrl+Space or a typed dot asks for them. Up and Down move, Enter and Tab put the pick in, Escape closes,
+/// and typing a name narrows the list.
 /// </summary>
 internal sealed class CompletionPopup
 {
@@ -39,7 +41,7 @@ internal sealed class CompletionPopup
     {
         _code = code;
         _ask = ask;
-        _list.ItemTemplate = new FuncDataTemplate<CompletionItem>((item, _) => item is null ? null : Row(item));
+        _list.ItemTemplate = new FuncDataTemplate<CompletionItem>((item, _) => item is null || _set is not { } set ? null : Row(set, item));
         _popup = new Popup
         {
             Placement = PlacementMode.AnchorAndGravity,
@@ -48,12 +50,19 @@ internal sealed class CompletionPopup
             IsLightDismissEnabled = true,
             Child = new Border
             {
-                Padding = new Thickness(4),
+                Padding = new Thickness(Gaps.Tight),
                 CornerRadius = EditorTheme.Corners,
                 Background = EditorBrushes.Raised,
                 BorderBrush = EditorBrushes.LineStrong,
                 BorderThickness = new Thickness(1),
-                Child = _list,
+                Child = new StackPanel
+                {
+                    Children =
+                    {
+                        _list,
+                        new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Group, Margin = new Thickness(Gaps.Item, Gaps.Item, Gaps.Item, Gaps.Joined), Children = { Parts.KeyHint("insert", "↵"), Parts.KeyHint("close", "esc") } },
+                    },
+                },
             },
         };
         code.Editor.AddHandler(InputElement.KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
@@ -79,14 +88,17 @@ internal sealed class CompletionPopup
     /// <summary>The last ask or insert, for a test to wait on.</summary>
     internal Task Asking { get; private set; } = Task.CompletedTask;
 
-    static DockPanel Row(CompletionItem item)
+    // The line is read off the UI thread when the row first shows, so a long list reads only the rows on screen.
+    static DockPanel Row(CompletionSet set, CompletionItem item)
     {
         var kind = item.Tags.FirstOrDefault() ?? "";
-        var detail = new TextBlock { Text = kind.ToLowerInvariant(), FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var detail = new TextBlock { Text = kind.ToLowerInvariant(), FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Group, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(detail, Dock.Right);
         var name = new TextBlock { Text = item.DisplayText + item.DisplayTextSuffix, FontFamily = EditorTheme.Mono, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { Parts.RowIcon(IconOf(kind)), name } };
-        return new DockPanel { Children = { detail, row } };
+        var line = new TextBlock { FontSize = 11, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(Gaps.Section, 0, 0, 0) };
+        line.AttachedToVisualTree += async (_, _) => line.Text = await Task.Run(() => set.LineOf(item));
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { Parts.RowIcon(IconOf(kind)), name } };
+        return new DockPanel { Children = { detail, new StackPanel { Children = { row, line } } } };
     }
 
     // The outline's icons, where Roslyn's kind has one.

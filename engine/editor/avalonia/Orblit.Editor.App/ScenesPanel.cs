@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
@@ -14,24 +15,24 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App;
 
 /// <summary>
-/// The body of the FileSystem tab: a row with the history arrows, the path and the layout button, a filter row,
-/// and the tree of the project's scenes, C# scripts and graph scripts, each tinted by kind. A double press or Enter
-/// on a file raises it to open, and a right click opens the file menu.
+/// The body of the Files tab: a row with the path and the Tree or List switch, a row with the filter and the sort
+/// menu, and the tree of the project's files, each tinted by kind and named in plain words. A double press or
+/// Enter on a file raises it to open, and a right click opens a menu of what fits the picked row.
 /// </summary>
 internal sealed class ScenesPanel : Grid
 {
     const double PathRowHeight = 36;
     const double BoxHeight = 28;
 
-    // The tree starts 14 pixels under the filter in the reference.
-    const double TreeTop = 14;
+    // The sorts the menu offers: the word the button shows, the name of the item and its note.
+    static readonly (string Word, string Item, string Note)[] s_sorts =
+    [
+        ("Name", "Name", "A to Z"),
+        ("Newest", "Newest first", "The last file you changed goes on top"),
+        ("Kind", "Kind", "Scenes, then scripts, then the rest"),
+    ];
 
-    const string ListTip = "Show the files as a list";
-    const string TreeTip = "Show the files as a tree";
-    const string NewestTip = "Sort the files newest first";
-    const string NameTip = "Sort the files by name";
-
-    readonly TreeView _tree = new() { Margin = new Thickness(0, TreeTop, 0, 0) };
+    readonly TreeView _tree = new() { Margin = new Thickness(0, Gaps.Group, 0, 0) };
     readonly HashSet<string> _opened = [];
     readonly TextBox _path = new()
     {
@@ -40,52 +41,40 @@ internal sealed class ScenesPanel : Grid
         Height = BoxHeight,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Top,
-        Margin = new Thickness(0, 3, 0, 0),
+        Margin = new Thickness(0, Gaps.Tight, 0, 0),
     };
     readonly TextBox _filter = new()
     {
-        PlaceholderText = "Filter files",
+        PlaceholderText = "Find a file",
         Height = BoxHeight,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Center,
         InnerRightContent = Parts.SearchIcon(),
     };
-    readonly Button _back = Parts.Tight(Parts.IconButton("Back", "Go back"));
-    readonly Button _forward = Parts.Tight(Parts.IconButton("Forward", "Go forward"));
-    readonly Button _layout = Parts.Tight(Parts.IconButton("Panels1", ListTip));
-    readonly Button _sort = Parts.Tight(Parts.IconButton("Sort", NewestTip));
+    // The switch is two pixels taller than the path box, so it sits a pixel higher to share its middle.
+    readonly Segments _layout = new("Tree", "List") { VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, Gaps.Joined, 0, 0) };
+    readonly TextBlock _sortWord = new() { Text = s_sorts[0].Word, VerticalAlignment = VerticalAlignment.Center };
+    readonly Button _sort;
+    readonly MenuItem[] _sorts;
+    readonly StackPanel _noMatch = Parts.EmptyState("Search", "", "Search looks at file names in every folder.");
+    readonly ContextMenu _menu = new();
     readonly TreeGuides _guides;
     readonly ITextClipboard _clipboard;
+    readonly KeyModifiers _command;
     IReadOnlyList<string> _files = [];
     IReadOnlyDictionary<string, DateTime> _modified = new Dictionary<string, DateTime>();
+    Func<string, string> _sceneKind = _ => "";
     string _open = "";
-    bool _flat;
-    bool _newest;
+    int _order;
 
     public ScenesPanel(KeyModifiers command, ITextClipboard? clipboard = null)
     {
+        _command = command;
         _clipboard = clipboard ?? new WindowClipboard(this);
         RowDefinitions = new RowDefinitions($"{PathRowHeight},{BoxHeight},*");
-        _back.IsEnabled = false;
-        _forward.IsEnabled = false;
-        foreach (var arrow in new[] { _back, _forward, _layout })
-        {
-            arrow.VerticalAlignment = VerticalAlignment.Top;
-            arrow.Margin = new Thickness(0, 5, 0, 0);
-        }
-
-        _layout.Click += (_, _) =>
-        {
-            _flat = !_flat;
-            ToolTip.SetTip(_layout, _flat ? TreeTip : ListTip);
-            Rebuild();
-        };
-        _sort.Click += (_, _) =>
-        {
-            _newest = !_newest;
-            ToolTip.SetTip(_sort, _newest ? NameTip : NewestTip);
-            Rebuild();
-        };
+        _sorts = [.. s_sorts.Select((sort, at) => Parts.ActionItem(sort.Item, () => SortBy(at), note: sort.Note))];
+        _sort = SortMenu(_sortWord, _sorts);
+        _layout.Changed += Rebuild;
         _tree.Styles.Add(new Style(x => x.OfType<TreeViewItem>())
         {
             Setters =
@@ -99,18 +88,9 @@ internal sealed class ScenesPanel : Grid
         _tree.AddHandler(TreeViewItem.CollapsedEvent, (_, e) => Remember(e.Source, false));
         // The row that took the press, not the selected one: a press on an arrow or on empty space opens nothing.
         _tree.DoubleTapped += (_, e) => Activate((e.Source as Visual)?.FindAncestorOfType<TreeViewItem>(true)?.DataContext);
-        _tree.KeyDown += (_, e) =>
-        {
-            if (e.Key == Key.Enter)
-            {
-                Activate(_tree.SelectedItem);
-            }
-            else if (e.Key == Key.C && e.KeyModifiers == (command | KeyModifiers.Alt))
-            {
-                CopyPath();
-            }
-        };
-        _tree.ContextMenu = FileMenu(command);
+        _tree.KeyDown += (_, e) => PressKey(e);
+        _tree.ContextMenu = _menu;
+        _menu.Opening += (_, e) => e.Cancel = _tree.SelectedItem is null;
         _tree.SelectionChanged += (_, _) => ShowSelected();
         // TextChanged waits for a render, so the property is the one that fires at once.
         _filter.PropertyChanged += (_, e) =>
@@ -120,22 +100,19 @@ internal sealed class ScenesPanel : Grid
                 Rebuild();
             }
         };
-        var pathRow = new Grid { ColumnDefinitions = new ColumnDefinitions("24,24,6,*,6,24"), Margin = new Thickness(2, 0, 7, 0) };
-        Place(pathRow, _back, 0);
-        Place(pathRow, _forward, 1);
-        Place(pathRow, _path, 3);
-        Place(pathRow, _layout, 5);
-        var filterRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,6,24"), Margin = new Thickness(4, 0, 7, 0) };
-        Place(filterRow, _filter, 0);
-        Place(filterRow, _sort, 2);
-        SetRow(filterRow, 1);
-        SetRow(_tree, 2);
+        _filter.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape && _filter.Text is { Length: > 0 })
+            {
+                e.Handled = true;
+                _filter.Text = "";
+            }
+        };
+        ClearSearchButton.Click += (_, _) => _filter.Text = "";
+        _noMatch.Children.Add(ClearSearchButton);
+        _noMatch.VerticalAlignment = VerticalAlignment.Top;
         _guides = new TreeGuides(_tree);
-        SetRow(_guides, 2);
-        Children.Add(pathRow);
-        Children.Add(filterRow);
-        Children.Add(_tree);
-        Children.Add(_guides);
+        Lay();
     }
 
     /// <summary>Raised with the res:// path of the file to open.</summary>
@@ -144,11 +121,22 @@ internal sealed class ScenesPanel : Grid
     /// <summary>Raised when the file menu asks for a new graph script.</summary>
     public event Action? NewGraphRequested;
 
-    /// <summary>Opens the selected file. It is on while a file is selected.</summary>
-    internal Button OpenButton { get; } = new();
+    /// <summary>Raised with the res:// path of the folder the new scene goes in.</summary>
+    public event Action<string>? NewSceneRequested;
 
-    /// <summary>Copies the res:// path of the selected row. It is on while a row is selected.</summary>
-    internal Button CopyPathButton { get; } = new();
+    /// <summary>Raised with the res:// path of the scene the game starts in.</summary>
+    public event Action<string>? PlayRequested;
+
+    /// <summary>Raised with the res:// path of the scene to put a copy of inside the open one.</summary>
+    public event Action<string>? UseRequested;
+
+    /// <summary>Empties the filter. It shows while no file matches.</summary>
+    internal Button ClearSearchButton { get; } = new()
+    {
+        Content = Parts.Keyed("Clear the search", "esc"),
+        HorizontalAlignment = HorizontalAlignment.Center,
+        Classes = { EditorTheme.TextButton, EditorTheme.Small },
+    };
 
     internal TreeView Tree => _tree;
 
@@ -158,19 +146,24 @@ internal sealed class ScenesPanel : Grid
 
     internal TextBox FilterBox => _filter;
 
-    internal Button BackButton => _back;
-
-    internal Button ForwardButton => _forward;
-
-    internal Button LayoutButton => _layout;
+    internal Segments LayoutChoice => _layout;
 
     internal Button SortButton => _sort;
 
-    /// <summary>Shows the files. Their times order them when the sort is newest first.</summary>
-    public void Show(IReadOnlyList<string> files, IReadOnlyDictionary<string, DateTime> modified)
+    internal IReadOnlyList<MenuItem> SortItems => _sorts;
+
+    /// <summary>What shows in place of the tree when the filter matches no file.</summary>
+    internal StackPanel NoMatch => _noMatch;
+
+    /// <summary>
+    /// Shows the files. Their times order them when the sort is newest first, and the kind of each scene, such as
+    /// 3D, goes in its row.
+    /// </summary>
+    public void Show(IReadOnlyList<string> files, IReadOnlyDictionary<string, DateTime> modified, Func<string, string> sceneKind)
     {
         _files = files;
         _modified = modified;
+        _sceneKind = sceneKind;
         Rebuild();
     }
 
@@ -178,27 +171,103 @@ internal sealed class ScenesPanel : Grid
     public void MarkOpen(string resourcePath)
     {
         _open = resourcePath;
-        foreach (var name in _tree.GetVisualDescendants().OfType<TextBlock>().Where(text => text.DataContext is FileNode))
+        foreach (var name in _tree.GetVisualDescendants().OfType<TextBlock>().Where(text => text.Tag is FileNode))
         {
-            Tint(name, (FileNode)name.DataContext!);
+            Tint(name, (FileNode)name.Tag!);
         }
+
+        ShowMenu();
     }
+
+    /// <summary>Selects a file in the tree. The search clears and the folders above the file open.</summary>
+    public void Reveal(string resourcePath)
+    {
+        for (var end = resourcePath.IndexOf('/', FileTree.Root.Length); end > 0; end = resourcePath.IndexOf('/', end + 1))
+        {
+            _opened.Add(resourcePath[..(end + 1)]);
+        }
+
+        _filter.Text = "";
+        _layout.SelectedIndex = 0;
+        Rebuild();
+        _tree.SelectedItem = Find(_tree.ItemsSource as IReadOnlyList<FileNode> ?? [], resourcePath);
+    }
+
+    static FileNode? Find(IEnumerable<FileNode> nodes, string resourcePath) =>
+        nodes.Select(node => node.Path == resourcePath ? node : Find(node.Children, resourcePath)).FirstOrDefault(found => found is not null);
+
+    void Lay()
+    {
+        var pathRow = new Grid { ColumnDefinitions = new ColumnDefinitions($"*,{Gaps.Item},Auto"), Margin = new Thickness(Gaps.Item, 0) };
+        Place(pathRow, _path, 0);
+        Place(pathRow, _layout, 2);
+        var filterRow = new Grid { ColumnDefinitions = new ColumnDefinitions($"*,{Gaps.Item},Auto"), Margin = new Thickness(Gaps.Item, 0) };
+        Place(filterRow, _filter, 0);
+        Place(filterRow, _sort, 2);
+        SetRow(filterRow, 1);
+        SetRow(_tree, 2);
+        SetRow(_guides, 2);
+        SetRow(_noMatch, 2);
+        Children.AddRange([pathRow, filterRow, _tree, _guides, _noMatch]);
+    }
+
+    // The word of the sort in use, and an arrow that says a menu opens.
+    static Button SortMenu(TextBlock word, MenuItem[] sorts)
+    {
+        var chevron = new EditorIcon("GuiDropdown") { VerticalAlignment = VerticalAlignment.Center };
+        TextElement.SetForeground(chevron, EditorBrushes.TextDim);
+        foreach (var item in sorts)
+        {
+            item.ToggleType = MenuItemToggleType.Radio;
+        }
+
+        sorts[0].IsChecked = true;
+        Control[] items = [Parts.MenuHeading("Sort by"), .. sorts];
+        var button = new Button
+        {
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { word, chevron } },
+            VerticalAlignment = VerticalAlignment.Center,
+            Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
+            Flyout = new MenuFlyout { ItemsSource = items },
+        };
+        return new HoverCard("Sort by", "Picks the order of the files in each folder. Folders stay on top.").On(button);
+    }
+
+    void SortBy(int order)
+    {
+        _order = order;
+        _sortWord.Text = s_sorts[order].Word;
+        foreach (var (item, at) in _sorts.Select((item, at) => (item, at)))
+        {
+            item.IsChecked = at == order;
+        }
+
+        Rebuild();
+    }
+
+    IComparer<string>? Order() => _order switch
+    {
+        1 => FileTree.Newest(_modified),
+        2 => FileTree.ByKind,
+        _ => null,
+    };
 
     // The first row starts selected: the project folder, or the first file of a list.
     void Rebuild()
     {
         var text = (_filter.Text ?? "").Trim();
-        var order = _newest ? FileTree.Newest(_modified) : null;
-        var rows = text.Length == 0 && !_flat ? FileTree.Build(_files, order) : FileTree.Matches(_files, text, order);
+        var rows = text.Length == 0 && _layout.SelectedIndex == 0 ? FileTree.Build(_files, Order()) : FileTree.Matches(_files, text, Order());
         _tree.ItemsSource = rows;
         _tree.SelectedItem = rows.FirstOrDefault();
+        _noMatch.IsVisible = rows.Count == 0 && text.Length > 0;
+        // The title is the second line of the empty state, under its mark.
+        ((TextBlock)_noMatch.Children[1]).Text = $"No file matches \"{text}\"";
         ShowSelected();
     }
 
     void ShowSelected()
     {
-        CopyPathButton.IsEnabled = _tree.SelectedItem is FileNode;
-        OpenButton.IsEnabled = _tree.SelectedItem is FileNode { Kind: not FileKind.Folder };
+        ShowMenu();
         // An imported file opens in the Import tab, which sits beside the tree, so a click is enough.
         if (_tree.SelectedItem is FileNode { Kind: FileKind.Imported } imported)
         {
@@ -206,30 +275,48 @@ internal sealed class ScenesPanel : Grid
         }
     }
 
-    // The file menu acts on the selected row. What the editor cannot do to a file yet says so.
-    ContextMenu FileMenu(KeyModifiers command)
+    void ShowMenu() => _menu.ItemsSource = _tree.SelectedItem is FileNode node ? MenuFor(node) : [];
+
+    // The menu holds what fits the picked row. A folder makes new things in it. A file opens, and a scene also
+    // starts the game or goes inside the open scene.
+    Control[] MenuFor(FileNode node)
     {
-        OpenButton.Click += (_, _) => Activate(_tree.SelectedItem);
-        CopyPathButton.Click += (_, _) => CopyPath();
-        return new ContextMenu
+        var copy = Parts.ActionItem("Copy path", CopyPath, new KeyGesture(Key.C, _command | KeyModifiers.Alt), $"Copies {node.Path}");
+        if (node.Kind == FileKind.Folder)
         {
-            ItemsSource = new Control[]
-            {
-                Parts.PressItem("Open", OpenButton),
-                Parts.SoonItem("Show in Finder", _tree),
-                Parts.PressItem("Copy Path", CopyPathButton, new KeyGesture(Key.C, command | KeyModifiers.Alt)),
+            return
+            [
+                Parts.MenuHeading("Make"),
+                Parts.ActionItem("New scene…", () => NewSceneRequested?.Invoke(node.Path), note: "A new scene in this folder"),
+                Parts.ActionItem("New graph…", () => NewGraphRequested?.Invoke(), note: "A script made of steps"),
                 new Separator(),
-                Parts.SoonItem("Rename...", _tree),
-                Parts.SoonItem("Duplicate...", _tree),
-                Parts.SoonItem("Move To...", _tree),
-                new Separator(),
-                Parts.SoonItem("New Script...", _tree),
-                Parts.ActionItem("New Graph Script...", () => NewGraphRequested?.Invoke()),
-                Parts.SoonItem("New Folder...", _tree),
-                new Separator(),
-                Parts.SoonItem("Delete", _tree),
-            },
-        };
+                copy,
+            ];
+        }
+
+        var open = Parts.ActionItem("Open", () => Activate(node), new KeyGesture(Key.Enter), node.Kind == FileKind.Imported ? "Shows how it comes in" : $"Opens {node.Name}");
+        return node.Kind == FileKind.Scene ? [open, .. SceneItems(node), new Separator(), copy] : [open, new Separator(), copy];
+    }
+
+    // shortcut: Play from this scene has no key, because the window's key plays the open scene. Give it one if people ask.
+    MenuItem[] SceneItems(FileNode scene)
+    {
+        var self = scene.Path == _open;
+        var use = Parts.ActionItem("Use inside the open scene", () => UseRequested?.Invoke(scene.Path), note: self ? $"You are in {scene.Name}. A scene can't hold itself." : "Same as Add a scene inside");
+        use.IsEnabled = !self;
+        return [Parts.ActionItem("Play from this scene", () => PlayRequested?.Invoke(scene.Path), note: "Starts the game here"), use];
+    }
+
+    void PressKey(KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            Activate(_tree.SelectedItem);
+        }
+        else if (e.Key == Key.C && e.KeyModifiers == (_command | KeyModifiers.Alt))
+        {
+            CopyPath();
+        }
     }
 
     // shortcut: a clipboard that fails says nothing. Raise the fault to the status line when one is seen.
@@ -269,18 +356,25 @@ internal sealed class ScenesPanel : Grid
         }
     }
 
+    // The name carries its row, so marking the open scene tints the name and not the kind beside it.
     Control Row(FileNode node)
     {
-        var name = new TextBlock { Text = node.Name, VerticalAlignment = VerticalAlignment.Center };
+        var name = new TextBlock { Text = node.Name, Tag = node, VerticalAlignment = VerticalAlignment.Center };
         Tint(name, node);
+        var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { name } };
+        if (node.Kind != FileKind.Folder && Search.KindText(node.Path, _sceneKind) is { Length: > 0 } kind)
+        {
+            label.Children.Add(new TextBlock { Text = kind, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center });
+        }
+
         var highlight = new RowHighlight();
-        SetColumn(name, 1);
+        SetColumn(label, 1);
         SetColumnSpan(highlight, 2);
         var row = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("Auto,*"),
             Margin = new Thickness(-EditorTheme.RowOverhang, 0, 0, 0),
-            Children = { highlight, Parts.RowIcon(IconOf(node.Kind), TintOf(node.Kind)), name },
+            Children = { highlight, Parts.RowIcon(IconOf(node.Kind), TintOf(node.Kind)), label },
         };
         // A nested row's item does not raise the tree's ContainerPrepared, so the row opens its own item.
         row.AttachedToVisualTree += (_, _) =>
@@ -293,7 +387,7 @@ internal sealed class ScenesPanel : Grid
         return row;
     }
 
-    static string IconOf(FileKind kind) => kind switch
+    internal static string IconOf(FileKind kind) => kind switch
     {
         FileKind.Folder => "Folder",
         FileKind.Scene => "SceneFile",
@@ -302,7 +396,7 @@ internal sealed class ScenesPanel : Grid
         _ => "GraphFile",
     };
 
-    static IBrush TintOf(FileKind kind) => kind switch
+    internal static IBrush TintOf(FileKind kind) => kind switch
     {
         FileKind.Folder => EditorBrushes.FolderIcon,
         FileKind.Scene => EditorBrushes.SceneIcon,

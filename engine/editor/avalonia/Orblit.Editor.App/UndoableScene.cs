@@ -80,6 +80,8 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public DateTime ModifiedOf(string resourcePath) => scene.ModifiedOf(resourcePath);
 
+    public string SceneKindOf(string resourcePath) => scene.SceneKindOf(resourcePath);
+
     public IReadOnlyList<string> ClassChainOf(nint entity) => scene.ClassChainOf(entity);
 
     public IReadOnlyList<EntityProperty> PropertiesOf(nint entity) => scene.PropertiesOf(entity);
@@ -101,14 +103,18 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public bool IsPlaying => scene.IsPlaying;
 
+    public bool EndedWithError => scene.EndedWithError;
+
     public int? GameId => scene.GameId;
 
     public IDebugChannel Csharp => scene.Csharp;
 
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags) =>
-        scene.Play(breakpoints, codeBreakpoints, flags);
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags, int copies) =>
+        scene.Play(breakpoints, codeBreakpoints, flags, copies);
 
     public void Stop() => scene.Stop();
+
+    public void ShowGameWindow() => scene.ShowGameWindow();
 
     public void Restore(DetachedEntity detached) => scene.Restore(detached);
 

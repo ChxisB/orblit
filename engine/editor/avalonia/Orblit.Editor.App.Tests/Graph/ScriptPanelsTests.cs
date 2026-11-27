@@ -1,7 +1,10 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Orblit.Editor.App.Graph;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Tests.Graph;
@@ -63,8 +66,8 @@ public sealed class ScriptPanelsTests
             Click(panels, "signal:add");
             Click(panels, "function:add");
 
-            Assert.Equal(["AddVariable variable 0", "AddVariable variable2 0", "AddSignal signal", "AddFunction function"], source.Calls);
-            Assert.NotNull(panels.Find<TextBox>("variable:variable2:name"));
+            Assert.Equal(["AddVariable value 0", "AddVariable value2 0", "AddSignal message", "AddFunction action"], source.Calls);
+            Assert.NotNull(panels.Find<TextBox>("variable:value2:name"));
         });
     }
 
@@ -76,7 +79,7 @@ public sealed class ScriptPanelsTests
             var (source, panels) = Open();
             Click(panels, "variable:add");
             var tool = panels.VariableTool;
-            Assert.Equal("variable", tool.NameBox.Text);
+            Assert.Equal("value", tool.NameBox.Text);
 
             tool.NameBox.Text = "speed";
             tool.TypeBox.SelectedIndex = 3;
@@ -94,51 +97,179 @@ public sealed class ScriptPanelsTests
 
     static GraphStepEntry Virtual(string name, string group = "Entity") => new("event", group, name, new Dictionary<string, string> { ["arguments"] = "[]" });
 
-    static IReadOnlyList<string> Offered(ScriptPanels panels) => ((IEnumerable<string>)panels.Find<ComboBox>("function:override")!.ItemsSource!).ToList();
+    static ScriptPanels WithStarts(FakeGraphSource source, params string[] names)
+    {
+        source.Overrides.AddRange(names.Select(name => Virtual(name)));
+        return new ScriptPanels(source);
+    }
+
+    static MenuFlyout StartMenu(ScriptPanels panels) => (MenuFlyout)panels.Find<Button>("start:add")!.Flyout!;
+
+    // Each item by its name, with a heading as its upper-case words and a submenu as its name, then its items.
+    static IReadOnlyList<string> Listed(IEnumerable<object?> items) =>
+        [.. items.OfType<MenuItem>().SelectMany(item => item.Header is TextBlock heading
+            ? [heading.Text!]
+            : item.ItemCount > 0 ? Listed(item.Items).Select(under => $"{AutomationProperties.GetName(item)} > {under}") : [AutomationProperties.GetName(item) ?? ""])];
+
+    static MenuItem StartItem(ScriptPanels panels, string name) =>
+        StartMenu(panels).Items.OfType<MenuItem>().SelectMany(item => item.ItemCount > 0 ? item.Items.OfType<MenuItem>() : [item]).First(item => AutomationProperties.GetName(item) == name);
 
     [Fact]
-    public void Choosing_a_virtual_adds_the_function_that_overrides_it_and_opens_it()
+    public void The_start_menu_groups_the_plain_starts_and_puts_the_rest_under_A_to_Z()
     {
         UiThread.Run(() =>
         {
-            var (source, _) = Open();
-            source.Overrides.AddRange([Virtual("_frame"), Virtual("_ready")]);
-            var panels = new ScriptPanels(source);
+            var panels = WithStarts(FakeGraphSource.Sample(), "_input", "_zz_custom", "_frame", "_step", "_a_custom");
+
+            Assert.Equal(
+                [
+                    "COMMON",
+                    "Every frame",
+                    "KEYS AND CLICKS",
+                    "A key or click happens",
+                    "PHYSICS",
+                    "Every physics step",
+                    "All starts, A to Z > _a_custom",
+                    "All starts, A to Z > _zz_custom",
+                ],
+                Listed(StartMenu(panels).Items));
+        });
+    }
+
+    [Fact]
+    public void Choosing_a_start_adds_the_function_that_overrides_it_and_opens_it()
+    {
+        UiThread.Run(() =>
+        {
+            var source = FakeGraphSource.Sample();
+            var panels = WithStarts(source, "_frame", "_start");
             var opened = new List<string>();
             panels.FunctionOpened += opened.Add;
-            Assert.Equal(["_frame (Entity)", "_ready (Entity)"], Offered(panels));
 
-            panels.Find<ComboBox>("function:override")!.SelectedIndex = 0;
+            StartItem(panels, "Every frame").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
             Assert.Equal(["AddOverride _frame", "OpenFunction _frame"], source.Calls);
             Assert.Equal(["_frame"], opened);
-            Assert.Equal(["_ready (Entity)"], Offered(panels));
-            Assert.NotNull(panels.Find<TextBox>("function:_frame:name"));
+            Assert.Equal(["COMMON", "The game starts"], Listed(StartMenu(panels).Items));
         });
     }
 
     [Fact]
-    public void A_virtual_that_already_has_a_function_is_not_offered_and_one_named_in_two_classes_is_offered_once()
+    public void A_start_is_listed_by_its_sentence_and_engine_name_and_an_action_by_its_name()
     {
         UiThread.Run(() =>
         {
-            var (source, _) = Open();
-            source.Overrides.AddRange([Virtual("helper"), Virtual("_frame"), Virtual("_frame", "Object")]);
+            var source = FakeGraphSource.Sample();
+            source.PutFunction("_frame");
+            source.PutFunction("helper");
+            var panels = WithStarts(source, "_frame");
 
-            Assert.Equal(["_frame (Entity)"], Offered(new ScriptPanels(source)));
+            var start = panels.Find<StackPanel>("function:_frame:start")!;
+            Assert.Equal(["Every frame", "_frame"], start.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
+            Assert.Null(panels.Find<TextBox>("function:_frame:name"));
+            Assert.Equal("helper", panels.Find<TextBox>("function:helper:name")!.Text);
         });
     }
 
     [Fact]
-    public void No_picker_is_shown_when_the_engine_lists_no_virtuals()
+    public void A_start_that_already_has_a_function_is_not_offered_and_one_named_in_two_classes_is_offered_once()
+    {
+        UiThread.Run(() =>
+        {
+            var source = FakeGraphSource.Sample();
+            source.PutFunction("_start");
+            source.Overrides.Add(Virtual("_frame", "Object"));
+
+            Assert.Equal(["COMMON", "Every frame"], Listed(StartMenu(WithStarts(source, "_start", "_frame")).Items));
+        });
+    }
+
+    [Fact]
+    public void The_add_start_button_says_why_it_is_off()
+    {
+        UiThread.Run(() =>
+        {
+            var none = new ScriptPanels(FakeGraphSource.Sample()).Find<Button>("start:add")!;
+            var source = FakeGraphSource.Sample();
+            source.PutFunction("_frame");
+            var used = WithStarts(source, "_frame").Find<Button>("start:add")!;
+
+            Assert.False(none.IsEnabled);
+            Assert.Equal("This kind of thing has no starts.", ((HoverCard)ToolTip.GetTip(none)!).Line);
+            Assert.False(used.IsEnabled);
+            Assert.Equal("Every start is in the graph already.", ((HoverCard)ToolTip.GetTip(used)!).Line);
+        });
+    }
+
+    [Fact]
+    public void The_sections_are_named_in_plain_words_with_the_engine_names_dim()
     {
         UiThread.Run(() =>
         {
             var (_, panels) = Open();
+            var texts = ReferenceWindow.Texts(panels).ToList();
 
-            Assert.Null(panels.Find<ComboBox>("function:override"));
+            var at = new[] { "Problems", "Starts when", "Remembers", "Variables", "My actions", "Functions", "Values only main uses", "Locals", "Messages", "Signals" }.Select(word => texts.IndexOf(word)).ToList();
+
+            Assert.DoesNotContain(-1, at);
+            Assert.Equal(at.Order(), at);
+            Assert.Contains("It gets", texts);
+            Assert.Contains("It gives back", texts);
         });
     }
+
+    [Fact]
+    public void My_actions_says_what_an_action_is_when_there_are_none()
+    {
+        UiThread.Run(() =>
+        {
+            var panels = new ScriptPanels(new FakeGraphSource { Empty = true });
+
+            Assert.Equal("An action is a set of steps you can run from many places, like open_door.", panels.Find<TextBlock>("actions:empty")!.Text);
+        });
+    }
+
+    [Fact]
+    public void The_function_on_show_says_why_it_cannot_be_shown_again()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, panels) = Open();
+            var showing = panels.Find<Button>("function:main:open")!;
+
+            Assert.Equal("Its steps are on the canvas already.", ((HoverCard)ToolTip.GetTip(showing)!).Line);
+            Assert.Equal("Shows its steps on the canvas.", ((HoverCard)ToolTip.GetTip(panels.Find<Button>("function:helper:open")!)!).Line);
+        });
+    }
+
+    [Fact]
+    public void The_add_a_remembered_value_card_says_what_to_do_first_and_Enter_adds()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, panels) = Open();
+            Click(panels, "variable:add");
+            var tool = panels.VariableTool;
+            var card = (HoverCard)ToolTip.GetTip(tool.AddButton)!;
+
+            Assert.Equal("Add a remembered value", tool.Head.Heading.Text);
+            Assert.Equal("Add Variable", tool.Head.EngineName);
+            tool.NameBox.Text = "";
+            Assert.Equal("Give it a name first.", card.Line);
+            tool.NameBox.Text = "health";
+            Assert.Equal("Adds the value to the graph.", card.Line);
+            tool.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+
+            Assert.Equal(["AddVariable health 0"], source.Calls);
+        });
+    }
+
+    [Theory]
+    [InlineData(0, "Any")]
+    [InlineData(1, "Yes or no")]
+    [InlineData(4, "Text")]
+    [InlineData(9, "Vector3")]
+    public void A_type_goes_by_its_plain_words(int type, string words) => Assert.Equal(words, PanelFields.TypeWords(type));
 
     [Fact]
     public void Enter_in_the_name_box_renames_once_and_the_row_follows()

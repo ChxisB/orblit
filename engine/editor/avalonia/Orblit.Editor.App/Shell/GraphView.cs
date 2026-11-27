@@ -1,7 +1,10 @@
 using System.Text.Json;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Graph;
@@ -56,16 +59,16 @@ internal interface IGraphFiles
 /// <summary>
 /// The Graph workspace, as three islands. The left one lists the project's graph scripts with a filter, over the
 /// panels of the script on show. The middle one holds a tab for each open script over its canvas, with the
-/// debugger under it. The right one inspects the selected step. The File menu makes and closes scripts, Goto moves
-/// about the script on show and Help opens the guide.
+/// debugger under it. The right one inspects the selected step. The File menu makes and closes scripts, Go to moves
+/// about the script on show and Help opens the guide. An item that is off says what to do first.
 /// </summary>
 internal sealed class GraphView : Border
 {
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Classes = { EditorTheme.Rows } };
-    readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(8, 8, 8, 6), Classes = { EditorTheme.Field } };
-    readonly StackPanel _tabs = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _status = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
-    readonly TextBlock _extends = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+    readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(Gaps.Item, Gaps.Item, Gaps.Item, Gaps.Tight), Classes = { EditorTheme.Field } };
+    readonly OverflowBar _tabs = new() { Spacing = Gaps.Joined, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _status = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Group, 0), MaxWidth = 200 };
+    readonly TextBlock _extends = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Item, 0, 0, 0) };
     readonly TextBlock _hint = new() { Text = "Open a graph script, or choose File, New.", Foreground = EditorBrushes.TextDim, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _canvasSlot = new();
     readonly Border _panelsSlot = new() { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 1, 0, 0) };
@@ -73,12 +76,12 @@ internal sealed class GraphView : Border
     readonly Control _noStep = StepInspector.Empty();
     readonly ScrollViewer _debugHost = new() { MaxHeight = 240, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     readonly Button _fileButton = MenuButton("File");
-    readonly Button _gotoButton = MenuButton("Goto");
+    readonly Button _gotoButton = MenuButton("Go to");
     readonly Button _helpButton = MenuButton("Help");
-    readonly Button _findButton = Parts.IconButton("Search", "Find steps");
+    readonly Button _findButton = new();
     readonly Button _saveButton = new() { Classes = { EditorTheme.TextButton, EditorTheme.Small }, VerticalAlignment = VerticalAlignment.Center };
-    readonly Button _bookmarkButton = Parts.IconButton("Favorites", "Bookmark");
-    readonly Button _breakpointButton = Parts.IconButton("Breakpoint", "Toggle Breakpoint");
+    readonly Button _bookmarkButton = new();
+    readonly Button _breakpointButton = new();
     readonly GotoMenu _gotoMenu;
     readonly MenuFlyout _menu = new();
     readonly MenuItem _save;
@@ -86,8 +89,10 @@ internal sealed class GraphView : Border
     readonly MenuItem _close;
     readonly MenuItem _closeAll;
     readonly MenuItem _copyPath;
+    readonly MenuItem _showInFiles;
     readonly CreateScriptForm _form = new(ScriptKind.Graph);
     readonly ITextClipboard _clipboard;
+    readonly KeyModifiers _command;
     readonly List<GraphSheet> _sheets = [];
     IReadOnlyList<string> _all = [];
     IGraphFiles? _files;
@@ -95,18 +100,20 @@ internal sealed class GraphView : Border
     DebugPlace? _shownStop;
     GraphSheet? _current;
 
-    public GraphView(ITextClipboard? clipboard = null, ILinkOpener? links = null)
+    public GraphView(KeyModifiers command, ITextClipboard? clipboard = null, ILinkOpener? links = null)
     {
+        _command = command;
         _clipboard = clipboard ?? new WindowClipboard(this);
-        _gotoMenu = new GotoMenu(() => Canvas);
+        _gotoMenu = new GotoMenu(() => Canvas, command);
         _gotoButton.Flyout = _gotoMenu;
         _helpButton.Flyout = new HelpMenu(links ?? new WindowLinks(this));
-        _save = Item("Save", SaveCurrent);
-        _saveAll = Item("Save All", () => Save());
-        _close = Item("Close", CloseCurrent);
-        _closeAll = Item("Close All", CloseAll);
-        _copyPath = Item("Copy Path", CopyPath);
-        _menu.Items.Add(Item("New...", ShowCreate));
+        _save = Parts.PressItem("Save", _saveButton, new KeyGesture(Key.S, command));
+        _saveAll = Parts.PressItem("Save all", SaveAllButton, new KeyGesture(Key.S, command | KeyModifiers.Alt));
+        _close = Parts.PressItem("Close", CloseButton, new KeyGesture(Key.W, command));
+        _closeAll = Parts.ActionItem("Close all", CloseAll);
+        _copyPath = Parts.ActionItem("Copy path", CopyPath);
+        _showInFiles = Parts.PressItem(SceneTabStrip.ShowInFiles, ShowInFilesButton);
+        _menu.Items.Add(Parts.ActionItem("New graph…", ShowCreate, note: "A script made of steps. You pick what it runs on."));
         _menu.Items.Add(new Separator());
         _menu.Items.Add(_save);
         _menu.Items.Add(_saveAll);
@@ -115,16 +122,23 @@ internal sealed class GraphView : Border
         _menu.Items.Add(_closeAll);
         _menu.Items.Add(new Separator());
         _menu.Items.Add(_copyPath);
-        // The FileSystem dock lists scenes only, so there is nothing for it to select yet.
-        _menu.Items.Add(Item("Show in FileSystem", () => _fileButton.RaiseEvent(new UnbuiltEventArgs("The FileSystem dock does not list graph scripts yet."))));
+        _menu.Items.Add(_showInFiles);
         _fileButton.Flyout = _menu;
-        _saveButton.Content = Parts.Keyed("Save", "⌘S");
+        SaveAllButton.Click += (_, _) => Save();
+        CloseButton.Click += (_, _) => CloseCurrent();
+        var save = new HoverCard("Save", "Writes the graph to its file.", Parts.KeyText(new KeyGesture(Key.S, command)));
+        save.SaysWhyOff(Parts.Dress(_saveButton, "Save", save), "Nothing new to save.");
         _saveButton.Click += (_, _) => SaveCurrent();
+        Dress(_findButton, "Search", new HoverCard("Find a step", "Finds steps by their names and numbers.", Parts.KeyText(new KeyGesture(Key.F, command))));
+        Dress(_bookmarkButton, "Favorites", new HoverCard("Bookmark", "Marks the picked step, so F2 can find it again.", Parts.KeyText(new KeyGesture(Key.F2, command))));
+        Dress(_breakpointButton, "Breakpoint", new HoverCard("Pause here", "The game stops at the picked step, so you can look at its values.", "F9"));
         _findButton.Click += (_, _) => Canvas?.FindBar.Open();
         _bookmarkButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBookmark());
         _breakpointButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBreakpoint());
         _form.Requested += Create;
+        _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : Parts.Trimmed(path, path));
         _list.SelectionChanged += (_, _) => Open(_list.SelectedItem as string);
+        Parts.TipItsText(_status);
         // TextChanged waits for a render, so the property is the one that fires at once.
         _filter.PropertyChanged += (_, e) =>
         {
@@ -159,6 +173,15 @@ internal sealed class GraphView : Border
 
     internal Button BreakpointButton => _breakpointButton;
 
+    /// <summary>Saves every open graph. The File menu and a key press it.</summary>
+    internal Button SaveAllButton { get; } = new();
+
+    /// <summary>Closes the graph on show. The File menu and a key press it.</summary>
+    internal Button CloseButton { get; } = new();
+
+    /// <summary>The window picks the graph on show in the Files panel when this is pressed.</summary>
+    internal Button ShowInFilesButton { get; } = new();
+
     /// <summary>The class the script on show extends, as the canvas bar says it.</summary>
     internal TextBlock Extends => _extends;
 
@@ -169,7 +192,7 @@ internal sealed class GraphView : Border
     internal Dialog CreateDialog => _form.Dialog;
 
     /// <summary>One tab for each open graph script, in the order they were opened.</summary>
-    internal IEnumerable<GraphTab> Tabs => _tabs.Children.Cast<GraphTab>();
+    internal IEnumerable<GraphTab> Tabs => _tabs.Tools.Cast<GraphTab>();
 
     /// <summary>The breakpoints of every graph script opened here. They outlive the canvas that shows them, and the project keeps them.</summary>
     internal GraphBreakpoints Breakpoints { get; } = new();
@@ -186,11 +209,17 @@ internal sealed class GraphView : Border
     /// <summary>The panels of the graph script on show, or null when none is open.</summary>
     internal ScriptPanels? Panels => _current?.Panels;
 
+    /// <summary>The card that reads the graph script on show as sentences, or null when none is open.</summary>
+    internal SentencesCard? Sentences => _current?.Sentences;
+
     /// <summary>The inspector of the selected step of the graph script on show, or null when none is open.</summary>
     internal StepInspector? Inspector => _current?.Inspector;
 
     /// <summary>Whether an open graph script has edits that the file does not hold.</summary>
     public bool IsDirty => _sheets.Any(sheet => sheet.IsEdited);
+
+    /// <summary>The res:// path of each graph script with edits.</summary>
+    internal IEnumerable<string> EditedScripts => _sheets.Where(sheet => sheet.IsEdited).Select(sheet => sheet.Script);
 
     /// <summary>Starts from this project's files, with no script open.</summary>
     public void Show(IGraphFiles files)
@@ -203,7 +232,7 @@ internal sealed class GraphView : Border
         }
 
         _sheets.Clear();
-        _tabs.Children.Clear();
+        _tabs.Clear();
         Select(null);
         LoadBreakpoints(files);
         Refresh();
@@ -247,12 +276,8 @@ internal sealed class GraphView : Border
 
     static bool Failed(Exception error) => error is IOException or UnauthorizedAccessException;
 
-    static MenuItem Item(string header, Action action)
-    {
-        var item = new MenuItem { Header = header };
-        item.Click += (_, _) => action();
-        return item;
-    }
+    // A graph tool as its icon. Its card gives its name and key, and says what to do first while it is off.
+    static void Dress(Button button, string icon, HoverCard card) => card.SaysWhyOff(Parts.Dress(button, icon, card), "Open a graph first.");
 
     static Button MenuButton(string text) => new() { Content = text, Classes = { EditorTheme.TextButton, EditorTheme.Segment } };
 
@@ -265,7 +290,7 @@ internal sealed class GraphView : Border
         return control;
     }
 
-    Grid Layout()
+    Border GraphList()
     {
         var list = new DockPanel();
         foreach (var top in new Control[] { Parts.Bar(_fileButton, _gotoButton, _helpButton, Parts.Right(_findButton)), _filter, new ScrollViewer { MaxHeight = 220, Content = _list } })
@@ -274,20 +299,42 @@ internal sealed class GraphView : Border
             list.Children.Add(top);
         }
         list.Children.Add(_panelsSlot);
+        return Island(list, 0);
+    }
 
+    Grid Layout()
+    {
         var canvas = new DockPanel();
-        var canvasBar = Parts.Bar(_tabs, _extends, Parts.Right(_saveButton), Parts.Right(_status));
+        // The save button and the status are measured first, so the tabs get what is left.
+        var open = new DockPanel { Children = { Parts.Right(_extends), _tabs } };
+        var canvasBar = Parts.Bar(Parts.Right(_saveButton), Parts.Right(_status), open);
         DockPanel.SetDock(canvasBar, Dock.Top);
         canvas.Children.Add(canvasBar);
         canvas.Children.Add(new Grid { Children = { _hint, _canvasSlot } });
-        var middle = new Grid { RowDefinitions = new RowDefinitions("*,6,Auto") };
+        var middle = new Grid { RowDefinitions = new RowDefinitions($"*,{Gaps.Item},Auto") };
         middle.Children.Add(Island(canvas, 0));
         middle.Children.Add(Place(new Border { Classes = { EditorTheme.Island }, Child = _debugHost }, 0, 2));
 
+        return new Grid
+        {
+            ColumnDefinitions =
+            [
+                new(248, GridUnitType.Star) { MinWidth = 208, MaxWidth = 248 },
+                new(Gaps.Item, GridUnitType.Pixel),
+                new(616, GridUnitType.Star) { MinWidth = 156 },
+                new(Gaps.Item, GridUnitType.Pixel),
+                new(292, GridUnitType.Star) { MinWidth = 170, MaxWidth = 292 },
+            ],
+            Children = { Place(GraphList(), 0), Place(middle, 2), Place(StepColumn(), 4) },
+        };
+    }
+
+    Border StepColumn()
+    {
         var tab = new Border
         {
             Height = 26,
-            Padding = new Thickness(10, 0),
+            Padding = new Thickness(Gaps.Item, 0),
             CornerRadius = EditorTheme.Corners,
             Background = EditorBrushes.Line,
             Child = new TextBlock { Text = "Step", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
@@ -297,12 +344,7 @@ internal sealed class GraphView : Border
         DockPanel.SetDock(inspectorBar, Dock.Top);
         inspector.Children.Add(inspectorBar);
         inspector.Children.Add(new Grid { Children = { _noStep, _inspectorSlot } });
-
-        return new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("248,6,*,6,292"),
-            Children = { Island(list, 0), Place(middle, 2), Island(inspector, 4) },
-        };
+        return Island(inspector, 0);
     }
 
     // The project keeps the breakpoints, so a person's stops are still there when the editor opens again. A file that
@@ -343,7 +385,7 @@ internal sealed class GraphView : Border
         _shownStop = null;
         _debugger = new GraphDebugger(files.Debug, Breakpoints);
         _debugger.Changed += ShowStop;
-        _debugHost.Content = new DebuggerPanel(_debugger, place => _current?.StepTitle(place));
+        _debugHost.Content = new DebuggerPanel(_debugger, place => _current?.StepTitle(place), _command);
     }
 
     // The view moves to a stop once. A poll that only brings values leaves the view where the person put it.
@@ -402,7 +444,7 @@ internal sealed class GraphView : Border
         {
             try
             {
-                sheet = new GraphSheet(script, _files.OpenGraph(script), Breakpoints, _debugger!);
+                sheet = new GraphSheet(script, _files.OpenGraph(script), new SheetShared(Breakpoints, _debugger!, _command));
             }
             catch (Exception error) when (Failed(error))
             {
@@ -425,12 +467,13 @@ internal sealed class GraphView : Border
         tab.CloseRequested += () => Close(sheet);
         sheet.Edited += ShowState;
         _sheets.Add(sheet);
-        _tabs.Children.Add(tab);
+        _tabs.Add(tab);
     }
 
     void Select(GraphSheet? sheet)
     {
         _current = sheet;
+        _tabs.Pinned = sheet is null ? null : Tabs.ElementAt(_sheets.IndexOf(sheet));
         _list.SelectedItem = sheet?.Script;
         _canvasSlot.Child = sheet?.Host;
         _panelsSlot.Child = sheet?.Panels;
@@ -478,7 +521,7 @@ internal sealed class GraphView : Border
 
         var index = _sheets.IndexOf(sheet);
         _sheets.Remove(sheet);
-        _tabs.Children.RemoveAt(index);
+        _tabs.RemoveAt(index);
         if (_current == sheet)
         {
             Select(_sheets.Count == 0 ? null : _sheets[Math.Min(index, _sheets.Count - 1)]);
@@ -554,11 +597,22 @@ internal sealed class GraphView : Border
         _findButton.IsEnabled = _current is not null;
         _bookmarkButton.IsEnabled = _current is not null;
         _breakpointButton.IsEnabled = _current is not null;
-        _save.IsEnabled = _current?.IsEdited == true;
-        _saveAll.IsEnabled = IsDirty;
-        _close.IsEnabled = _current is not null;
+        SaveAllButton.IsEnabled = IsDirty;
+        CloseButton.IsEnabled = _current is not null;
+        ShowInFilesButton.IsEnabled = _current is not null;
         _closeAll.IsEnabled = _sheets.Count > 0;
         _copyPath.IsEnabled = _current is not null;
+        var name = _current is null ? "" : Path.GetFileNameWithoutExtension(_current.Script);
+        var none = "Open a graph first.";
+        Note(_save, $"Saves {name}", _current is null ? none : "Nothing new to save.");
+        Note(_saveAll, "Saves every open graph", "Nothing new to save.");
+        Note(_close, $"Saves {name} first, then closes it", "Nothing is open.");
+        Note(_copyPath, _current?.Script ?? "", none);
+        Note(_showInFiles, "Picks the file in the Files panel", none);
         _gotoMenu.Show(_current is not null);
     }
+
+    // An item's note says what it does while it is on, and what to do first while it is off.
+    static void Note(MenuItem item, string note, string why) =>
+        item.Header = Parts.Noted(AutomationProperties.GetName(item) ?? "", item.IsEnabled ? note : why);
 }

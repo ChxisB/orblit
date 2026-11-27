@@ -64,6 +64,11 @@ internal sealed class FakeScene : IEditorScene
 
     public DateTime ModifiedOf(string resourcePath) => Times.GetValueOrDefault(resourcePath);
 
+    /// <summary>"2D" or "3D" for each scene file that has one.</summary>
+    public Dictionary<string, string> Kinds { get; } = [];
+
+    public string SceneKindOf(string resourcePath) => Kinds.GetValueOrDefault(resourcePath, "");
+
     public bool CreateFails { get; init; }
 
     /// <summary>Every scene the window made, in order, with its root class.</summary>
@@ -258,7 +263,7 @@ internal sealed class FakeScene : IEditorScene
     public IReadOnlyList<string> GraphScripts() => [.. Graphs.Keys];
 
     /// <summary>The common classes of the Add dialog and one more, by name, as the engine gives them.</summary>
-    public IReadOnlyList<string> AddableClasses() => ["Camera3D", "ColorRect", "DirectionalLight3D", "Entity", "Entity2D", "Entity3D", "Marker3D", "MeshInstance3D", "Timer"];
+    public IReadOnlyList<string> AddableClasses() => ["Camera3D", "ColorRect", "DirectionalLight3D", "Entity", "Entity2D", "Entity3D", "Marker3D", "MeshInstance3D", "OmniLight3D", "Skeleton3D", "SpotLight3D", "Timer"];
 
     public IGraphFile OpenGraph(string resourcePath) =>
         Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
@@ -391,6 +396,8 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>True from a Play until a Stop. A test sets it false for a game that ended on its own.</summary>
     public bool IsPlaying { get; set; }
 
+    public bool EndedWithError { get; set; }
+
     public int? GameId => IsPlaying ? 4242 : null;
 
     /// <summary>The breakpoints the last Play was given.</summary>
@@ -415,7 +422,10 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>The engine flags of the last play.</summary>
     public List<string> PlayedFlags { get; } = [];
 
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags)
+    /// <summary>How many copies of the game the last play opened.</summary>
+    public int PlayedCopies { get; private set; }
+
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags, int copies)
     {
         if (PlayError is not null)
         {
@@ -429,14 +439,29 @@ internal sealed class FakeScene : IEditorScene
         PlayedWithCode.AddRange(codeBreakpoints);
         PlayedFlags.Clear();
         PlayedFlags.AddRange(flags);
+        PlayedCopies = copies;
         IsPlaying = true;
+        EndedWithError = false;
     }
 
     public void Stop()
     {
         Stops++;
         IsPlaying = false;
+        EndedWithError = false;
     }
+
+    /// <summary>Ends the game as a crash does, with nothing asked of the editor.</summary>
+    public void Crash()
+    {
+        IsPlaying = false;
+        EndedWithError = true;
+    }
+
+    /// <summary>How many times the game window was asked to come to the front.</summary>
+    public int WindowRaises { get; private set; }
+
+    public void ShowGameWindow() => WindowRaises++;
 
     public void PollOutput()
     {

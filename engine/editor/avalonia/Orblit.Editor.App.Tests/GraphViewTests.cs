@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -92,7 +93,7 @@ public sealed class GraphViewTests
 
     static GraphView Open(Files files, ITextClipboard? clipboard = null, ILinkOpener? links = null)
     {
-        var view = new GraphView(clipboard, links);
+        var view = new GraphView(KeyModifiers.Meta, clipboard, links);
         new Window { Content = view, Width = 1000, Height = 600 }.Show();
         view.Show(files);
         return view;
@@ -110,12 +111,21 @@ public sealed class GraphViewTests
     static void Pick(GraphView view, string path) => view.List.SelectedItem = path;
 
     static MenuItem Item(GraphView view, string header) =>
-        view.FileMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == header);
+        view.FileMenu.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == header);
 
     static void Choose(GraphView view, string header) => Item(view, header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
     static MenuItem GotoItem(GraphView view, string header) =>
-        view.GotoMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == header);
+        view.GotoMenu.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == header);
+
+    static string[] Header(MenuItem item) => [.. ReferenceWindow.Texts((Control)item.Header!)];
+
+    static KeyEventArgs Press(InputElement target, Key key, KeyModifiers modifiers = KeyModifiers.None)
+    {
+        var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers };
+        target.RaiseEvent(press);
+        return press;
+    }
 
     static void ChooseGoto(GraphView view, string header) => GotoItem(view, header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
@@ -154,6 +164,36 @@ public sealed class GraphViewTests
             Assert.True(view.Hint.IsVisible);
             Assert.False(view.IsDirty);
             Assert.True(view.Save());
+        });
+    }
+
+    [Fact]
+    public void The_keys_are_the_command_key_the_view_is_given()
+    {
+        UiThread.Run(() =>
+        {
+            var view = new GraphView(KeyModifiers.Control);
+            HoverCard Card(Control control) => (HoverCard)ToolTip.GetTip(control)!;
+
+            Assert.Equal(("⌃F", "⌃F2"), (Card(view.FindButton).Key, Card(view.BookmarkButton).Key));
+        });
+    }
+
+    [Fact]
+    public void Find_bookmark_and_pause_name_their_keys_and_say_why_they_are_off()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            HoverCard Card(Control control) => (HoverCard)ToolTip.GetTip(control)!;
+            Button[] buttons = [view.FindButton, view.BookmarkButton, view.BreakpointButton];
+
+            Assert.Equal<(string, string?)>([("Find a step", "⌘F"), ("Bookmark", "⌘F2"), ("Pause here", "F9")], buttons.Select(button => (Card(button).Title, Card(button).Key)));
+            Assert.All(buttons, button => Assert.Equal("Open a graph first.", Card(button).Line));
+
+            Pick(view, Logic);
+
+            Assert.Equal("Finds steps by their names and numbers.", Card(view.FindButton).Line);
         });
     }
 
@@ -262,7 +302,7 @@ public sealed class GraphViewTests
             var (_, graph, view) = OpenWithGraph();
             graph.PutFunction("helper");
             Pick(view, Logic);
-            Assert.Equal("No step selected.", view.Inspector!.Heading);
+            Assert.Equal("No step picked", view.Inspector!.Heading);
 
             var canvas = view.Canvas!;
             var header = canvas.Scene.Find(3)!.Origin + new Vector(40, 10);
@@ -270,11 +310,11 @@ public sealed class GraphViewTests
             canvas.Gestures.Release(header);
             canvas.Surface.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.F13 });
 
-            Assert.Equal("print", view.Inspector.Heading);
+            Assert.Equal("Print text", view.Inspector.Heading);
 
             Click(view.Panels!.Find<Button>("function:helper:open")!);
 
-            Assert.Equal("No step selected.", view.Inspector.Heading);
+            Assert.Equal("No step picked", view.Inspector.Heading);
         });
     }
 
@@ -293,7 +333,7 @@ public sealed class GraphViewTests
 
             Assert.Same(canvas, view.Canvas);
             Assert.Equal([4], view.Canvas!.Scene.SelectedSteps);
-            Assert.Equal("emit", view.Inspector!.Heading);
+            Assert.Equal("Emit", view.Inspector!.Heading);
         });
     }
 
@@ -490,7 +530,7 @@ public sealed class GraphViewTests
             Edit(view);
             Pick(view, Other);
 
-            Choose(view, "Close All");
+            Choose(view, "Close all");
 
             Assert.Empty(view.Tabs);
             Assert.Null(view.Current);
@@ -510,14 +550,14 @@ public sealed class GraphViewTests
             Edit(view);
             Pick(view, Other);
             Assert.False(Item(view, "Save").IsEnabled);
-            Assert.True(Item(view, "Save All").IsEnabled);
+            Assert.True(Item(view, "Save all").IsEnabled);
 
-            Choose(view, "Save All");
+            Choose(view, "Save all");
 
             Assert.Equal(1, first.Saves);
             Assert.Equal(0, second.Saves);
             Assert.False(view.IsDirty);
-            Assert.False(Item(view, "Save All").IsEnabled);
+            Assert.False(Item(view, "Save all").IsEnabled);
         });
     }
 
@@ -528,19 +568,94 @@ public sealed class GraphViewTests
         {
             var (_, _, view) = OpenWithGraph();
 
-            foreach (var header in new[] { "Save", "Save All", "Close", "Close All", "Copy Path" })
+            foreach (var header in new[] { "Save", "Save all", "Close", "Close all", "Copy path" })
             {
                 Assert.False(Item(view, header).IsEnabled);
             }
 
-            Assert.True(Item(view, "New...").IsEnabled);
-            Assert.True(Item(view, "Show in FileSystem").IsEnabled);
+            Assert.True(Item(view, "New graph…").IsEnabled);
 
             Pick(view, Logic);
 
             Assert.True(Item(view, "Close").IsEnabled);
-            Assert.True(Item(view, "Close All").IsEnabled);
-            Assert.True(Item(view, "Copy Path").IsEnabled);
+            Assert.True(Item(view, "Close all").IsEnabled);
+            Assert.True(Item(view, "Copy path").IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void The_file_menu_says_what_each_item_does_and_what_to_do_first_while_it_is_off()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+
+            Assert.Equal(["New graph…", "A script made of steps. You pick what it runs on."], Header(Item(view, "New graph…")));
+            Assert.Equal(["Save", "Open a graph first."], Header(Item(view, "Save")));
+            Assert.Equal(["Close", "Nothing is open."], Header(Item(view, "Close")));
+            Assert.Equal(["Show in Files", "Open a graph first."], Header(Item(view, "Show in Files")));
+
+            Pick(view, Logic);
+
+            Assert.Equal(["Save", "Nothing new to save."], Header(Item(view, "Save")));
+            Assert.Equal(["Close", "Saves logic first, then closes it"], Header(Item(view, "Close")));
+            Assert.Equal(["Copy path", Logic], Header(Item(view, "Copy path")));
+            Assert.Equal(["Show in Files", "Picks the file in the Files panel"], Header(Item(view, "Show in Files")));
+            Assert.True(Item(view, "Show in Files").IsEnabled);
+
+            Edit(view);
+
+            Assert.Equal(["Save", "Saves logic"], Header(Item(view, "Save")));
+            Assert.Equal(["Save all", "Saves every open graph"], Header(Item(view, "Save all")));
+            Assert.Equal(
+                [new KeyGesture(Key.S, KeyModifiers.Meta), new KeyGesture(Key.S, KeyModifiers.Meta | KeyModifiers.Alt), new KeyGesture(Key.W, KeyModifiers.Meta)],
+                new[] { "Save", "Save all", "Close" }.Select(name => Item(view, name).InputGesture));
+        });
+    }
+
+    [Fact]
+    public void The_go_to_menu_names_each_command_with_its_key_and_says_why_it_is_off()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            var items = view.GotoMenu.Items.OfType<MenuItem>().ToList();
+
+            Assert.Equal(["Find a step…", "Go to step number…", "Bookmark this step", "Next bookmark", "Previous bookmark", "Pause here"], items.Select(item => AutomationProperties.GetName(item)));
+            Assert.Equal(["⌘F", "⌘L", "⌘F2", "F2", "⇧F2", "F9"], items.Select(item => Parts.KeyText(item.InputGesture!)));
+            Assert.All(items, item => Assert.Equal("Open a graph first.", Header(item)[^1]));
+
+            Pick(view, Logic);
+
+            Assert.Equal(["Pause here", "The game stops at this step so you can look around"], Header(GotoItem(view, "Pause here")));
+            Assert.Equal(["Next bookmark"], Header(GotoItem(view, "Next bookmark")));
+        });
+    }
+
+    [Fact]
+    public void The_keys_on_the_go_to_menu_work_on_the_canvas()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Pick(view, Logic);
+            var canvas = view.Canvas!;
+            canvas.Select([2]);
+
+            Assert.True(Press(canvas.Surface, Key.F9).Handled);
+            Assert.Contains(2, canvas.Scene.Breakpointed);
+            Assert.True(Press(canvas.Surface, Key.F2, KeyModifiers.Meta).Handled);
+            Assert.Contains(2, canvas.Scene.Bookmarked);
+            canvas.Select([1]);
+            Press(canvas.Surface, Key.F2);
+            Assert.Equal([2], canvas.Scene.SelectedSteps);
+            canvas.Select([3]);
+            Press(canvas.Surface, Key.F2, KeyModifiers.Shift);
+            Assert.Equal([2], canvas.Scene.SelectedSteps);
+
+            canvas.FindBar.IsVisible = false;
+            Press(canvas.Surface, Key.L, KeyModifiers.Meta);
+            Assert.True(canvas.FindBar.IsVisible);
         });
     }
 
@@ -555,25 +670,10 @@ public sealed class GraphViewTests
             var view = Open(files, clipboard);
             Pick(view, Logic);
 
-            Choose(view, "Copy Path");
+            Choose(view, "Copy path");
 
             Assert.Equal(Logic, clipboard.Text);
             Assert.Equal($"Copied {Logic}.", view.Status.Text);
-        });
-    }
-
-    [Fact]
-    public void Show_in_FileSystem_says_it_is_not_built()
-    {
-        UiThread.Run(() =>
-        {
-            var (_, _, view) = OpenWithGraph();
-            string? said = null;
-            view.AddHandler(Unbuilt.Event, (_, e) => said = e.Message);
-
-            Choose(view, "Show in FileSystem");
-
-            Assert.Equal("The FileSystem dock does not list graph scripts yet.", said);
         });
     }
 
@@ -586,7 +686,7 @@ public sealed class GraphViewTests
             view.Form.FolderBox.Text = "res://old";
             view.Form.Say("old");
 
-            Choose(view, "New...");
+            Choose(view, "New graph…");
 
             Assert.True(view.CreateDialog.IsVisible);
             Assert.Equal("new_graph", view.Form.NameBox.Text);
@@ -601,7 +701,7 @@ public sealed class GraphViewTests
         UiThread.Run(() =>
         {
             var (files, _, view) = OpenWithGraph();
-            Choose(view, "New...");
+            Choose(view, "New graph…");
             view.Form.NameBox.Text = "slime";
             view.Form.ExtendsBox.SelectedItem = "Entity3D";
             view.Form.FolderBox.Text = "res://enemies";
@@ -622,11 +722,11 @@ public sealed class GraphViewTests
         UiThread.Run(() =>
         {
             var (files, _, view) = OpenWithGraph();
-            Choose(view, "New...");
+            Choose(view, "New graph…");
 
             view.Form.NameBox.Text = "logic";
 
-            Assert.Equal("logic.ograph already exists. Pick another name.", view.Form.Fault);
+            Assert.Equal("logic.ograph is already in this folder. Pick another name.", view.Form.Fault);
             Assert.False(view.Form.CreateButton.IsEnabled);
             Assert.Empty(files.Created);
         });
@@ -642,7 +742,7 @@ public sealed class GraphViewTests
         {
             var (files, _, view) = OpenWithGraph();
             files.CreateError = (Exception)Activator.CreateInstance(kind, message)!;
-            Choose(view, "New...");
+            Choose(view, "New graph…");
 
             Click(view.Form.CreateButton);
 
@@ -659,7 +759,7 @@ public sealed class GraphViewTests
         UiThread.Run(() =>
         {
             var (files, _, view) = OpenWithGraph();
-            Choose(view, "New...");
+            Choose(view, "New graph…");
 
             Click(view.CreateDialog.CancelButton);
 
@@ -918,6 +1018,7 @@ public sealed class GraphViewTests
             Assert.True(view.Breakpoints.Has($"{Logic}#main", 2));
             Assert.Equal([2], view.Canvas!.Scene.Breakpointed);
             Assert.Equal("", view.Status.Text);
+            Assert.Null(ToolTip.GetTip(view.Status));
         });
     }
 
@@ -1015,11 +1116,11 @@ public sealed class GraphViewTests
             Pick(view, Logic);
             Assert.False(view.Canvas!.FindBar.IsVisible);
 
-            ChooseGoto(view, "Find Step...");
+            ChooseGoto(view, "Find a step…");
             Assert.True(view.Canvas.FindBar.IsVisible);
 
             view.Canvas.FindBar.IsVisible = false;
-            ChooseGoto(view, "Go to Step...");
+            ChooseGoto(view, "Go to step number…");
             Assert.True(view.Canvas.FindBar.IsVisible);
         });
     }
@@ -1032,16 +1133,16 @@ public sealed class GraphViewTests
             var (_, _, view) = OpenWithGraph();
             Pick(view, Logic);
 
-            ChooseGoto(view, "Toggle Bookmark");
-            Assert.Equal("Select one step to bookmark.", view.Canvas!.FindBar.Status);
+            ChooseGoto(view, "Bookmark this step");
+            Assert.Equal("Pick one step to bookmark.", view.Canvas!.FindBar.Status);
 
             view.Canvas.Select([2]);
-            ChooseGoto(view, "Toggle Bookmark");
+            ChooseGoto(view, "Bookmark this step");
             Assert.Contains(2, view.Canvas.Scene.Bookmarked);
             Assert.Equal("Bookmarked step 2.", view.Canvas.FindBar.Status);
             Assert.True(view.Canvas.FindBar.IsVisible);
 
-            ChooseGoto(view, "Toggle Bookmark");
+            ChooseGoto(view, "Bookmark this step");
             Assert.DoesNotContain(2, view.Canvas.Scene.Bookmarked);
         });
     }
@@ -1054,13 +1155,13 @@ public sealed class GraphViewTests
             var (_, _, view) = OpenWithGraph();
             Pick(view, Logic);
 
-            ChooseGoto(view, "Next Bookmark");
-            Assert.Equal("No bookmarks.", view.Canvas!.FindBar.Status);
+            ChooseGoto(view, "Next bookmark");
+            Assert.Equal("No bookmarks yet. Bookmark a step with ⌘F2.", view.Canvas!.FindBar.Status);
 
             view.Canvas.Select([3]);
-            ChooseGoto(view, "Toggle Bookmark");
+            ChooseGoto(view, "Bookmark this step");
             view.Canvas.Select([1]);
-            ChooseGoto(view, "Previous Bookmark");
+            ChooseGoto(view, "Previous bookmark");
 
             Assert.Equal([3], view.Canvas.Scene.SelectedSteps);
             Assert.Equal("Bookmark 1 of 1", view.Canvas.FindBar.Status);
@@ -1075,18 +1176,18 @@ public sealed class GraphViewTests
             var (_, _, view) = OpenWithGraph();
             Pick(view, Logic);
 
-            ChooseGoto(view, "Toggle Breakpoint");
-            Assert.Equal("Select one step for a breakpoint.", view.Canvas!.FindBar.Status);
+            ChooseGoto(view, "Pause here");
+            Assert.Equal("Pick one step to pause at.", view.Canvas!.FindBar.Status);
             Assert.Empty(view.Breakpoints.All);
 
             view.Canvas.Select([2]);
-            ChooseGoto(view, "Toggle Breakpoint");
+            ChooseGoto(view, "Pause here");
             Assert.Contains(2, view.Canvas.Scene.Breakpointed);
-            Assert.Equal("Set a breakpoint on step 2.", view.Canvas.FindBar.Status);
+            Assert.Equal("The game pauses at step 2.", view.Canvas.FindBar.Status);
 
-            ChooseGoto(view, "Toggle Breakpoint");
+            ChooseGoto(view, "Pause here");
             Assert.DoesNotContain(2, view.Canvas.Scene.Breakpointed);
-            Assert.Equal("Took the breakpoint off step 2.", view.Canvas.FindBar.Status);
+            Assert.Equal("The game no longer pauses at step 2.", view.Canvas.FindBar.Status);
         });
     }
 
@@ -1102,13 +1203,66 @@ public sealed class GraphViewTests
             help[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             help[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
-            Assert.Equal(["Your First Graph Script", "GraphScript Class Reference"], help.Select(item => (string?)item.Header));
+            Assert.Equal([["Your first graph", "A five minute walk through"], ["Every step explained", "What each step does, with an example"]], help.Select(Header));
             Assert.Equal(
                 [
                     new Uri("https://orblitengine.com/docs/start/your-first-graph-script/"),
                     new Uri("https://orblitengine.com/docs/classes/class_graphscript/"),
                 ],
                 links.Opened);
+        });
+    }
+
+    static GraphView OpenStarted(FakeGraphSource graph)
+    {
+        graph.Overrides.Add(new GraphStepEntry("override", "", "main", new Dictionary<string, string>()));
+        var files = new Files();
+        files.Graphs[Logic] = graph;
+        var view = Open(files);
+        Pick(view, Logic);
+        return view;
+    }
+
+    [Fact]
+    public void What_this_graph_does_reads_the_graph_on_show_and_reads_it_again_after_an_edit()
+    {
+        UiThread.Run(() =>
+        {
+            var graph = FakeGraphSource.Sample();
+            var view = OpenStarted(graph);
+            Assert.Equal(["main", "2 If", "true 3 Print text"], view.Sentences!.Lines);
+
+            graph.AddStep(4, "print");
+            graph.Connect(new GraphWire(3, 0, 4, 0));
+
+            Assert.Equal(["main", "2 If", "true 3 Print text", "4 Print text"], view.Sentences.Lines);
+        });
+    }
+
+    [Fact]
+    public void What_this_graph_does_says_to_add_a_start_while_nothing_starts_the_graph()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Pick(view, Logic);
+
+            Assert.Equal([SentencesCard.NoStart], view.Sentences!.Lines);
+        });
+    }
+
+    [Fact]
+    public void A_step_number_in_what_this_graph_does_picks_that_step_on_the_canvas()
+    {
+        UiThread.Run(() =>
+        {
+            var view = OpenStarted(FakeGraphSource.Sample());
+            var number = view.Sentences!.NumberOf("main", 3)!;
+
+            number.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal([3], view.Canvas!.Scene.SelectedSteps);
+            Assert.Equal("Step 3", ((HoverCard)ToolTip.GetTip(number)!).Title);
         });
     }
 }

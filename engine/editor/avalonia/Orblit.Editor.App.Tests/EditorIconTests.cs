@@ -1,6 +1,7 @@
 using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Theme;
 
@@ -98,6 +99,32 @@ public sealed class EditorIconTests
             window.Show();
 
             Assert.Equal(new Size(16, 16), icon.DesiredSize);
+            window.Close();
+        });
+    }
+
+    [Theory]
+    [InlineData("3D", 16, 24, 0, 4, 16, 16)]
+    [InlineData("Back", 16, 16, 2, 0, 12, 16)]
+    [InlineData("3D", 32, 32, 0, 0, 32, 32)]
+    public void An_icon_keeps_its_own_proportions_in_any_box(string name, double wide, double tall, double x, double y, double width, double height)
+    {
+        var drawn = new EditorIcon(name).DrawnIn(new Size(wide, tall));
+
+        Assert.Equal(new Rect(x, y, width, height), drawn);
+    }
+
+    [Fact]
+    public void An_icon_in_a_taller_row_stays_sixteen_square()
+    {
+        UiThread.Run(() =>
+        {
+            var icon = new EditorIcon("3D");
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Height = 24, Children = { icon } };
+            var window = new Window { Content = row };
+            window.Show();
+
+            Assert.Equal(new Size(16, 16), icon.Bounds.Size);
             window.Close();
         });
     }

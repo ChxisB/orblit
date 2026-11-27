@@ -35,10 +35,13 @@ public sealed class CreateScriptFormTests
         {
             var form = Opened();
 
-            Assert.Equal("New Graph Script", form.Dialog.Title);
-            Assert.Equal("A script made of steps.", form.Dialog.Why.Text);
+            Assert.Equal("New graph", form.Dialog.Title);
+            Assert.Equal("New GraphScript", form.Dialog.EngineName);
+            Assert.Equal("A graph is a script made of steps and wires. It runs on one thing in your scene.", form.Dialog.Why.Text);
             Assert.Equal(380, form.Dialog.CardWidth);
-            Assert.Equal("Create", form.Dialog.MainText);
+            Assert.Equal(["Make graph", "↵"], Texts(form.CreateButton));
+            Assert.Equal("Makes the script and opens it.", ((HoverCard)ToolTip.GetTip(form.CreateButton)!).Line);
+            Assert.Equal("It becomes new_graph.ograph.", form.SavedLine.Text);
             Assert.Equal("new_graph", form.NameBox.Text);
             Assert.Equal((0, 9), (form.NameBox.SelectionStart, form.NameBox.SelectionEnd));
             Assert.Equal(".ograph", ((TextBlock)form.NameBox.InnerRightContent!).Text);
@@ -81,9 +84,9 @@ public sealed class CreateScriptFormTests
     }
 
     [Theory]
-    [InlineData("  ", "res://")]
-    [InlineData("slime", " ")]
-    public void Create_is_off_while_the_name_or_the_folder_is_blank(string name, string folder)
+    [InlineData("  ", "res://", "Give it a name first.")]
+    [InlineData("slime", " ", "Give it a folder first.")]
+    public void Create_is_off_while_the_name_or_the_folder_is_blank_and_its_card_says_which(string name, string folder, string why)
     {
         UiThread.Run(() =>
         {
@@ -92,6 +95,8 @@ public sealed class CreateScriptFormTests
             form.FolderBox.Text = folder;
 
             Assert.False(form.CreateButton.IsEnabled);
+            Assert.Equal(why, ((HoverCard)ToolTip.GetTip(form.CreateButton)!).Line);
+            Assert.Equal("", form.SavedLine.Text);
         });
     }
 
@@ -104,7 +109,7 @@ public sealed class CreateScriptFormTests
 
             form.NameBox.Text = "player_brain";
 
-            Assert.Equal("player_brain.ograph already exists. Pick another name.", form.Fault);
+            Assert.Equal("player_brain.ograph is already in this folder. Pick another name.", form.Fault);
             Assert.Contains(EditorTheme.Bad, form.NameBox.Classes);
             Assert.False(form.CreateButton.IsEnabled);
 

@@ -13,7 +13,7 @@ internal sealed class FixedToggle : ToggleButton
     {
         Content = new EditorIcon(icon);
         IsChecked = lit;
-        Padding = new Thickness(5);
+        Padding = new Thickness(Parts.IconInset);
         BorderThickness = new Thickness(0);
         MinWidth = 0;
         MinHeight = 0;

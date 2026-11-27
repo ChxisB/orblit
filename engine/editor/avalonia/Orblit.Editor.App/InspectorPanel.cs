@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
@@ -23,11 +24,11 @@ internal sealed class InspectorPanel : StackPanel
 {
     // The engine's Transform group holds these, and the vector rows edit them through the transform calls.
     static readonly string[] s_vectorNames = ["position", "rotation", "scale"];
-    static readonly Thickness s_groupIndent = new(12, -2, 0, 0);
+    static readonly Thickness s_groupIndent = new(Gaps.Group, 0, 0, 0);
 
     readonly VectorRow _position = new("Position", "m");
-    readonly VectorRow _rotation = new("Rotation", "°");
-    readonly VectorRow _scale = new("Scale");
+    readonly VectorRow _rotation = new("Turn", "°");
+    readonly VectorRow _scale = new("Size", "×");
     readonly StackPanel _transformRows = new() { Margin = s_groupIndent };
     readonly PropertyGroup _transform;
     readonly StackPanel _sections = new();
@@ -38,11 +39,12 @@ internal sealed class InspectorPanel : StackPanel
     readonly MetadataRows _metadataRows = new();
     readonly MetadataTool _metadataTool = new();
     readonly Flyout _metadataFlyout = new() { FlyoutPresenterClasses = { EditorTheme.Flush } };
-    readonly Button _metadata = Dashed("Add", "Add Metadata");
+    readonly Button _metadata = new HoverCard("Add a custom value", "Store your own data on this thing, like a score or a door code.", engine: "Metadata").On(Dashed("Add", "Add a custom value"));
     readonly ScriptTool _scriptTool = new();
     readonly Flyout _attachFlyout = new() { FlyoutPresenterClasses = { EditorTheme.Flush } };
-    readonly Button _attach = Dashed("ScriptCreate", "Attach a script");
-    readonly TextBlock _count = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(6, 8, 6, 14) };
+    readonly Button _attach = new HoverCard("Add a script", "Tell this thing what to do while the game runs.", engine: "Attach Script").On(Dashed("ScriptCreate", "Add a script"));
+    readonly TextBlock _rootLine = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(Gaps.Item, Gaps.Joined, Gaps.Item, Gaps.Item) };
+    readonly TextBlock _count = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Item, Gaps.Item, Gaps.Item, Gaps.Group) };
     readonly Control[] _entityParts;
     IEditorScene? _scene;
     IReadOnlyList<OutlineNode> _picked = [];
@@ -53,16 +55,17 @@ internal sealed class InspectorPanel : StackPanel
     // The classes and property names the sections were built for. Values alone change in place.
     string _built = "";
     string _filter = "";
+    bool _isRoot;
 
     public InspectorPanel()
     {
-        Margin = new Thickness(6);
-        _transform = new PropertyGroup("Transform", _transformRows);
+        Margin = new Thickness(Gaps.Item);
+        _transform = new PropertyGroup("Where it is", _transformRows);
         Add(_position, entity => _scene!.PositionOf(entity), (entity, value) => _scene!.MoveTo(entity, value));
         Add(_rotation, entity => _scene!.RotationOf(entity), (entity, value) => _scene!.RotateTo(entity, value));
         Add(_scale, entity => _scene!.ScaleOf(entity), (entity, value) => _scene!.ScaleTo(entity, value));
         _entityParts = [_script, _attach, _metadataRows, _metadata];
-        Children.AddRange([_sections, .. _entityParts, _count]);
+        Children.AddRange([_rootLine, _sections, .. _entityParts, _count]);
         WireExtras();
         Show(null, []);
     }
@@ -101,6 +104,12 @@ internal sealed class InspectorPanel : StackPanel
     internal MenuFlyout ScriptMenu => _script.Menu;
 
     internal TextBlock FilterCount => _count;
+
+    /// <summary>The line over the settings that says the picked thing is the top of the scene.</summary>
+    internal TextBlock RootLine => _rootLine;
+
+    /// <summary>Whether Copy all settings kept values that a paste can put on.</summary>
+    internal bool HasCopied => _copied is not null;
 
     /// <summary>The selected entity's class and the classes it inherits that every picked entity has, most derived first.</summary>
     internal IReadOnlyList<string> Chain => _chain;
@@ -160,11 +169,11 @@ internal sealed class InspectorPanel : StackPanel
         }
         if (_copied is not { } copied)
         {
-            Failed?.Invoke("Copy Properties first, then paste them onto an entity of the same class.");
+            Failed?.Invoke("Copy settings first, then paste them onto a thing of the same kind.");
         }
         else if (_picked.FirstOrDefault(node => node.ClassName != copied.ClassName) is { } other)
         {
-            Failed?.Invoke($"The copied properties are a {copied.ClassName}'s, and {other.Name} is a {other.ClassName}.");
+            Failed?.Invoke($"The copied settings are a {copied.ClassName}'s, and {other.Name} is a {other.ClassName}.");
         }
         else
         {
@@ -176,9 +185,13 @@ internal sealed class InspectorPanel : StackPanel
 
     IEnumerable<PropertyGroup> Groups() => _sections.Children.OfType<Panel>().SelectMany(section => section.Children.OfType<PropertyGroup>());
 
-    // The vector rows count only while their group is in a section.
+    // The vector rows count only while their group is in a section. A row matches its engine name too, so a
+    // search for rotation finds Turn.
     IEnumerable<(Control Row, string Label)> Labeled() =>
-        [.. (_transform.Parent is null ? [] : new[] { _position, _rotation, _scale }).Select(row => ((Control)row, row.Label)), .. _rows.Select(row => ((Control)row, row.Label))];
+    [
+        .. (_transform.Parent is null ? [] : new[] { _position, _rotation, _scale }).Select((row, at) => ((Control)row, $"{row.Label} {s_vectorNames[at]}")),
+        .. _rows.Select(row => ((Control)row, $"{row.Label} {row.PropertyName}")),
+    ];
 
     // A filter keeps the rows that match, and the bar and group above them. The script and metadata parts show
     // only when there is no filter.
@@ -206,9 +219,10 @@ internal sealed class InspectorPanel : StackPanel
             part.IsVisible = all && _picked.Count == 1;
         }
 
+        _rootLine.IsVisible = all && _isRoot;
         var matched = labeled.Count(row => row.Row.IsVisible);
         _count.IsVisible = any && !all;
-        _count.Text = matched == 0 ? "No properties match." : $"{matched} of {labeled.Length} properties match.";
+        _count.Text = matched == 0 ? "No settings match." : $"{matched} of {labeled.Length} settings match.";
     }
 
     // The scene may answer with other numbers than the ones typed, such as a rotation turned into range.
@@ -234,9 +248,11 @@ internal sealed class InspectorPanel : StackPanel
         ShowProperties();
         _metadataRows.Show(entity == 0 ? [] : _scene!.MetadataOf(entity));
         _script.Show(entity == 0 ? null : _scene!.ScriptOf(entity));
+        _isRoot = entity != 0 && _picked.Count == 1 && _scene!.Outline()?.Handle == entity;
         if (entity != 0)
         {
-            _metadataTool.ShowOwner(_node!.Name, _scene!.SceneFile);
+            _metadataTool.ShowOwner(_node!.Name);
+            _rootLine.Text = $"{_node!.Name} is the top thing. Everything else in the scene sits inside it.";
         }
     }
 
@@ -291,7 +307,8 @@ internal sealed class InspectorPanel : StackPanel
     object? Own(nint entity, string name) => _scene!.PropertiesOf(entity).First(property => property.Name == name).Value;
 
     // One section per class: its bar, its rows with no group, then its groups in the engine's order. The
-    // Entity3D section starts with the Transform group, which takes the engine's other Transform rows.
+    // Entity3D section starts with the Transform group, which takes the engine's other Transform rows. The
+    // picked thing's own class goes by its plain name, and the classes under it say what they give.
     void Build(IReadOnlyList<EntityProperty> properties)
     {
         foreach (var group in Groups().Where(group => group != _transform))
@@ -309,7 +326,8 @@ internal sealed class InspectorPanel : StackPanel
         {
             var own = properties.Where(property => property.Class == className).ToArray();
             var transform = className == "Entity3D" && IsEditable;
-            var section = new StackPanel { Children = { new ClassBar(className) } };
+            var title = className == _chain[0] ? PlainNames.NameOf(className) : PlainNames.FromAny(className);
+            var section = new StackPanel { Children = { new ClassBar(className, title) } };
             if (transform)
             {
                 section.Children.Add(_transform);
@@ -348,9 +366,9 @@ internal sealed class InspectorPanel : StackPanel
         _metadataFlyout.Content = _metadataTool;
         _metadata.Flyout = _metadataFlyout;
         _metadataTool.Cancelled += _metadataFlyout.Hide;
-        // Attach a script sits a little taller and quieter than Add Metadata, so the two read as separate steps.
+        // Add a script sits a little taller and quieter than Add a custom value, so the two read as separate steps.
         _attach.Height = 32;
-        _attach.Margin = new Thickness(0, 10, 0, 0);
+        _attach.Margin = new Thickness(0, Gaps.Group, 0, 0);
         _attach.Foreground = EditorBrushes.TextDim;
         _attachFlyout.Content = _scriptTool;
         _attach.Flyout = _attachFlyout;
@@ -362,15 +380,20 @@ internal sealed class InspectorPanel : StackPanel
             }
         };
         _scriptTool.Cancelled += _attachFlyout.Hide;
-        _scriptTool.Requested += path =>
+        _scriptTool.Requested += path => Attach(entity => _scene!.AttachScript(entity, path));
+        _scriptTool.Making += (path, graph) => Attach(entity =>
         {
-            if (TryChange(entity => _scene!.AttachScript(entity, path)))
+            // The new script extends the picked thing's class, so it can use all of its settings.
+            if (graph)
             {
-                _attachFlyout.Hide();
+                _scene!.CreateGraph(path, _node!.ClassName);
             }
-        };
-        // The popover shows in a popup, so the button in the window says it.
-        _scriptTool.NewButton.Click += (_, _) => _attach.RaiseEvent(new UnbuiltEventArgs("New script is not built yet."));
+            else
+            {
+                _scene!.CreateScript(path, _node!.ClassName);
+            }
+            _scene!.AttachScript(entity, path);
+        });
         _metadataTool.Requested += (name, value) =>
         {
             if (TryChange(entity => _scene!.SetMetadata(entity, name, value)))
@@ -379,6 +402,14 @@ internal sealed class InspectorPanel : StackPanel
                 _metadataTool.Clear();
             }
         };
+    }
+
+    void Attach(Action<nint> write)
+    {
+        if (TryChange(write))
+        {
+            _attachFlyout.Hide();
+        }
     }
 
     // Runs one edit on each picked entity and answers whether the scene took it. Either way the rows show what the
@@ -442,7 +473,7 @@ internal sealed class InspectorPanel : StackPanel
         MinWidth = 0,
         Padding = new Thickness(0),
         BorderThickness = new Thickness(0),
-        Margin = new Thickness(0, 13, 0, 0),
+        Margin = new Thickness(0, Gaps.Group, 0, 0),
         HorizontalAlignment = HorizontalAlignment.Stretch,
         HorizontalContentAlignment = HorizontalAlignment.Stretch,
         VerticalContentAlignment = VerticalAlignment.Stretch,
@@ -456,8 +487,8 @@ internal sealed class InspectorPanel : StackPanel
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
-                    Spacing = 6,
-                    Margin = new Thickness(12, 0),
+                    Spacing = Gaps.Tight,
+                    Margin = new Thickness(Gaps.Group, 0),
                     VerticalAlignment = VerticalAlignment.Center,
                     Children = { new EditorIcon(icon) { VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
                 },

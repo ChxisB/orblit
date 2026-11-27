@@ -28,9 +28,9 @@ internal sealed class CodeBox : Border
     const double MarkColumn = 20;
     const double MarkSize = 10;
     const double NumberWidth = 30;
-    const double NumberGap = 14;
+    const double NumberGap = Gaps.Group;
     const double NumberSize = 12;
-    const double Inset = 10;
+    const double Inset = Gaps.Group;
 
     // The graph's breakpoint and current-step colors, so a stop looks the same in both workspaces.
     static readonly IBrush s_mark = new ImmutableSolidColorBrush(Color.Parse("#FF5C6C"));

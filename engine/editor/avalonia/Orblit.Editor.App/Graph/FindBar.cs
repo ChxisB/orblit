@@ -2,23 +2,29 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Media;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
-/// The bar that finds steps by their text, goes to a step by its id and walks the bookmarks. Enter in the find
-/// box shows the next match and Shift and Enter the previous one. Escape closes the bar.
+/// The bar that finds steps by their names and numbers, goes to a step by its number and walks the bookmarks. Each
+/// button's card gives its key. Enter in the find box shows the next match and Shift and Enter the previous one. Escape
+/// closes the bar.
 /// </summary>
 internal sealed class FindBar : Border
 {
+    const string GotoHint = "Type a step number, like 12. Problems and Output name steps by number.";
+
     readonly GraphSearch _search;
     readonly Action _closed;
-    readonly TextBox _text = new() { Tag = "find:text", PlaceholderText = "Find steps", MinWidth = 150, MinHeight = 0, Padding = new Thickness(4, 2) };
-    readonly TextBox _goto = new() { Tag = "find:goto", PlaceholderText = "Go to step id", MinWidth = 100, MinHeight = 0, Padding = new Thickness(4, 2) };
-    readonly TextBlock _status = new() { Tag = "find:status", FontSize = 12, VerticalAlignment = VerticalAlignment.Center, MinWidth = 90 };
+    readonly TextBox _text = new() { Tag = "find:text", PlaceholderText = "Find a step, like print", MinWidth = 170, MinHeight = 0, Padding = new Thickness(Gaps.Tight, Gaps.Joined) };
+    readonly TextBox _goto = new() { Tag = "find:goto", PlaceholderText = "Step number", MinWidth = 100, MinHeight = 0, Padding = new Thickness(Gaps.Tight, Gaps.Joined) };
+    readonly TextBlock _status = new() { Tag = "find:status", FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Item, 0) };
+    readonly StackPanel _gotoRow;
 
-    public FindBar(GraphSearch search, Action closed)
+    public FindBar(GraphSearch search, Action closed, KeyModifiers command)
     {
         _search = search;
         _closed = closed;
@@ -27,21 +33,27 @@ internal sealed class FindBar : Border
         BorderBrush = EditorBrushes.Accent;
         BorderThickness = new Thickness(1);
         CornerRadius = new CornerRadius(4);
-        Padding = new Thickness(8, 4);
+        Padding = new Thickness(Gaps.Item, Gaps.Tight);
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Bottom;
-        Margin = new Thickness(12);
-        var row = new WrapPanel { MaxWidth = 640 };
+        Margin = new Thickness(Gaps.Group);
+        var row = new WrapPanel { MaxWidth = 760 };
         row.Children.Add(_text);
-        AddButton(row, "previous", "Previous", "The match before the selected step", () => Find(false));
-        AddButton(row, "next", "Next", "The match after the selected step", () => Find(true));
-        row.Children.Add(_goto);
-        AddButton(row, "bookmark", "Bookmark", "Mark the selected step, or take its mark off", search.ToggleBookmark);
-        AddButton(row, "bookmark_previous", "Prev mark", "The bookmarked step before the selected one", () => search.StepBookmark(false));
-        AddButton(row, "bookmark_next", "Next mark", "The bookmarked step after the selected one", () => search.StepBookmark(true));
-        AddButton(row, "close", "Close", "Close the bar. Escape does the same.", Close);
         row.Children.Add(_status);
-        Child = row;
+        AddButton(row, ("previous", "Back", "⇧↵"), "Shows the match before the picked step.", () => Find(false));
+        AddButton(row, ("next", "Next", "↵"), "Shows the match after the picked step.", () => Find(true));
+        row.Children.Add(Parts.Rule());
+        AddButton(row, ("open_goto", "Go to number", Parts.KeyText(new KeyGesture(Key.L, command))), "Shows the step with the number you type.", OpenGoto);
+        row.Children.Add(Parts.Rule());
+        AddButton(row, ("bookmark", "Bookmark", Parts.KeyText(new KeyGesture(Key.F2, command))), "Marks the picked step, or takes its mark off.", search.ToggleBookmark);
+        row.Children.Add(new TextBlock { Text = "Bookmarks", FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Item, 0, Gaps.Joined, 0) });
+        AddButton(row, ("bookmark_previous", "Back", "⇧F2"), "Shows the bookmarked step before the picked one.", () => search.StepBookmark(false));
+        AddButton(row, ("bookmark_next", "Next", "F2"), "Shows the bookmarked step after the picked one.", () => search.StepBookmark(true));
+        row.Children.Add(Parts.Rule());
+        AddButton(row, ("close", "Close", "Esc"), "Hides the bar.", Close);
+        var hint = new TextBlock { Text = GotoHint, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, MaxWidth = 420, VerticalAlignment = VerticalAlignment.Center };
+        _gotoRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, IsVisible = false, Margin = new Thickness(0, Gaps.Tight, 0, 0), Children = { _goto, hint } };
+        Child = new StackPanel { Children = { row, _gotoRow } };
         search.Reported += line => _status.Text = line;
         _text.KeyDown += OnTextKey;
         _goto.KeyDown += OnGotoKey;
@@ -49,6 +61,9 @@ internal sealed class FindBar : Border
 
     /// <summary>The line the last command reported.</summary>
     internal string Status => _status.Text ?? "";
+
+    /// <summary>Whether the row with the step number box shows.</summary>
+    internal bool ShowsGoto => _gotoRow.IsVisible;
 
     /// <summary>The commands the bar runs. A command run from a menu says its answer on the bar, so the bar shows too.</summary>
     internal void Run(Action<GraphSearch> command)
@@ -61,14 +76,16 @@ internal sealed class FindBar : Border
     public void Open()
     {
         IsVisible = true;
+        _gotoRow.IsVisible = false;
         _text.Focus();
         _text.SelectAll();
     }
 
-    /// <summary>Shows the bar and puts the cursor in the step id box.</summary>
+    /// <summary>Shows the bar with the step number box and its hint, and puts the cursor there.</summary>
     public void OpenGoto()
     {
         IsVisible = true;
+        _gotoRow.IsVisible = true;
         _goto.Focus();
         _goto.SelectAll();
     }
@@ -81,10 +98,17 @@ internal sealed class FindBar : Border
 
     void Find(bool forward) => _search.Find(_text.Text ?? "", forward);
 
-    static void AddButton(WrapPanel row, string id, string label, string tip, Action run)
+    static void AddButton(WrapPanel row, (string Id, string Word, string Key) name, string line, Action run)
     {
-        var button = PanelFields.Small($"find:{id}", label, run);
-        ToolTip.SetTip(button, tip);
+        var button = new Button
+        {
+            Tag = $"find:{name.Id}",
+            Content = name.Word,
+            VerticalAlignment = VerticalAlignment.Center,
+            Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
+        };
+        button.Click += (_, _) => run();
+        new HoverCard(name.Word, line, name.Key).On(button);
         row.Children.Add(button);
     }
 

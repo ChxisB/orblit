@@ -25,6 +25,7 @@ public sealed class ImportTabTests
             Assert.Equal(["Nodes", "Meshes", "Animation", "Process"], window.Import.Groups.Children.OfType<PropertyGroup>().Select(group => group.Title));
             Assert.IsType<ToggleSwitch>(Row(window, "Ensure Tangents").Editor);
             Assert.False(window.Import.ReimportButton.IsEnabled);
+            Assert.Equal("Change an option first.", ((HoverCard)ToolTip.GetTip(window.Import.ReimportButton)!).Line);
         });
     }
 

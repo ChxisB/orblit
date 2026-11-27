@@ -48,7 +48,9 @@ internal sealed class StepView
     const double PinRadius = 5;
     const double PinGrab = 9;
     const double Corner = 10;
+    // The card is drawn, not laid out, so these place its text, buttons and marks by geometry.
     const double TextInset = 14;
+    const double NumberGap = 6;
     const double ValueInset = 8;
     const double ButtonWidth = 24;
     const double BookmarkInset = 12;
@@ -315,7 +317,13 @@ internal sealed class StepView
         {
             return _labels;
         }
-        _labels = [new Label(Text(Title, 12, EditorBrushes.Text, bold: true), new Point(TextInset, 5))];
+        // The number lets "step 4" in Problems, the stack and the step panel be found on the graph.
+        var number = Text($"{_step.Id}", 11, s_dim);
+        _labels =
+        [
+            new Label(number, new Point(TextInset, 6)),
+            new Label(Text(Title, 12, EditorBrushes.Text, bold: true), new Point(TextInset + number.Width + NumberGap, 5)),
+        ];
         for (var i = 0; i < _rows.Count; i++)
         {
             AddRowLabels(_rows[i], HeaderHeight + (RowHeight * i) + 4);

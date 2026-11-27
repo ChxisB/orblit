@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Avalonia;
 using Orblit.Editor.App;
 using Orblit.Editor.Live;
@@ -14,6 +15,7 @@ string? Argument(string name) => args.SkipWhile(a => a != name).Skip(1).FirstOrD
 int RunEditor()
 {
     var passed = false;
+    int? game = null;
     EditorRun.WritePlanarScene(project);
     EditorRun.WriteSwatch(project);
     var options = new EditorOptions(project, "res://main.oscn", true);
@@ -28,6 +30,12 @@ int RunEditor()
         .UsePlatformDetect()
         .StartWithClassicDesktopLifetime([]);
     Console.WriteLine($"the editor exited at {DateTime.Now:HH:mm:ss}");
+    if (game is { } id && Running(id))
+    {
+        Console.WriteLine($"FAIL game {id} kept running after the editor closed");
+        passed = false;
+    }
+
     return passed ? 0 : 1;
 
     async Task Drive(EditorWindow window, EditorEngine engine)
@@ -41,7 +49,10 @@ int RunEditor()
         {
             Console.WriteLine($"FAIL the run stopped: {error}");
         }
-        Console.WriteLine($"the run is over at {DateTime.Now:HH:mm:ss}, closing the window");
+        // A game still running when the window closes ends with the editor. Main checks once the editor is gone.
+        engine.Play([], [], [], 1);
+        game = engine.GameId;
+        Console.WriteLine($"the run is over at {DateTime.Now:HH:mm:ss}, closing the window with game {game} running");
         _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(_ => EndWith("FAIL the editor did not exit a minute after its window closed", 3));
         window.Close();
         // A close the save prompt holds back says what is unsaved, because the run saves every edit it makes.
@@ -50,6 +61,19 @@ int RunEditor()
             var toasts = string.Join(" | ", window.Toasts.Cards.Select(card => card.Title));
             Console.WriteLine($"the save prompt held the close: title {window.Title}, script {window.Script.IsDirty}, graph {window.Graph.IsDirty}, toasts {toasts}");
         }
+    }
+}
+
+static bool Running(int id)
+{
+    try
+    {
+        using var process = Process.GetProcessById(id);
+        return !process.HasExited;
+    }
+    catch (ArgumentException)
+    {
+        return false;
     }
 }
 

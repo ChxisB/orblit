@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
@@ -9,9 +10,9 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The strip over the viewport: one tab for the open scene, a plus, and two buttons at the right end. The tab is
-/// raised on a fine edge with its icon in the accent colour, like a chosen dock tab. The menu at the right end
-/// makes, runs and closes the scene.
+/// The strip over the viewport: one tab for the open scene, a plus, and Lock layout and Hide panels at the right end. The tab is
+/// raised on a fine edge with its icon in the accent, like a chosen dock tab. A right-click on the tab
+/// makes, plays, closes and finds the scene.
 /// </summary>
 internal sealed class SceneTabStrip : Grid
 {
@@ -19,7 +20,7 @@ internal sealed class SceneTabStrip : Grid
     {
         Height = 26,
         CornerRadius = EditorTheme.Corners,
-        Padding = new Thickness(10, 0, 0, 0),
+        Padding = new Thickness(Gaps.Item, 0, 0, 0),
         Background = EditorBrushes.Raised,
         BorderBrush = EditorBrushes.LineStrong,
         BorderThickness = new Thickness(1),
@@ -28,44 +29,56 @@ internal sealed class SceneTabStrip : Grid
     };
     readonly ContentControl _icon = new();
     readonly TextBlock _name = new() { VerticalAlignment = VerticalAlignment.Center };
-    readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", "Close the scene"));
-    readonly Button _add = Parts.IconButton("Add", "Make a new scene");
-    readonly Button _menu = Parts.IconButton("GuiTabMenuHl", "Scene tab options");
-    readonly Button _distraction = Parts.IconButton("DistractionFree", "Distraction free mode");
+    readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", ""));
+    readonly Button _add = Parts.IconButton("Add", "");
+    readonly Button _panels = new();
+    readonly Button _lock = new();
+    readonly HoverCard _locks = new(LockLayout, "Stops panels moving by accident. Collapsing still works.");
+    readonly HoverCard _unlocks = new(UnlockLayout, "Lets panels drag, move and resize again.");
+    readonly HoverCard _hide;
+    readonly HoverCard _show;
+    readonly MenuItem _find;
 
     public SceneTabStrip(Button runScene, KeyModifiers command)
     {
-        ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*,Auto");
-        Margin = new Thickness(6, 0);
+        ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*,Auto,Auto");
+        Margin = new Thickness(Gaps.Item, 0);
         TextElement.SetForeground(_icon, EditorBrushes.Accent);
         TextElement.SetForeground(_close, EditorBrushes.TextDim);
+        var key = Parts.KeyText(new KeyGesture(Key.OemPipe, command));
+        _hide = new HoverCard(HidePanels, "The view fills the window. Panels wait one key away.", key);
+        var newKey = new KeyGesture(Key.N, command);
+        var closeKey = new KeyGesture(Key.W, command);
+        new HoverCard("New scene…", "Makes an empty scene in a new tab.", Parts.KeyText(newKey)).On(_add);
+        new HoverCard("Close", "Asks first if there are unsaved changes.", Parts.KeyText(closeKey)).On(_close);
+        _show = new HoverCard(ShowPanels, "Brings the panels back as they were.", key);
+        Parts.Dress(_panels, "DistractionFree", _hide);
         _tab.Child = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 7,
+            Spacing = Gaps.Tight,
             Children = { _icon, _name, _close },
         };
-        _add.Margin = new Thickness(4, 0, 0, 0);
+        _add.Margin = new Thickness(Gaps.Tight, 0, 0, 0);
         _add.VerticalAlignment = VerticalAlignment.Center;
-        var right = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 2,
-            VerticalAlignment = VerticalAlignment.Center,
-            Children = { _distraction, _menu },
-        };
+        _panels.VerticalAlignment = VerticalAlignment.Center;
+        _lock.VerticalAlignment = VerticalAlignment.Center;
+        _lock.Margin = new Thickness(0, 0, Gaps.Tight, 0);
+        ShowLayoutLocked(false);
         Place(_tab, 0);
         Place(_add, 1);
-        Place(right, 3);
-        _menu.Flyout = new MenuFlyout
+        Place(_lock, 3);
+        Place(_panels, 4);
+        _find = Parts.PressItem(ShowInFiles, ShowInFilesButton);
+        _tab.ContextMenu = new ContextMenu
         {
-            Placement = PlacementMode.BottomEdgeAlignedRight,
             Items =
             {
-                Parts.PressItem("New Scene", _add, new KeyGesture(Key.N, command)),
-                Parts.PressItem("Run This Scene", runScene, new KeyGesture(Key.R, command)),
+                Parts.PressItem("New scene…", _add, newKey),
+                Parts.PressItem("Play this scene", runScene, new KeyGesture(Key.R, command)),
+                Parts.PressItem("Close", _close, closeKey, "Asks first if there are unsaved changes"),
                 new Separator(),
-                Parts.PressItem("Close Scene", _close),
+                _find,
             },
         };
     }
@@ -80,14 +93,54 @@ internal sealed class SceneTabStrip : Grid
 
     internal Button AddButton => _add;
 
-    internal Button MenuButton => _menu;
+    /// <summary>Shows the open scene's file in the Files panel. The window does the finding.</summary>
+    internal Button ShowInFilesButton { get; } = new();
 
-    internal Button DistractionButton => _distraction;
+    internal const string ShowInFiles = "Show in Files";
 
-    /// <summary>Shows the open scene as a tab with its root's icon and this label, or no tab for none.</summary>
-    public void Show(OutlineNode? root, string label)
+    internal const string HidePanels = "Hide panels";
+
+    internal const string ShowPanels = "Show panels";
+
+    internal Button PanelsButton => _panels;
+
+    internal const string LockLayout = "Lock layout";
+
+    internal const string UnlockLayout = "Unlock layout";
+
+    internal Button LockButton => _lock;
+
+    /// <summary>Shows whether the layout is locked, and names the button for what a press does.</summary>
+    internal void ShowLayoutLocked(bool locked) => Parts.Dress(_lock, locked ? "Lock" : "Unlock", locked ? _unlocks : _locks);
+
+    /// <summary>Names the panels button for what a press does: Show panels while every panel group is collapsed, else Hide panels.</summary>
+    internal void ShowPanelsHidden(bool hidden)
+    {
+        AutomationProperties.SetName(_panels, hidden ? ShowPanels : HidePanels);
+        (hidden ? _show : _hide).On(_panels);
+    }
+
+    /// <summary>Shows the scene file's tab before the engine can say what its root is, or no tab for no file.</summary>
+    public void ShowStarting(string file)
+    {
+        _tab.IsVisible = file != "";
+        _close.IsEnabled = ShowInFilesButton.IsEnabled = false;
+        // The close mark has its own color, so the disabled state alone does not dim it.
+        _close.Opacity = 0.4;
+        _icon.Content = new EditorIcon("SceneFile") { VerticalAlignment = VerticalAlignment.Center };
+        _name.Text = Path.GetFileNameWithoutExtension(file);
+    }
+
+    /// <summary>
+    /// Shows the open scene as a tab with its root's icon and this label, or no tab for none. Show in Files is on
+    /// while the scene has a res:// <paramref name="file"/>.
+    /// </summary>
+    public void Show(OutlineNode? root, string label, string file)
     {
         _tab.IsVisible = _close.IsEnabled = root is not null;
+        _close.Opacity = 1;
+        ShowInFilesButton.IsEnabled = file != "";
+        _find.Header = Parts.Noted(ShowInFiles, file == "" ? "Save the scene first. Then it has a file." : $"Finds {Path.GetFileName(file)} in the Files panel");
         if (root is null)
         {
             return;

@@ -392,14 +392,14 @@ public sealed class PlanarViewportTests
 
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.True(window.Center.Overlay.Planar);
-            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
+            AssertBox(297, 86, 2810, 1138, BoxOf(window.Viewport, window));
 
             ClickOn(TabOf(window, "3D"), window);
             window.UpdateLayout();
 
             Assert.True(window.Center.Toolbar.IsVisible);
             Assert.False(window.Center.Overlay.Planar);
-            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
+            AssertBox(297, 86, 2810, 1138, BoxOf(window.Viewport, window));
         });
     }
 

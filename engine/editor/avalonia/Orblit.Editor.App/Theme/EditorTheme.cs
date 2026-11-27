@@ -5,10 +5,12 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
+using Orblit.Editor.App.Shell;
 
 namespace Orblit.Editor.App.Theme;
 
@@ -33,7 +35,7 @@ internal sealed class EditorTheme : Styles
     internal const double RowIndent = 16;
 
     /// <summary>How far a lit row stands in from each side of its tree or list.</summary>
-    internal const double RowInset = 6;
+    internal const double RowInset = Gaps.Tight;
 
     /// <summary>Pixels the theme leaves before the content of a tree row, more than the reference draws.</summary>
     internal const double RowOverhang = 15;
@@ -49,6 +51,12 @@ internal sealed class EditorTheme : Styles
 
     /// <summary>The corners of a menu or a flyout, a step rounder than an island.</summary>
     internal static readonly CornerRadius PopoverCorners = new(11);
+
+    /// <summary>The class of a box of a panel menu's map: one place a panel can go.</summary>
+    internal const string MapBox = "mapBox";
+
+    /// <summary>The class of the menu item that holds the map, which takes no highlight of its own.</summary>
+    internal const string MapItem = "mapItem";
 
     /// <summary>The class of a worded button: a raised fill with an edge. The classes after it change its kind or size.</summary>
     internal const string TextButton = "text";
@@ -86,15 +94,8 @@ internal sealed class EditorTheme : Styles
     /// <summary>A flyout whose card sets its own room, so the presenter adds none.</summary>
     internal const string Flush = "flush";
 
-    /// <summary>
-    /// Marks a menu item, or the native item behind one, whose feature is not built. The theme dims its label and
-    /// draws Soon where its key would be. The screen bar of macOS draws its own items, so it shows neither.
-    /// </summary>
-    internal static readonly AttachedProperty<bool> SoonProperty = AvaloniaProperty.RegisterAttached<AvaloniaObject, bool>("Soon", typeof(EditorTheme));
-
-    internal static bool IsSoon(AvaloniaObject item) => item.GetValue(SoonProperty);
-
-    internal static void MarkSoon(AvaloniaObject item) => item.SetValue(SoonProperty, true);
+    /// <summary>A panel whose parts read as one control, such as a button and its drop-down, so they sit closer.</summary>
+    internal const string Joined = "joined";
 
     // Fluent resource key and the colour that replaces it. A list of cases, so it is data.
     static readonly (string Key, Color Color)[] BrushOverrides =
@@ -256,7 +257,7 @@ internal sealed class EditorTheme : Styles
                 new Setter(Layoutable.HeightProperty, RowHeight),
                 new Setter(Layoutable.MinHeightProperty, 0.0),
                 new Setter(Layoutable.MarginProperty, new Thickness(RowInset, 0)),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, 0)),
                 new Setter(TemplatedControl.CornerRadiusProperty, Corners),
                 // A bare name would sit at the top of the row.
                 new Setter(ContentControl.VerticalContentAlignmentProperty, VerticalAlignment.Center),
@@ -283,6 +284,7 @@ internal sealed class EditorTheme : Styles
             },
         });
         AddRange(PopoverStyles());
+        AddRange(MapStyles());
         AddRange(ButtonStyles());
         AddRange(FieldStyles());
     }
@@ -308,7 +310,7 @@ internal sealed class EditorTheme : Styles
         return overrides;
     }
 
-    // A menu is a popover: a 5 pixel inset round rows that have round corners of their own. A flyout holds a
+    // A menu is a popover: a 4 pixel inset round rows that have round corners of their own. A flyout holds a
     // form, so it keeps the base theme's room inside and takes only the popover's corners.
     static Style[] PopoverStyles() =>
     [
@@ -317,47 +319,67 @@ internal sealed class EditorTheme : Styles
             Setters =
             {
                 new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(5)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Tight)),
             },
         },
         new(x => x.OfType<MenuItem>())
         {
             Setters =
             {
-                new Setter(Layoutable.HeightProperty, 28.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(8, 0)),
+                // A floor, not a height, so an item with a note under its name grows to hold it.
+                new Setter(Layoutable.MinHeightProperty, 28.0),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, Gaps.Tight)),
                 new Setter(TemplatedControl.CornerRadiusProperty, Corners),
             },
         },
         new(x => x.OfType<FlyoutPresenter>()) { Setters = { new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners) } },
         new(x => x.OfType<FlyoutPresenter>().Class(Flush)) { Setters = { new Setter(TemplatedControl.PaddingProperty, new Thickness(0)) } },
-        // The window bar draws one item for each native item, so it carries the mark of the item it draws.
-        new(x => x.OfType<NativeMenuBar>().Descendant().OfType<MenuItem>())
-        {
-            Setters = { new Setter(SoonProperty, new Binding { Converter = new FuncValueConverter<object?, bool>(item => item is NativeMenuItem native && IsSoon(native)) }) },
-        },
-        // The label stays readable so people learn the menu. The tag takes the place of the key.
-        new(x => x.OfType<MenuItem>().PropertyEquals(SoonProperty, true)) { Setters = { new Setter(TemplatedControl.ForegroundProperty, EditorBrushes.Unbuilt) } },
-        new(x => x.OfType<MenuItem>().PropertyEquals(SoonProperty, true).Template().OfType<TextBlock>().Name("PART_InputGestureText"))
-        {
-            Setters =
-            {
-                new Setter(TextBlock.TextProperty, "Soon"),
-                new Setter(TextBlock.ForegroundProperty, EditorBrushes.Warn),
-                new Setter(TextBlock.FontWeightProperty, FontWeight.SemiBold),
-            },
-        },
         // The menus of a bar are header tabs, so they take the tab height and a softer name.
         new(x => x.Is<Menu>().Child().Is<MenuItem>())
         {
             Setters =
             {
                 new Setter(Layoutable.HeightProperty, 26.0),
+                new Setter(Layoutable.MinHeightProperty, 0.0),
                 new Setter(TemplatedControl.ForegroundProperty, EditorBrushes.TextSoft),
                 new Setter(TemplatedControl.FontWeightProperty, FontWeight.Medium),
             },
         },
     ];
+
+    // The theme repaints a button's presenter when it is hovered, pressed or off, so each state paints it here. The
+    // lit box is off and keeps its light, so its row comes last.
+    static IEnumerable<Style> MapStyles()
+    {
+        static Selector Box(Selector? x) => x.OfType<Button>().Class(MapBox);
+        static Selector Face(Selector x) => x.Template().OfType<ContentPresenter>().Name("PART_ContentPresenter");
+        static Style Paint(Func<Selector?, Selector> state, IBrush fill, IBrush edge) => new(x => Face(state(x)))
+        {
+            Setters = { new Setter(ContentPresenter.BackgroundProperty, fill), new Setter(ContentPresenter.BorderBrushProperty, edge) },
+        };
+
+        yield return new Style(x => Box(x))
+        {
+            Setters =
+            {
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(0)),
+                new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
+                new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(4)),
+                new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch),
+                new Setter(ContentControl.VerticalContentAlignmentProperty, VerticalAlignment.Stretch),
+                new Setter(InputElement.CursorProperty, new Cursor(StandardCursorType.Hand)),
+            },
+        };
+        yield return Paint(x => Box(x), EditorBrushes.GuideLit, EditorBrushes.LineStrong);
+        yield return Paint(x => Box(x).Class(":pointerover"), EditorBrushes.AccentSoft, EditorBrushes.Accent);
+        yield return Paint(x => Box(x).Class(":focus-visible"), EditorBrushes.AccentSoft, EditorBrushes.Accent);
+        yield return Paint(x => Box(x).Class(":disabled"), EditorBrushes.Lifted, EditorBrushes.Line);
+        yield return Paint(x => Box(x).Class(PanelMap.Here), EditorBrushes.Accent, EditorBrushes.Accent);
+        yield return new Style(x => x.OfType<MenuItem>().Class(MapItem).Template().OfType<Border>().Name("PART_LayoutRoot"))
+        {
+            Setters = { new Setter(Border.BackgroundProperty, Brushes.Transparent) },
+        };
+    }
 
     // The fill, hovered fill, edge and text of each kind of worded button. A list of cases, so it is data. Later
     // rows win over the first, which every kind also carries.
@@ -378,7 +400,7 @@ internal sealed class EditorTheme : Styles
             Setters =
             {
                 new Setter(Layoutable.HeightProperty, 30.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(12, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Group, 0)),
                 new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
                 new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
                 new Setter(TemplatedControl.FontWeightProperty, FontWeight.Medium),
@@ -419,7 +441,7 @@ internal sealed class EditorTheme : Styles
             Setters =
             {
                 new Setter(Layoutable.HeightProperty, 26.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, 0)),
                 new Setter(TemplatedControl.FontSizeProperty, 12.0),
                 new Setter(TemplatedControl.CornerRadiusProperty, Corners),
             },
@@ -429,7 +451,7 @@ internal sealed class EditorTheme : Styles
             Setters =
             {
                 new Setter(Layoutable.HeightProperty, double.NaN),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(12)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Group)),
                 new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(10)),
                 new Setter(Layoutable.HorizontalAlignmentProperty, HorizontalAlignment.Stretch),
                 new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Left),
@@ -485,7 +507,7 @@ internal sealed class EditorTheme : Styles
             {
                 new Setter(Layoutable.HeightProperty, 30.0),
                 new Setter(Layoutable.MinHeightProperty, 0.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, 0)),
                 new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
                 new Setter(TextBox.VerticalContentAlignmentProperty, VerticalAlignment.Center),
             },
@@ -496,7 +518,7 @@ internal sealed class EditorTheme : Styles
             {
                 new Setter(Layoutable.HeightProperty, 30.0),
                 new Setter(Layoutable.MinHeightProperty, 0.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0, 0, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, 0, 0, 0)),
                 new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
                 new Setter(Layoutable.HorizontalAlignmentProperty, HorizontalAlignment.Stretch),
             },
@@ -518,8 +540,8 @@ internal sealed class EditorTheme : Styles
     // The theme draws a thin, wide chevron. The reference draws its own 12 pixel arrow icons.
     static Border Arrow(ToggleButton button)
     {
-        var right = new EditorIcon("GuiTreeArrowRight");
-        var down = new EditorIcon("GuiTreeArrowDown");
+        var right = new EditorIcon("GuiTreeArrowRight") { Width = 12, Height = 12 };
+        var down = new EditorIcon("GuiTreeArrowDown") { Width = 12, Height = 12 };
         void Point()
         {
             down.IsVisible = button.IsChecked == true;

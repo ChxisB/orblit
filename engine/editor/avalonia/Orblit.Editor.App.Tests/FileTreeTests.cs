@@ -159,4 +159,35 @@ public sealed class FileTreeTests
     {
         Assert.Empty(FileTree.Matches(Scenes, "zzz"));
     }
+
+    [Fact]
+    public void By_kind_puts_scenes_then_scripts_then_imported_files_each_by_name()
+    {
+        string[] files = ["res://b.png", "res://spin.cs", "res://grow.ograph", "res://a.png", "res://main.oscn"];
+
+        var project = FileTree.Build(files, FileTree.ByKind).Single();
+
+        Assert.Equal(["main.oscn", "grow.ograph", "spin.cs", "a.png", "b.png"], Names(project.Children));
+    }
+
+    [Theory]
+    [InlineData("res://sky.PNG", "Picture")]
+    [InlineData("res://crate.glb", "Model")]
+    [InlineData("res://step.ogg", "Sound")]
+    [InlineData("res://title.ttf", "Font")]
+    [InlineData("res://notes.txt", "")]
+    [InlineData("res://spin.cs", "C# script")]
+    [InlineData("res://grow.ograph", "Graph script")]
+    public void An_imported_file_is_named_by_what_it_holds(string path, string words)
+    {
+        Assert.Equal(words, Orblit.Editor.App.Shell.Search.KindText(path, _ => throw new InvalidOperationException("Only a scene reads its file for its kind.")));
+    }
+
+    [Theory]
+    [InlineData("3D", "3D scene")]
+    [InlineData("", "Scene")]
+    public void A_scene_is_named_by_the_kind_its_file_holds(string kind, string words)
+    {
+        Assert.Equal(words, Orblit.Editor.App.Shell.Search.KindText("res://main.oscn", _ => kind));
+    }
 }

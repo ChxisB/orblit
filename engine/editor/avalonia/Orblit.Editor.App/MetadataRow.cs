@@ -24,7 +24,7 @@ internal sealed class MetadataRow : Grid
         _shown = entry.Value;
         ColumnDefinitions = new ColumnDefinitions("*,*,Auto");
         Height = RowHeight;
-        Margin = new Thickness(0, 4, 0, 0);
+        Margin = new Thickness(0, Gaps.Tight, 0, 0);
         RemoveButton = new Button
         {
             Height = RowHeight,
@@ -41,7 +41,7 @@ internal sealed class MetadataRow : Grid
         Control editor = entry.Value is bool flag ? CheckBoxFor(flag) : BoxFor(entry.Value);
         SetColumn(editor, 1);
         SetColumn(RemoveButton, 2);
-        Children.Add(new TextBlock { Text = entry.Name, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        Children.Add(new TextBlock { Text = entry.Name, Margin = new Thickness(Gaps.Item, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
         Children.Add(editor);
         Children.Add(RemoveButton);
     }
@@ -63,7 +63,7 @@ internal sealed class MetadataRow : Grid
 
     CheckBox CheckBoxFor(bool value)
     {
-        Check = new CheckBox { IsChecked = value, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        Check = new CheckBox { IsChecked = value, Margin = new Thickness(Gaps.Item, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         Check.IsCheckedChanged += (_, _) => Entered?.Invoke(Check.IsChecked == true);
         return Check;
     }
@@ -74,7 +74,7 @@ internal sealed class MetadataRow : Grid
         {
             Height = RowHeight,
             MinHeight = 0,
-            Padding = new Thickness(8, 0, 0, 0),
+            Padding = new Thickness(Gaps.Item, 0, 0, 0),
             VerticalContentAlignment = VerticalAlignment.Center,
             Background = EditorBrushes.Field,
             BorderThickness = new Thickness(0),

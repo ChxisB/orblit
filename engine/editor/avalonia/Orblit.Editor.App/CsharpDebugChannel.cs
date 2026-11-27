@@ -41,6 +41,12 @@ internal sealed class CsharpDebugChannel(string project) : IDebugChannel
     public int? ProcessId { get; private set; }
 
     /// <summary>
+    /// The code the game ended with, which netcoredbg sends before it goes. Null until then. It outlives the closed
+    /// link, so the editor can read it once netcoredbg is gone. <see cref="End"/> clears it for the next game.
+    /// </summary>
+    public int? ExitCode { get; private set; }
+
+    /// <summary>
     /// Asks netcoredbg to run the game's program and arguments and stop on these lines, each a res:// path and a
     /// line. A failure to start is written to the log file, where the Output panel shows it.
     /// </summary>
@@ -50,6 +56,7 @@ internal sealed class CsharpDebugChannel(string project) : IDebugChannel
         _logFile = logFile;
         State = DebugState.None;
         ProcessId = null;
+        ExitCode = null;
         _thread = 0;
         _frames.Clear();
         _lines.Clear();
@@ -80,6 +87,7 @@ internal sealed class CsharpDebugChannel(string project) : IDebugChannel
     {
         var link = _link;
         link?.Request("disconnect", new JsonObject { ["terminateDebuggee"] = true });
+        ExitCode = null;
         Forget();
         return link is not null;
     }
@@ -168,6 +176,9 @@ internal sealed class CsharpDebugChannel(string project) : IDebugChannel
             case "continued":
                 _frames.Clear();
                 State = State with { Stopped = false, Reason = "", Stack = [], Level = 0, Locals = [] };
+                break;
+            case "exited":
+                ExitCode = Number(body, "exitCode");
                 break;
             case "terminated":
                 // netcoredbg outlives its game until it is told to go.

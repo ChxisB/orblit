@@ -27,14 +27,14 @@ internal sealed class Segments : Border
                 }
             };
         }
-        Padding = new Thickness(2);
+        Padding = new Thickness(Gaps.Joined);
         Background = EditorBrushes.Field;
         BorderBrush = EditorBrushes.Line;
         BorderThickness = new Thickness(1);
         CornerRadius = new CornerRadius(8);
         HorizontalAlignment = HorizontalAlignment.Left;
         // Radio buttons with one parent and no group name turn each other off.
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
+        var row = new WrapPanel { ItemSpacing = Gaps.Joined, LineSpacing = Gaps.Joined };
         row.Children.AddRange(_choices);
         Child = row;
     }

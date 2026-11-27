@@ -8,9 +8,11 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Launcher;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
@@ -21,43 +23,48 @@ namespace Orblit.Editor.App;
 /// The editor shell: a title bar over three columns. The scene outline and the project's scenes are on the left,
 /// the viewport in the middle and the inspector on the right.
 /// </summary>
-internal sealed class EditorWindow : Window
+internal sealed class EditorWindow : Window, IAppMenuTarget
 {
     // The engine's log is read by polling a file, and a quarter of a second is fast enough to read a line as it comes.
     // The same tick notices a game that ended on its own.
     static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
 
+    const string NoViewport = "No viewport. The editor was started with --headless.";
+
     readonly InspectorPanel _inspector = new();
-    readonly ContentControl _viewport = new()
-    {
-        Content = new TextBlock { Margin = new Thickness(8), TextWrapping = Avalonia.Media.TextWrapping.Wrap, Text = "No viewport. The editor was started with --headless." },
-    };
+    readonly ContentControl _viewport = new() { Content = ViewportNote(NoViewport) };
     readonly EntityTools _tools = new();
     readonly MoveTools _move = new();
     readonly SignalsPane _signals = new();
     readonly NewSceneTool _newScene = new();
     readonly InstanceTool _instanceScene = new();
-    readonly TextBlock _changesLine = new() { FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
+    readonly StackPanel _changes = new() { Spacing = Gaps.Joined };
     readonly Dialog _saveChanges;
     readonly ScenesPanel _scenes;
     readonly TimeProvider _time;
     readonly EditHistory _history;
-    readonly HistoryPane _historyPane = new();
+    readonly HistoryPane _historyPane;
     readonly ToastStack _toasts;
     readonly List<string> _recent = [];
     readonly Dictionary<string, DateTimeOffset> _openedAt = [];
-    readonly Picker _palette = CommandPalette.Build();
-    readonly Picker _quickOpen;
-    readonly Button _quickOpenButton = new();
-    // Save and Frame are commands without a place of their own on screen. The shortcuts, the menus and the
-    // tests press them, and a button off keeps its key unhandled.
+    readonly Search _search = new();
+    readonly Button _scenesButton = new();
+    readonly Button _actionsButton = new();
+    // Save, Play this scene and Frame are commands without a place of their own on screen. The shortcuts, the
+    // menus and the tests press them, and a button off keeps its key unhandled. The title bar draws Play and Stop.
     readonly Button _save = new() { IsEnabled = false };
-    readonly Button _playButton = Parts.IconButton("MainPlay", "Run the project");
-    readonly Button _playSceneButton = Parts.IconButton("PlayScene", "Run the current scene");
-    readonly Button _stopButton = Parts.IconButton("Stop", "Stop the game");
+    readonly Button _playButton = new();
+    readonly Button _playSceneButton = new();
+    readonly Button _stopButton = new();
     readonly Button _frame = new() { IsEnabled = false };
     readonly Button _undo = new() { IsEnabled = false };
     readonly Button _redo = new() { IsEnabled = false };
+    readonly Button _keysButton = new();
+    readonly KeysSheet _keys = new();
+    readonly Button _settingsButton = new();
+    readonly SettingsSheet _settings;
+    readonly ILinkOpener _links;
+    readonly bool _globalMenu;
     readonly SceneTabStrip _sceneTabs;
     readonly ViewportToolbar _toolbar;
     readonly TitleBar _titleBar;
@@ -68,62 +75,86 @@ internal sealed class EditorWindow : Window
     readonly DockTabs _fileDock;
     readonly InspectorPane _inspectorPane;
     readonly DockTabs _inspectorDock;
-    readonly DockSide _leftSide;
-    readonly DockSide _rightSide;
+    readonly DockArea _docks;
     readonly CenterArea _center;
     readonly ExportTool _export = new();
-    readonly ScriptView _script = new();
+    readonly ScriptView _script;
     readonly ImportPane _import = new();
-    readonly GraphView _graph = new();
-    readonly GameView _game = new();
-    readonly Dictionary<DockSlot, Border> _slots = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
-    readonly Dictionary<DockTabs, Window> _floats = [];
-    readonly Dictionary<DockTabs, DockSlot> _homes = [];
+    readonly GraphView _graph;
+    readonly GameView _game;
 
-    // The sides a workspace folds to their rails, by workspace. A workspace not listed keeps both open.
-    static readonly Dictionary<string, (bool Left, bool Right)> s_folds = new()
-    {
-        [TitleBar.Script] = (true, true),
-        [TitleBar.Graph] = (true, true),
-        [TitleBar.Game] = (true, true),
-    };
+    // The workspaces that start with the side panels hidden. A workspace not listed shows them as the user left them.
+    static readonly string[] s_ownColumns = [TitleBar.Script, TitleBar.Graph, TitleBar.Game];
+    // The middle's least width. A workspace with the sides hidden lays its own columns out in the middle, so it needs
+    // more of it when the sides are shown again.
+    const double ViewportMiddle = 480;
+    const double WorkspaceMiddle = 700;
+    const string LayoutSection = "layout";
     IEditorScene? _scene;
+    // The scene once it loads, and the project's folder before that.
+    IProjectFiles? _files;
     OutlineNode? _root;
     readonly RulerPoints _ruler = new();
     bool _edited;
     // The edits since the scene opened or was last saved, and when that was, for the Save changes dialog.
     int _edits;
     DateTimeOffset _since;
+
+    // What the open Save changes dialog does once the edits are saved or dropped, and the word its buttons give it.
+    (string Verb, Action Then) _afterAsk = ("", () => { });
     // When the game last started, for the time the Game view shows.
     DateTimeOffset _playedAt;
+    // The Output lines before the game started, so the error a crash toast names is the game's.
+    int _outputAtPlay;
+    // Whether the game ran at the last look, so its end gets one toast.
+    bool _wasPlaying;
     bool _planar;
+    // The file that keeps the layout, while there is one to keep it in.
+    EditorSettings? _layoutFile;
+    bool _layoutSavePending;
+    // The bottom panel Hide panels shut, which Show panels opens again, or -1 for none.
+    int _shutPanel = -1;
     // The Entity3D the gizmo drags, or zero when the selection has none.
     nint _gizmoTarget;
     // What the drag under way did, such as Moved Box, which names its step in History when it ends.
     string _dragged = "";
 
-    // The screen bar of macOS has its own app menu, so a window on any other system also carries Quit and About.
-    public EditorWindow(bool? globalMenu = null, TimeProvider? time = null)
+    // The screen bar of macOS has its own app menu, so a window on any other system also carries About, Settings
+    // and Quit. Settings is the user's own unless the caller names one. Links open in the system browser.
+    public EditorWindow(bool? globalMenu = null, TimeProvider? time = null, EditorSettings? settings = null, ILinkOpener? links = null)
     {
-        // 16 in from the right, and 10 clear of the bottom bar, which sits on the body's 6 pixel margin.
+        _links = links ?? new WindowLinks(this);
         _time = time ?? TimeProvider.System;
         _history = new EditHistory(_time);
         _history.Changed += ShowHistory;
+        _historyPane = new HistoryPane(CommandKey);
+        _game = new GameView(CommandKey);
+        _script = new ScriptView(CommandKey);
+        _graph = new GraphView(CommandKey);
         _historyPane.Picked += GoTo;
         _historyPane.ClearButton.Click += (_, _) => _history.Clear();
         _undo.Click += (_, _) => GoTo(_history.Done - 1);
         _redo.Click += (_, _) => GoTo(_history.Done + 1);
-        _toasts = new ToastStack(_time) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
+        // 16 in from the right, and 8 clear of the bottom bar, which sits on the body's 8 pixel margin.
+        _toasts = new ToastStack(_time) { Margin = new Thickness(0, 0, Gaps.Dialog, CenterArea.BottomBarHeight + Gaps.Dialog) };
         _saveChanges = SaveChangesDialog();
         _titleBar = new TitleBar(_playButton, _playSceneButton, _stopButton, CommandKey);
         _sceneTabs = new SceneTabStrip(_playSceneButton, CommandKey);
-        _titleBar.SearchButton.Click += (_, _) => OpenPalette();
-        _quickOpen = QuickOpen.Build(CommandKey);
-        _quickOpenButton.Click += (_, _) => OpenQuickOpen();
+        _titleBar.SearchButton.Click += (_, _) => OpenSearch(SearchScope.All);
+        _script.FindScriptButton.Click += (_, _) => OpenSearch(SearchScope.All);
+        _scenesButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
+        _actionsButton.Click += (_, _) => OpenSearch(SearchScope.Actions);
+        _keysButton.Click += (_, _) => OpenKeys();
+        _settings = new SettingsSheet(settings ?? ProjectList.ForUser().Settings());
+        _settings.KeysAsked += OpenKeys;
+        _settingsButton.Click += (_, _) => OpenSettings();
+        _globalMenu = globalMenu ?? OperatingSystem.IsMacOS();
         ShowTitle();
         Icon = EditorIcon.ToWindowIcon("Orblit", 64);
         Width = 1440;
         Height = 900;
+        MinWidth = 1280;
+        MinHeight = 720;
         ExtendClientAreaToDecorationsHint = true;
         ExtendClientAreaTitleBarHeightHint = TitleBar.BarHeight;
         _scenePane = new ScenePane(_tools, _move, _instanceScene, CommandKey);
@@ -148,6 +179,9 @@ internal sealed class EditorWindow : Window
         _inspector.Failed += Fail;
         _inspector.Editing += OpenFile;
         _scenes.Chosen += OpenFile;
+        _scenes.NewSceneRequested += OpenNewScene;
+        _scenes.PlayRequested += path => Play("--scene", path);
+        _scenes.UseRequested += _instanceScene.Use;
         _scenes.NewGraphRequested += () =>
         {
             _titleBar.Choose(TitleBar.Graph);
@@ -158,32 +192,52 @@ internal sealed class EditorWindow : Window
         _playSceneButton.IsEnabled = false;
         _stopButton.IsEnabled = false;
         _save.Click += (_, _) => SaveAll();
-        _playButton.Click += (_, _) => Play();
-        _playSceneButton.Click += (_, _) => Play("--scene", _scene!.SceneFile);
+        _playButton.Click += (_, _) => PlayGame();
+        _playSceneButton.Click += (_, _) => PlayScene();
         _stopButton.Click += (_, _) => Stop();
-        _sceneTabs.DistractionButton.Click += (_, _) => ToggleDistractionFree();
-        _game.RunRequested += () => Play();
+        _sceneTabs.PanelsButton.Click += (_, _) => TogglePanels();
+        _game.RunRequested += PlayGame;
+        _game.RunSceneRequested += PlayScene;
         _game.StopRequested += Stop;
+        _game.ShowWindowRequested += () => _scene?.ShowGameWindow();
         _frame.Click += (_, _) => Frame();
-        AddHandler(Unbuilt.Event, (_, e) => ShowUnbuilt(e.Message));
-        _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", _import)) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
-        _fileDock = new DockTabs(("FileSystem", _scenes), ("History", _historyPane)) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
-        _fileDock.AddTool("History", _historyPane.ClearButton);
         _inspectorPane = new InspectorPane(_inspector);
         _inspectorPane.Picked += _scenePane.Select;
-        _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", _signals)) { Slot = DockSlot.Right, Icon = "ListSelect" };
-        WireDocks();
-        _leftSide = new DockSide(LeftColumn(), () => DocksIn(DockSlot.UpperLeft, DockSlot.LowerLeft));
-        _rightSide = new DockSide(_slots[DockSlot.Right], () => DocksIn(DockSlot.Right));
-        _toolbar = new ViewportToolbar(_frame);
+        _sceneDock = new DockTabs(new DockPage("Scene", "SceneFile", _scenePane), new DockPage("Import", "Load", _import)) { Slot = DockSlot.UpperLeft };
+        _fileDock = new DockTabs(new DockPage("Files", "Filesystem", _scenes), new DockPage("History", "History", _historyPane, _historyPane.ClearButton)) { Slot = DockSlot.LowerLeft };
+        _inspectorDock = new DockTabs(new DockPage("Inspector", "ListSelect", _inspectorPane), new DockPage("Signals", "Signals", _signals)) { Slot = DockSlot.UpperRight };
+        _toolbar = new ViewportToolbar(_frame, CommandKey);
         _toolbar.LockButton.Click += (_, _) => ToggleFlag(_scene!.SetLocked, selected => selected.Locked, "Locked", "Unlocked");
         _toolbar.GroupButton.Click += (_, _) => ToggleFlag(_scene!.SetGrouped, selected => selected.Grouped, "Grouped", "Ungrouped");
         _toolbar.KeepChildrenButton.IsCheckedChanged += (_, _) => _scene?.KeepChildren = _toolbar.KeepChildren;
-        _center = new CenterArea(_sceneTabs, _toolbar, _viewport, _bottomBar);
-        _center.Output.ClearRequested += () => _scene?.ClearOutput();
+        _center = new CenterArea(new CenterParts(_sceneTabs, _toolbar, _viewport, _bottomBar, CommandKey));
+        _docks = new DockArea(_center, _sceneDock, _fileDock, _inspectorDock) { LeastMiddle = ViewportMiddle };
+        _sceneTabs.LockButton.Click += (_, _) => _docks.Locked = !_docks.Locked;
+        _docks.Changed += () =>
+        {
+            _sceneTabs.ShowPanelsHidden(_docks.PanelsHidden);
+            _sceneTabs.ShowLayoutLocked(_docks.Locked);
+        };
+        _docks.FloatKeyDown += FloatKey;
+        // Only a file the app was given keeps the layout, so no test or tool touches the user's own by accident.
+        if (settings is not null)
+        {
+            KeepLayout(settings);
+        }
+
+        // A layout that comes back says nothing, so the words start after it.
+        _docks.Said += message => Say(message);
+        _center.Output.ClearRequested += () =>
+        {
+            _scene?.ClearOutput();
+            _outputAtPlay = 0;
+        };
         _center.Output.CopyRequested += text => Copy(text, "the output");
-        _center.Debugger.RunRequested += () => Play();
+        _center.Debugger.RunRequested += PlayGame;
         _center.Debugger.CopyRequested += id => Copy(id, "the process id");
+        _center.NoScene.NewButton.Click += (_, _) => OpenNewScene(FileTree.Root);
+        _center.NoScene.FindButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
+        _center.NoScene.OpenRequested += Open;
         _script.Paused += () =>
         {
             _titleBar.Choose(TitleBar.Script);
@@ -191,7 +245,8 @@ internal sealed class EditorWindow : Window
         };
         _bottomBar.VersionCopyRequested += () => Copy(BottomBar.Version, BottomBar.Version);
         _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
-        _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
+        _center.Planar.OpenButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
+        _center.Planar.AddButton.Click += (_, _) => _tools.AddButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         _center.AddBareWorkspace(TitleBar.Script, _script);
         _center.AddBareWorkspace(TitleBar.Graph, _graph);
         _center.AddBareWorkspace(TitleBar.Game, _game);
@@ -204,11 +259,15 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
-        NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _settings.Dialog, _keys.Dialog, _search.Picker, _toasts } };
+        NativeMenu.SetMenu(this, EditorMenu.Build(_globalMenu, CommandKey, MenuActions()));
     }
 
     internal TitleBar Bar => _titleBar;
+
+    internal KeysSheet Keys => _keys;
+
+    internal SettingsSheet Settings => _settings;
 
     internal DockTabs SceneDock => _sceneDock;
 
@@ -216,9 +275,11 @@ internal sealed class EditorWindow : Window
 
     internal DockTabs InspectorDock => _inspectorDock;
 
-    internal DockSide LeftSide => _leftSide;
+    internal DockArea Docks => _docks;
 
-    internal DockSide RightSide => _rightSide;
+    internal DockSide LeftSide => _docks.Left;
+
+    internal DockSide RightSide => _docks.Right;
 
     internal CenterArea Center => _center;
 
@@ -254,7 +315,8 @@ internal sealed class EditorWindow : Window
 
     internal Dialog SaveChanges => _saveChanges;
 
-    internal TextBlock ChangesLine => _changesLine;
+    /// <summary>The rows of the Save changes dialog: each change since the save, then each script with edits.</summary>
+    internal StackPanel ChangesList => _changes;
 
     internal ContentControl Viewport => _viewport;
 
@@ -278,17 +340,77 @@ internal sealed class EditorWindow : Window
 
     internal ToastStack Toasts => _toasts;
 
-    internal Picker Palette => _palette;
+    internal Search Search => _search;
 
-    internal Picker QuickOpener => _quickOpen;
 
     /// <summary>The modifier that makes a shortcut: Command on macOS, Control elsewhere.</summary>
     internal KeyModifiers CommandKey => this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
+
+    /// <summary>
+    /// Shows what the project's folder tells while the engine starts. The parts that wait for the engine say so,
+    /// and the Files panel takes no press, since no scene is there to open a file in.
+    /// </summary>
+    public void ShowProject(IProjectFiles project)
+    {
+        _files = project;
+        ShowTitle();
+        ShowScenes();
+        _scenes.MarkOpen(project.SceneFile);
+        _sceneTabs.ShowStarting(project.SceneFile);
+        _scenePane.ShowStarting(true);
+        _inspectorPane.ShowStarting(true);
+        _toolbar.IsVisible = false;
+        _viewport.Content = ViewportNote("Loading the view…");
+        TakeFilePresses(false);
+    }
+
+    /// <summary>The engine did not start. The view says why, the panes point to it, and the Files panel is off.</summary>
+    public void FailToStart(string message)
+    {
+        // The panes keep the places they said loading in, so neither asks for a scene that cannot be opened.
+        _scenePane.ShowStarting(true);
+        _inspectorPane.ShowStarting(true);
+        foreach (var waiting in new[] { _scenePane.Loading, _inspectorPane.Loading })
+        {
+            Parts.Reword(waiting, "The engine did not start", "The view says why.");
+        }
+
+        _sceneTabs.ShowStarting("");
+        _scenes.IsEnabled = false;
+        _viewport.Content = ViewportNote(message);
+        Fail(message);
+    }
+
+    void TakeFilePresses(bool take)
+    {
+        _scenes.IsHitTestVisible = take;
+        KeyboardNavigation.SetTabNavigation(_scenes, take ? KeyboardNavigationMode.Continue : KeyboardNavigationMode.None);
+    }
+
+    // In the middle, clear of the tools over the top of the view.
+    static TextBlock ViewportNote(string text) => new()
+    {
+        Margin = new Thickness(Gaps.Dialog),
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center,
+        TextWrapping = TextWrapping.Wrap,
+        Text = text,
+    };
 
     public void Load(IEditorScene editorScene)
     {
         var scene = new UndoableScene(editorScene, _history);
         _scene = scene;
+        _files = scene;
+        _scenePane.ShowStarting(false);
+        _inspectorPane.ShowStarting(false);
+        _toolbar.IsVisible = !_planar;
+        TakeFilePresses(true);
+        if (_viewport.Content is not ViewportControl)
+        {
+            _viewport.Content = ViewportNote(NoViewport);
+        }
+
         // The button can be pressed while the engine starts, before there is a scene to tell.
         scene.KeepChildren = _toolbar.KeepChildren;
         _script.Show(scene);
@@ -325,13 +447,6 @@ internal sealed class EditorWindow : Window
         {
             Fail($"Could not copy {what}: {error.Message}");
         }
-    }
-
-    // The status line keeps the answer after the toast goes. A toast title has no full stop.
-    void ShowUnbuilt(string message)
-    {
-        Say(message);
-        _toasts.Show(ToastKind.Unbuilt, message.TrimEnd('.'));
     }
 
     /// <summary>Reads the lines the engine logged since the last call and shows whether the game still runs.</summary>
@@ -376,8 +491,10 @@ internal sealed class EditorWindow : Window
         _scenePane.Show(_root, select);
         _scenes.MarkOpen(_scene!.SceneFile);
         _save.IsEnabled = _root is not null;
+        _center.NoScene.IsVisible = _root is null;
+        _center.NoScene.ShowRecent(RecentScenes());
         ShowGame();
-        _sceneTabs.Show(_root, SceneLabel());
+        _sceneTabs.Show(_root, SceneLabel(), _scene!.SceneFile);
         _center.Planar.ShowScene(_scene!, _root, SceneName());
         ShowTitle();
         ShowSelection();
@@ -386,9 +503,9 @@ internal sealed class EditorWindow : Window
     // The 2D view is on for the 2D workspace alone, so any other workspace gives the viewport back to 3D.
     void ChooseWorkspace(string name)
     {
-        var (left, right) = s_folds.GetValueOrDefault(name);
-        _leftSide.Fold(left);
-        _rightSide.Fold(right);
+        var ownColumns = s_ownColumns.Contains(name);
+        _docks.LeastMiddle = ownColumns ? WorkspaceMiddle : ViewportMiddle;
+        _docks.UseWorkspaceHides(ownColumns);
         _center.ShowWorkspace(name);
         _planar = name == TitleBar.Planar;
         _center.Overlay.Planar = _planar;
@@ -425,7 +542,7 @@ internal sealed class EditorWindow : Window
         }
 
         _ruler.Add(point);
-        Say(_ruler.Length is { } length ? $"Measured {RulerPoints.Label(length)}." : "Click a second point to measure to.");
+        Say(_ruler.Length is { } length ? $"Measured {RulerPoints.Label(length)}." : "Click a second point. Esc stops measuring.");
     }
 
     // One entity or none under the cursor needs no list, so the click picks as usual.
@@ -561,68 +678,173 @@ internal sealed class EditorWindow : Window
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
+        SaveLayout();
         if (HasEdits)
         {
             e.Cancel = true;
-            AskToSave();
+            AskToSave("close", () =>
+            {
+                ShowEdited(false);
+                Close();
+            });
+        }
+
+        // The floating windows close next and put their groups back, which is not a layout to keep.
+        if (!e.Cancel)
+        {
+            _layoutFile = null;
         }
     }
 
-    // Closing without saving drops the edits, so that action sits at the far left, away from Save and close.
+    void KeepLayout(EditorSettings settings)
+    {
+        if (SavedLayout.Read(settings.Section(LayoutSection), _docks.Panels) is { } saved)
+        {
+            _docks.Apply(saved);
+        }
+
+        _layoutFile = settings;
+        _docks.Changed += SaveLayoutSoon;
+        Opened += (_, _) => _docks.ShowFloats();
+    }
+
+    // The save waits until the change is whole, as a move raises more than one on its way.
+    void SaveLayoutSoon()
+    {
+        if (_layoutSavePending)
+        {
+            return;
+        }
+
+        _layoutSavePending = true;
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                _layoutSavePending = false;
+                SaveLayout();
+            },
+            DispatcherPriority.Background);
+    }
+
+    void SaveLayout()
+    {
+        try
+        {
+            _layoutFile?.SetSection(LayoutSection, _docks.Capture().Values());
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            Fail($"Could not save the layout. {error.Message}");
+        }
+    }
+
+    // Going on without saving drops the edits, so that action sits at the far left, away from Save.
     Dialog SaveChangesDialog()
     {
-        var warn = new EditorIcon("WarnTriangle") { Width = 15, Height = 15, Margin = new Thickness(0, 0, 10, 0) };
-        TextElement.SetForeground(warn, EditorBrushes.Warn);
-        var drop = new Button { Content = "Close without saving", Classes = { EditorTheme.TextButton, EditorTheme.Danger } };
-        var body = new StackPanel { Orientation = Orientation.Horizontal, Children = { warn, _changesLine } };
-        var dialog = new Dialog("", "Closing without saving drops them.", body)
+        var drop = new Button { Content = "Don't save", Classes = { EditorTheme.TextButton, EditorTheme.Danger } };
+        var body = new ScrollViewer { MaxHeight = 220, Content = _changes };
+        var dialog = new Dialog("", "", body)
         {
-            MainText = "Save and close",
-            CancelText = "Keep editing",
             Closable = false,
-            CardWidth = 400,
+            CardWidth = 440,
             LeadButton = drop,
         };
-        // A failed save leaves the edits, so the close asks again.
+        dialog.CancelButton.Content = Parts.Keyed("Cancel", "esc");
+        new HoverCard("Cancel", "Goes back to editing, with the changes.", "esc").On(dialog.CancelButton);
+        // A failed save leaves the edits, so the dialog asks again with what is still not saved.
         dialog.MainButton.Click += (_, _) =>
         {
-            SaveEdits();
-            Close();
+            if (!SaveEdits())
+            {
+                AskToSave(_afterAsk.Verb, _afterAsk.Then);
+                return;
+            }
+
+            dialog.Close();
+            _afterAsk.Then();
         };
         drop.Click += (_, _) =>
         {
             _script.Discard();
             _graph.Discard();
-            ShowEdited(false);
-            Close();
+            dialog.Close();
+            _afterAsk.Then();
         };
         return dialog;
     }
 
-    // An open script that was typed in counts as one change, as the scene does not count its keys.
-    void AskToSave()
+    // The scene's changes come from History, newest first. An undo back past the save leaves none to list, so
+    // the line then says only that the scene changed. The verb names what the buttons do after the save or drop.
+    void AskToSave(string verb, Action then)
     {
-        _saveChanges.Title = $"Save changes to {(_edited ? SceneName() : "the open scripts")}?";
-        var count = _edits + (_script.IsDirty ? 1 : 0) + (_graph.IsDirty ? 1 : 0);
-        _changesLine.Text = $"{count} {(count == 1 ? "change" : "changes")} since {_since.ToString("HH:mm", CultureInfo.InvariantCulture)}.";
+        _afterAsk = (verb, then);
+        var going = char.ToUpperInvariant(verb[0]) + verb[1..];
+        var scripts = (_script.IsDirty ? [(_script.OpenPath!, Count(_script.ChangedLines, "line") + " changed")] : Array.Empty<(string, string)>())
+            .Concat(_graph.EditedScripts.Select(path => (path, "Changes not saved")))
+            .ToList();
+        var steps = _edited ? _history.Steps.Take(_history.Done).Where(step => step.At >= _since).Reverse().ToList() : [];
+        var since = _since.ToString("HH:mm", CultureInfo.InvariantCulture);
+        _changes.Children.Clear();
+        _changes.Children.AddRange(steps.Select(step => ChangeRow(step.At.ToString("HH:mm", CultureInfo.InvariantCulture), step.Label, null)));
+        _changes.Children.AddRange(scripts.Select(script => ChangeRow(null, $"{Path.GetFileName(script.Item1)}", $"{script.Item1} · {script.Item2}")));
+        var main = _edited || scripts.Count == 1 ? $"Save and {verb}" : $"Save {scripts.Count} and {verb}";
+        _saveChanges.MainButton.Content = Parts.Keyed(main, "↵");
+        new HoverCard(main, $"Saves everything listed here, then {verb}s.", "↵").On(_saveChanges.MainButton);
+        new HoverCard("Don't save", $"{going}s and drops every change listed here.").On(_saveChanges.LeadButton!);
+        _saveChanges.Title = _edited ? $"Save changes to {SceneLabel()}?"
+            : scripts.Count == 1 ? $"Save {Path.GetFileName(scripts[0].Item1)}?"
+            : $"Save {scripts.Count} scripts?";
+        _saveChanges.Why.Text = !_edited ? $"{(scripts.Count == 1 ? "It has" : "They have")} changes that are not saved."
+            : steps.Count > 0 ? $"You made {Count(steps.Count, "change")} since {since}. {going} without saving and they are gone."
+            : $"It changed since {since}. {going} without saving and the changes are gone.";
         _saveChanges.Open();
     }
 
-    // Save is on while the Save button is. Quit and fullscreen are the other menu items the editor can do.
-    // Each Editor Docks item shows and hides its tab. Each run flag in the Debug menu flips the Game tab's switch.
+    static string Count(int count, string unit) => count == 1 ? $"1 {unit}" : $"{count} {unit}s";
+
+    // A change shows its time in dim mono at the left. A script shows its path and how much changed under its name.
+    static Control ChangeRow(string? at, string name, string? line)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, Gaps.Tight) };
+        if (at is not null)
+        {
+            var time = new TextBlock { Text = at, Width = 48, FontFamily = EditorTheme.Mono, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(time, Dock.Left);
+            row.Children.Add(time);
+        }
+
+        row.Children.Add(Parts.Noted(name, line));
+        return row;
+    }
+
+    // An item with a button presses it, so the item is on while the button is. Undo and Redo take the button's
+    // words as their name. Each Panels item shows and hides its tab. Each Show while playing item flips the
+    // Game tab's switch.
     Dictionary<string, MenuAction> MenuActions()
     {
+        static MenuAction Pressing(Button button) => new(() => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), button.GetObservable(IsEnabledProperty));
+
+        static MenuAction Named(Button button, string word) => Pressing(button) with { Name = button.GetObservable(ContentProperty, content => content as string ?? word) };
+
         var actions = new Dictionary<string, MenuAction>
         {
-            ["New Scene"] = new(OpenNewScene),
-            ["Command Palette..."] = new(OpenPalette),
-            ["Quick Open Scene..."] = new(OpenQuickOpen),
-            ["Export..."] = new(_export.Open),
-            ["Save Scene"] = new(() => _save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _save.GetObservable(IsEnabledProperty)),
-            ["Undo"] = new(() => _undo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _undo.GetObservable(IsEnabledProperty)),
-            ["Redo"] = new(() => _redo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _redo.GetObservable(IsEnabledProperty)),
-            ["Quit"] = new(Close),
-            ["Toggle Fullscreen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
+            ["About Orblit Engine"] = new(CopyVersion),
+            ["Editor Settings…"] = Pressing(_settingsButton),
+            ["Quit Orblit Engine"] = new(Close),
+            ["New scene…"] = new(() => OpenNewScene(FileTree.Root)),
+            ["Quick Open Scene…"] = new(() => OpenSearch(SearchScope.Scenes)),
+            ["Save"] = Pressing(_save),
+            ["Export game…"] = new(_export.Open),
+            ["Undo"] = Named(_undo, "Undo"),
+            ["Redo"] = Named(_redo, "Redo"),
+            ["Search"] = Pressing(_titleBar.SearchButton),
+            ["Hide panels"] = Pressing(_sceneTabs.PanelsButton),
+            ["Lock layout"] = Pressing(_sceneTabs.LockButton) with { Checked = _docks.GetObservable(DockArea.LockedProperty) },
+            ["Full screen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
+            ["Play the game"] = Pressing(_playButton),
+            ["Play this scene"] = Pressing(_playSceneButton),
+            ["Stop"] = Pressing(_stopButton),
+            ["All keys"] = Pressing(_keysButton),
         };
         foreach (var name in GameView.FlagNames)
         {
@@ -630,16 +852,31 @@ internal sealed class EditorWindow : Window
             actions[name] = new(() => toggle.IsChecked = toggle.IsChecked != true, Checked: toggle.GetObservable(ToggleButton.IsCheckedProperty, on => on == true));
         }
 
-        foreach (var dock in new[] { _sceneDock, _fileDock, _inspectorDock })
+        foreach (var (title, _) in _docks.Panels)
         {
-            foreach (var title in dock.Titles)
-            {
-                actions[title] = new(() => dock.ToggleTab(title), Checked: dock.Shown(title));
-            }
+            actions[title] = new(() => _docks.ToggleTab(title), Checked: _docks.Shown(title));
+        }
+
+        // The menu bar stays in reach above a dialog's veil, so its items wait for the dialog as the keys do. Quit
+        // still closes, as the window's close button does.
+        foreach (var (name, action) in actions.Where(pair => pair.Key != "Quit Orblit Engine").ToList())
+        {
+            actions[name] = action with { Run = () => RunUnveiled(action.Run) };
         }
 
         return actions;
     }
+
+    void RunUnveiled(Action run)
+    {
+        if (!Veiled)
+        {
+            run();
+        }
+    }
+
+    // An open dialog or picker covers the window, and nothing behind it may act.
+    bool Veiled => Content is Panel { Children: var layers } && layers.Any(layer => layer is Dialog or Picker && layer.IsVisible);
 
     // A shortcut presses the button it stands for, so a key and a click run the same code. A button that is
     // off leaves the key unhandled.
@@ -652,6 +889,34 @@ internal sealed class EditorWindow : Window
             return;
         }
 
+        RunShortcut(e);
+    }
+
+    // A floating panel's window passes its keys here. A key that opens a dialog brings the editor forward to show it.
+    void FloatKey(Window floating, KeyEventArgs e)
+    {
+        if (Veiled)
+        {
+            return;
+        }
+
+        // The close key closes this window, as in any app, and never a scene behind it.
+        if (e.Key == Key.W && e.KeyModifiers == CommandKey)
+        {
+            floating.Close();
+            e.Handled = true;
+            return;
+        }
+
+        RunShortcut(e);
+        if (Veiled)
+        {
+            Activate();
+        }
+    }
+
+    void RunShortcut(KeyEventArgs e)
+    {
         if (ShortcutFor(e) is { IsEnabled: true } button)
         {
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -663,11 +928,21 @@ internal sealed class EditorWindow : Window
     Button? ShortcutFor(KeyEventArgs e) => (e.Key, e.KeyModifiers) switch
     {
         (Key.N, var modifiers) when modifiers == CommandKey => _sceneTabs.AddButton,
+        (Key.W, var modifiers) when modifiers == CommandKey && _graph.IsEffectivelyVisible => _graph.CloseButton,
+        (Key.S, var modifiers) when modifiers == (CommandKey | KeyModifiers.Alt) && _graph.IsEffectivelyVisible => _graph.SaveAllButton,
+        (Key.W, var modifiers) when modifiers == CommandKey => _sceneTabs.CloseButton,
         (Key.S, var modifiers) when modifiers == CommandKey => _save,
         (Key.Z, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _undo,
         (Key.Z, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) && e.Source is not TextBox => _redo,
         (Key.B, var modifiers) when modifiers == CommandKey => _playButton,
+        (Key.Y, var modifiers) when modifiers == CommandKey => _graph.DebugPanel?.Find<Button>("debugger:pause"),
+        (Key.F12, KeyModifiers.None) => _graph.DebugPanel?.Find<Button>("debugger:continue"),
+        (Key.F10, KeyModifiers.None) => _graph.DebugPanel?.Find<Button>("debugger:next"),
+        (Key.F11, KeyModifiers.None) => _graph.DebugPanel?.Find<Button>("debugger:step"),
+        (Key.F11, KeyModifiers.Shift) => _graph.DebugPanel?.Find<Button>("debugger:out"),
         (Key.R, var modifiers) when modifiers == CommandKey => _playSceneButton,
+        (Key.OemPeriod, var modifiers) when modifiers == CommandKey => _stopButton,
+        ( >= Key.D1 and <= Key.D5, var modifiers) when modifiers == CommandKey => _titleBar.Tabs[e.Key - Key.D1],
         (Key.D, var modifiers) when modifiers == CommandKey => _tools.DuplicateButton,
         (Key.A, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _tools.AddButton,
         (Key.A, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _instanceScene.OpenButton,
@@ -676,16 +951,31 @@ internal sealed class EditorWindow : Window
         (Key.F2, KeyModifiers.None) when e.Source is not TextBox => _tools.RenameButton,
         (Key.Back or Key.Delete, KeyModifiers.None) when e.Source is not TextBox && Erases(e.Source) => _tools.RemoveButton,
         (Key.K, var modifiers) when modifiers == CommandKey => _titleBar.SearchButton,
-        (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _titleBar.SearchButton,
-        (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _quickOpenButton,
+        (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _actionsButton,
+        (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _scenesButton,
+        (Key.OemPipe, var modifiers) when modifiers == CommandKey => _sceneTabs.PanelsButton,
+        (Key.OemQuestion, KeyModifiers.Shift) when e.Source is not (TextBox or ComboBox) => _keysButton,
+        (Key.OemComma, var modifiers) when modifiers == CommandKey => _settingsButton,
         (Key.F, var modifiers) when modifiers == CommandKey && _script.IsEffectivelyVisible => _script.FindButton,
+        (Key.B, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) && _script.IsEffectivelyVisible => _script.CheckButton,
         (Key.F, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _frame,
+        (Key.Q, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.SelectButton,
+        (Key.W, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.MoveButton,
+        (Key.E, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.RotateButton,
+        (Key.R, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.ScaleButton,
+        (Key.OemMinus, var modifiers) when modifiers == CommandKey && _center.Planar.IsVisible => _center.Planar.ZoomOutButton,
+        (Key.D0, var modifiers) when modifiers == CommandKey && _center.Planar.IsVisible => _center.Planar.ZoomButton,
+        (Key.OemPlus, var modifiers) when modifiers == CommandKey && _center.Planar.IsVisible => _center.Planar.ZoomInButton,
         (Key.Q, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.SelectButton,
         (Key.W, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.MoveButton,
         (Key.E, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.RotateButton,
         (Key.R, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.ScaleButton,
         (Key.R, KeyModifiers.Alt) when e.Source is not (TextBox or ComboBox) => _toolbar.ResetAllButton,
         (Key.T, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.LocalButton,
+        (Key.Y, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.SnapButton,
+        (Key.L, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _toolbar.LockButton,
+        (Key.G, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _toolbar.GroupButton,
+        (Key.Escape, KeyModifiers.None) when _toolbar.Measures => _toolbar.RulerButton,
         _ => null,
     };
 
@@ -736,94 +1026,6 @@ internal sealed class EditorWindow : Window
         }
     }
 
-    // The docks sit in three slots. A dock sent to a slot trades places with the dock that sits there. The slot each
-    // starts in is its home, where Reset Layout puts it back.
-    void WireDocks()
-    {
-        foreach (var dock in new[] { _sceneDock, _fileDock, _inspectorDock })
-        {
-            _slots[dock.Slot].Child = dock;
-            _homes[dock] = dock.Slot;
-            dock.MoveRequested += to => MoveDock(dock, to);
-            dock.FloatRequested += () => FloatDock(dock);
-            dock.ResetRequested += ResetLayout;
-        }
-    }
-
-    void ResetLayout()
-    {
-        foreach (var floating in _floats.Values.ToList())
-        {
-            floating.Close();
-        }
-
-        foreach (var slot in _slots.Values)
-        {
-            slot.Child = null;
-        }
-
-        foreach (var (dock, home) in _homes)
-        {
-            _slots[home].Child = dock;
-            dock.Slot = home;
-            dock.ShowAllTabs();
-        }
-
-        Say("Reset the layout. Every dock is back in its place with all its tabs.");
-    }
-
-    // A floating dock docks before it moves. A dock that floats keeps a slot, so a move can trade with it, and it
-    // docks in the slot it traded for.
-    void MoveDock(DockTabs dock, DockSlot to)
-    {
-        _floats.GetValueOrDefault(dock)?.Close();
-        var from = dock.Slot;
-        var other = _homes.Keys.Single(each => each.Slot == to);
-        _slots[from].Child = null;
-        _slots[to].Child = null;
-        _slots[to].Child = dock;
-        _slots[from].Child = other.Floats ? null : other;
-        dock.Slot = to;
-        other.Slot = from;
-        Say($"Moved {dock.Title} to the {to.Label()} slot. The layout is not saved.");
-    }
-
-    // shortcut: a floating dock's slot stays empty, as a dock with every tab hidden leaves it, and the editor's keys
-    // do not reach the float window. Close the gap and route the keys when floating docks are saved in the layout.
-    void FloatDock(DockTabs dock)
-    {
-        if (_floats.TryGetValue(dock, out var floating))
-        {
-            floating.Close();
-            return;
-        }
-
-        var size = dock.Bounds.Size;
-        var window = new Window
-        {
-            Title = dock.Title,
-            Width = size.Width + 12,
-            Height = size.Height + 12,
-            Padding = new Thickness(6),
-            ShowInTaskbar = false,
-            WindowStartupLocation = WindowStartupLocation.Manual,
-            Position = dock.PointToScreen(new Point(-6, -6)),
-        };
-        _slots[dock.Slot].Child = null;
-        window.Content = dock;
-        window.Closed += (_, _) =>
-        {
-            window.Content = null;
-            _floats.Remove(dock);
-            dock.Floats = false;
-            _slots[dock.Slot].Child = dock;
-        };
-        _floats[dock] = window;
-        dock.Floats = true;
-        window.Show(this);
-        Say($"Floated {dock.Title}. Close its window or choose Dock to put it back.");
-    }
-
     // The Reset menu and the snap actions change the selected entity's place, the Collision menu gives a mesh a
     // collision shape, and the projection menu switches the viewport's camera.
     void WireMenus()
@@ -844,7 +1046,7 @@ internal sealed class EditorWindow : Window
         _center.Overlay.ProjectionChanged += orthogonal =>
         {
             _scene?.SetOrthogonal(orthogonal);
-            Say(orthogonal ? "Orthogonal projection." : "Perspective projection.");
+            Say(orthogonal ? "Flat projection." : "Perspective projection.");
         };
     }
 
@@ -873,8 +1075,8 @@ internal sealed class EditorWindow : Window
     // not hold yet. The bar draws a dot for those edits, so the mark goes in the window title alone.
     void ShowTitle()
     {
-        var project = _scene?.ProjectName is { Length: > 0 } name ? name : "Unnamed Project";
-        var scene = _scene?.SceneFile is { Length: > 0 } file ? Path.GetFileName(file) : null;
+        var project = _files?.ProjectName is { Length: > 0 } name ? name : "Unnamed Project";
+        var scene = _files?.SceneFile is { Length: > 0 } file ? Path.GetFileName(file) : null;
         var title = scene is null ? project : $"{scene} - {project}";
         Title = _edited ? $"(*) {title}" : title;
         _titleBar.Show(project, scene, _edited);
@@ -883,7 +1085,7 @@ internal sealed class EditorWindow : Window
     // The tab is named for the scene file. A scene with no file takes the name of its root.
     string SceneLabel() => _scene!.SceneFile is { Length: > 0 } file ? Path.GetFileNameWithoutExtension(file) : _root?.Name ?? "";
 
-    // The file name the toasts and the Save changes dialog give. A scene with no file takes the name of its root.
+    // The file name History and the 2D view give. A scene with no file takes the name of its root.
     string SceneName() => _scene!.SceneFile is { Length: > 0 } file ? Path.GetFileName(file) : _root?.Name ?? "";
 
     void ShowEdited(bool edited)
@@ -925,6 +1127,8 @@ internal sealed class EditorWindow : Window
     {
         _undo.IsEnabled = _history.CanUndo;
         _redo.IsEnabled = _history.CanRedo;
+        _undo.Content = _history.CanUndo ? $"Undo {_history.Steps[_history.Done - 1].Label}" : "Undo";
+        _redo.Content = _history.CanRedo ? $"Redo {_history.Steps[_history.Done].Label}" : "Redo";
         var file = _scene?.SceneFile ?? "";
         _historyPane.Show(_history, $"Opened {(_scene is null ? "" : SceneName())}", _openedAt.GetValueOrDefault(file, _time.GetLocalNow()));
     }
@@ -941,7 +1145,7 @@ internal sealed class EditorWindow : Window
 
         try
         {
-            _scene!.Play(_graph.Breakpoints.All, _script.Breakpoints.All, [.. _game.Flags, .. arguments]);
+            _scene!.Play(_graph.Breakpoints.All, _script.Breakpoints.All, [.. _game.Flags, .. arguments], _game.Copies);
         }
         catch (IOException error)
         {
@@ -951,10 +1155,24 @@ internal sealed class EditorWindow : Window
         }
 
         _playedAt = _time.GetUtcNow();
+        _outputAtPlay = _scene.Output.Count;
         ShowGame();
         _bottomBar.OpenOutputUnlessPinned();
         Say("Playing in a second window.");
     }
+
+    void PlayGame()
+    {
+        if (_game.RunsThisScene)
+        {
+            PlayScene();
+            return;
+        }
+
+        Play();
+    }
+
+    void PlayScene() => Play("--scene", _scene!.SceneFile);
 
     void Stop()
     {
@@ -966,65 +1184,140 @@ internal sealed class EditorWindow : Window
     void ShowGame()
     {
         var playing = _scene?.IsPlaying == true;
+        if (_wasPlaying && !playing && _scene is not null)
+        {
+            ShowGameEnded(_scene);
+        }
+
+        _wasPlaying = playing;
         _playButton.IsEnabled = _root is not null;
         _playSceneButton.IsEnabled = _root is not null && _scene is { SceneFile.Length: > 0 };
         _stopButton.IsEnabled = playing;
-        _game.Show(playing, _root is not null, _scene?.ProjectName ?? "", _time.GetUtcNow() - _playedAt);
+        _game.Show(playing, _scene?.ProjectName ?? "", _time.GetUtcNow() - _playedAt);
+        _game.Offer(_playButton.IsEnabled, _playSceneButton.IsEnabled);
         _game.ShowLive(_scene is { IsPlaying: true } scene ? scene.Debug.State : DebugState.None);
         _center.Debugger.ShowGame(_scene?.GameId, _root is not null);
         _center.Debugger.ShowSession(_script.IsDebugging ? _script.DebugPanel : null);
     }
 
-    // Folds both sides while either shows, so a second press brings both back.
-    void ToggleDistractionFree()
+    void ShowGameEnded(IEditorScene scene)
     {
-        var fold = !_leftSide.IsFolded || !_rightSide.IsFolded;
-        _leftSide.Fold(fold);
-        _rightSide.Fold(fold);
+        if (!scene.EndedWithError)
+        {
+            _toasts.Show(ToastKind.Done, "The game stopped", $"Played {scene.ProjectName} for {Took(_time.GetUtcNow() - _playedAt)}.");
+            return;
+        }
+
+        var lines = scene.Output.Skip(Math.Min(_outputAtPlay, scene.Output.Count)).ToList();
+        _toasts.Show(
+            ToastKind.Failed,
+            "The game closed with an error",
+            $"{LastError(lines)}Output has the full message.",
+            new ToastAction("Show in Output", () => _bottomBar.Open(0)),
+            new ToastAction("Play again", PlayGame, Parts.KeyText(new KeyGesture(Key.B, CommandKey))));
     }
 
-    void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
+    static string Took(TimeSpan time) => time.TotalMinutes >= 1 ? $"{(int)time.TotalMinutes} min {time.Seconds} s" : $"{time.Seconds} s";
 
-    void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? [], _planar, _scene?.AddableClasses() ?? []);
-
-    // The rows are read at each open, so the palette shows the menus, files and entities as they are now.
-    void OpenPalette()
+    // The last error the game logged, with the file and line when the log gave them.
+    static string LastError(IReadOnlyList<string> lines)
     {
-        IEnumerable<PickerRow> entities = _root is null ? [] : CommandPalette.EntitiesOf(_root, _scene!.SceneFile, _scenePane.Select);
-        _palette.Open(CommandPalette.Finder([
-            .. CommandPalette.CommandsOf(NativeMenu.GetMenu(this)!),
-            .. CommandPalette.FilesOf(_scene?.Scenes() ?? [], Open),
-            .. entities,
-        ]));
+        if (LogEntry.Read(lines).LastOrDefault(entry => entry.Level == LogLevel.Error) is not { } error)
+        {
+            return "";
+        }
+
+        var where = error.Source.Length > 0 ? $"{error.Source}: " : "";
+        return $"{where}{error.Text.TrimEnd('.')}. ";
     }
 
-    // The open scene comes first, then the recent ones newest first, then the rest of the project.
-    void OpenQuickOpen()
+    // The bottom panel shuts with the side panels, and the one that was open comes back with them.
+    void TogglePanels()
     {
-        var files = (_scene?.Scenes() ?? []).Where(path => !path.EndsWith('/'));
-        var scenes = new[] { _scene?.SceneFile ?? "" }.Concat(_recent).Concat(files).Where(path => path != "").Distinct();
-        var rows = QuickOpen.Rows(scenes, OpenedText, Open);
-        _quickOpen.Open(query => Picker.Matching(rows, query));
+        if (!_docks.PanelsHidden)
+        {
+            _docks.PanelsHidden = true;
+            _shutPanel = _bottomBar.OpenPanel;
+            _bottomBar.Open(-1);
+            return;
+        }
+
+        _docks.PanelsHidden = false;
+        if (_shutPanel >= 0)
+        {
+            _bottomBar.Open(_shutPanel);
+        }
     }
 
-    string OpenedText(string path) =>
-        path == _scene?.SceneFile ? "Open now"
-        : _openedAt.TryGetValue(path, out var at) ? $"Opened {at.ToString("HH:mm", CultureInfo.InvariantCulture)}"
-        : "";
+    void Open(string resourcePath) => Leave("open", () => Change(() => _scene!.Open(resourcePath)));
+
+    // The app menu of macOS stays in reach under a dialog's veil, so its items wait for the dialog to close.
+    public void CopyVersion() => RunUnveiled(() => Copy(BottomBar.Version, BottomBar.Version));
+
+    public void OpenSettings() => RunUnveiled(_settings.Open);
+
+    // The menu keys come first, by menu. The cards of the window's own buttons add the keys the menus lack.
+    void OpenKeys()
+    {
+        var menus = EditorMenu.Keys(_globalMenu, CommandKey).ToList();
+        var shown = menus.Select(row => row.Key).ToHashSet();
+        var cards = this.GetLogicalDescendants().OfType<Control>().Select(ToolTip.GetTip).OfType<HoverCard>();
+        // The Where keeps only cards that have a key.
+        var window = cards.Where(card => card.Key is not null && !shown.Contains(card.Key)).Select(card => ("In the window", card.Title, card.Key!)).Distinct();
+        _keys.Open([.. menus, .. window]);
+    }
+
+    void OpenNewScene(string folder) => _newScene.Open(_scene?.Scenes() ?? [], _planar, _scene?.AddableClasses() ?? [], folder);
+
+    // The rows are read at each open, so Search shows the files, things and menu items as they are now. The open
+    // scene comes first among the scenes, then the recent ones newest first, then the rest of the project.
+    void OpenSearch(SearchScope scope)
+    {
+        var actions = Search.ActionsOf(NativeMenu.GetMenu(this)!).ToList();
+        var scenes = new[] { _scene?.SceneFile ?? "" }.Concat(_recent).Concat(_scene?.Scenes() ?? []);
+        IEnumerable<string> scripts = _scene is null ? [] : [.. _scene.Scripts(), .. _scene.GraphScripts()];
+        _search.Open([
+            .. _recent.Select(path => FileRow(Search.Recent, path)),
+            .. TryRows(actions),
+            .. Files(scenes).Select(path => FileRow(Search.Scenes, path)),
+            .. Files(scripts).Select(path => FileRow(Search.Scripts, path)),
+            .. _root is null ? [] : Search.ThingsOf(_root, _scenePane.Select),
+            .. actions,
+            .. _settings.Rows(),
+            .. Search.HelpOf(_links),
+        ], scope);
+
+        static IEnumerable<string> Files(IEnumerable<string> paths) => paths.Where(path => path != "" && !path.EndsWith('/')).Distinct();
+    }
+
+    PickerRow FileRow(string group, string path) =>
+        Search.FileRow(group, path, Search.KindText(path, scene => _scene?.SceneKindOf(scene) ?? ""), OpenFile) with { Key = path == _scene?.SceneFile ? "open now" : "" };
+
+    // First steps for someone new. Each shows only while it can run.
+    IEnumerable<PickerRow> TryRows(IEnumerable<PickerRow> actions)
+    {
+        var add = new PickerRow(Search.Try, "Cube", "Add a thing", () => _tools.AddButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)))
+        {
+            Note = "Puts a camera, light or shape in the scene",
+            Key = Parts.KeyText(new KeyGesture(Key.A, CommandKey)),
+        };
+        IEnumerable<PickerRow> first = _tools.AddButton.IsEnabled ? [add] : [];
+        return first.Concat(actions.Where(row => row.Name is "New scene…" or "Play the game").Select(row => row with { Group = Search.Try }));
+    }
 
     // The dialog that makes a scene file, the flyout that instances one, and the tab's close button.
     void WireSceneFiles()
     {
-        _sceneTabs.AddButton.Click += (_, _) => OpenNewScene();
-        _newScene.Requested += (path, className) =>
+        _sceneTabs.AddButton.Click += (_, _) => OpenNewScene(FileTree.Root);
+        _newScene.Requested += (path, className) => Leave("create", () =>
         {
-            var left = Leave(() =>
+            var made = Change(() =>
             {
                 _scene!.Create(path, className);
                 ShowScenes();
             });
-            // A failed save or create says why in the status line, and the dialog stays open with the same words.
-            if (left)
+            // A failed create says why in the status line, and the dialog stays open with the same words.
+            if (made)
             {
                 _newScene.Dialog.Close();
             }
@@ -1032,19 +1325,37 @@ internal sealed class EditorWindow : Window
             {
                 _newScene.Say(Status);
             }
+        });
+        _sceneTabs.CloseButton.Click += (_, _) => Leave("close", () => Change(() => _scene!.Close()));
+        _sceneTabs.ShowInFilesButton.Click += (_, _) =>
+        {
+            _docks.Show("Files");
+            _scenes.Reveal(_scene!.SceneFile);
         };
-        _sceneTabs.CloseButton.Click += (_, _) => Leave(() => _scene!.Close());
+        _graph.ShowInFilesButton.Click += (_, _) =>
+        {
+            _docks.Show("Files");
+            _scenes.Reveal(_graph.Current!);
+        };
     }
 
-    // Opening, making or closing a scene drops the open one and its history, so the file takes its edits
-    // first, as in a play. Answers whether the change was made.
-    bool Leave(Action change)
+    // Opening, making or closing a scene drops the open one and its history, so edits that no save holds ask
+    // first, as a close of the window does. Open scripts are asked about too, as the list matches the quit one.
+    void Leave(string verb, Action leave)
     {
-        if (!SaveEdits())
+        if (HasEdits)
         {
-            return false;
+            AskToSave(verb, leave);
         }
+        else
+        {
+            leave();
+        }
+    }
 
+    // Answers whether the change was made. A scene that opens has no edits yet, even when Don't save left some behind.
+    bool Change(Action change)
+    {
         try
         {
             change();
@@ -1055,6 +1366,7 @@ internal sealed class EditorWindow : Window
             return false;
         }
 
+        ShowEdited(false);
         Reload(0);
         Remember(_scene!.SceneFile);
         _since = _time.GetLocalNow();
@@ -1077,18 +1389,30 @@ internal sealed class EditorWindow : Window
         ShowRecent();
     }
 
-    void ShowRecent() => EditorMenu.ShowRecent(NativeMenu.GetMenu(this)!, _recent, Open, () =>
+    void ShowRecent()
     {
-        _recent.Clear();
-        _openedAt.Clear();
-        ShowRecent();
-    });
+        EditorMenu.ShowRecent(NativeMenu.GetMenu(this)!, _recent, Open, () =>
+        {
+            _recent.Clear();
+            _openedAt.Clear();
+            ShowRecent();
+        });
+        _center.NoScene.ShowRecent(RecentScenes());
+    }
+
+    // Read at each call, so the times say how long ago from now.
+    IEnumerable<(string, string)> RecentScenes()
+    {
+        var now = _time.GetLocalNow();
+        return _recent.Select(path => (path, NoScene.Opened(_openedAt[path], now)));
+    }
 
     // shortcut: one file stat per scene on each refresh. Read the times only for a newest first sort when a project has thousands.
     void ShowScenes()
     {
-        IReadOnlyList<string> files = [.. _scene!.Scenes(), .. _scene.Scripts(), .. _scene.GraphScripts(), .. _scene.ImportedFiles()];
-        _scenes.Show(files, files.Where(path => !path.EndsWith('/')).Distinct().ToDictionary(path => path, _scene.ModifiedOf));
+        var project = _files!;
+        IReadOnlyList<string> files = [.. project.Scenes(), .. project.Scripts(), .. project.GraphScripts(), .. project.ImportedFiles()];
+        _scenes.Show(files, files.Where(path => !path.EndsWith('/')).Distinct().ToDictionary(path => path, project.ModifiedOf), project.SceneKindOf);
     }
 
     // A script opens in its workspace. It is opened before the workspace shows, so the workspace's list shows it chosen.
@@ -1106,7 +1430,7 @@ internal sealed class EditorWindow : Window
                 break;
             case FileKind.Imported:
                 _import.Open(resourcePath);
-                _sceneDock.Select(1);
+                _docks.Show("Import");
                 break;
             default:
                 Open(resourcePath);
@@ -1148,11 +1472,11 @@ internal sealed class EditorWindow : Window
         return true;
     }
 
-    // A save from Play or Leave happens where the script view may be hidden, so the toast says it too.
+    // A save from Play or the Save changes dialog happens where the script view may be hidden, so the toast says it too.
     void FailScript(string why)
     {
         Fail(why);
-        _toasts.Show(ToastKind.Failed, "The script could not be saved", why, new ToastAction("Try again", SaveAll));
+        _toasts.Show(ToastKind.Failed, "Couldn't save the script", why, new ToastAction("Try again", SaveAll));
     }
 
     bool Save()
@@ -1160,61 +1484,25 @@ internal sealed class EditorWindow : Window
         try
         {
             _scene!.Save();
+            var count = _edits;
             ShowEdited(false);
             _since = _time.GetLocalNow();
             Say("Saved.", StatusKind.Done);
-            _toasts.Show(ToastKind.Done, $"Saved {SceneName()}");
+            var at = $"At {_since.ToString("HH:mm", CultureInfo.InvariantCulture)}.";
+            _toasts.Show(ToastKind.Done, $"Saved {SceneLabel()}", count == 0 ? at : $"{at} {count} {(count == 1 ? "change" : "changes")} saved.");
             return true;
         }
         catch (IOException error)
         {
             Fail(error.Message);
-            _toasts.Show(ToastKind.Failed, "The scene could not be saved", error.Message, new ToastAction("Try again", SaveAll));
+            _toasts.Show(ToastKind.Failed, $"Couldn't save {SceneLabel()}", error.Message, new ToastAction("Try again", SaveAll));
             return false;
         }
     }
 
-    // The title bar on top, then the columns with the 4 pixel margin and the 3 pixel gaps of the reference.
-    Grid LeftColumn()
+    Grid Layout()
     {
-        var left = new Grid { RowDefinitions = new RowDefinitions("*,6,*") };
-        Fill(left, _slots[DockSlot.UpperLeft], 0);
-        Fill(left, RowSplitter(), 1);
-        Fill(left, _slots[DockSlot.LowerLeft], 2);
-        return left;
-    }
-
-    IEnumerable<DockTabs> DocksIn(params DockSlot[] slots) => slots.Select(slot => _slots[slot].Child).OfType<DockTabs>();
-
-    Control Layout()
-    {
-        var body = new Grid { Margin = new Thickness(6, 0, 6, 6), ColumnDefinitions = new ColumnDefinitions("280,6,*,6,316") };
-        Fill(body, _leftSide, 0);
-        Fill(body, _leftSide.Splitter, 1);
-        Fill(body, _center, 2);
-        Fill(body, _rightSide.Splitter, 3);
-        Fill(body, _rightSide, 4);
-        var root = new Grid { RowDefinitions = new RowDefinitions($"{TitleBar.BarHeight},*") };
-        Fill(root, _titleBar, 0);
-        Fill(root, body, 1);
-        return root;
-    }
-
-    // Between the left side's two docks. Each side has its own splitter to the middle.
-    static GridSplitter RowSplitter() => new() { Background = Brushes.Transparent, ResizeDirection = GridResizeDirection.Rows };
-
-    // Puts the child in the next row of a vertical grid, or the next column of a horizontal one.
-    static void Fill(Grid grid, Control child, int slot)
-    {
-        if (grid.ColumnDefinitions.Count > 0)
-        {
-            Grid.SetColumn(child, slot);
-        }
-        else
-        {
-            Grid.SetRow(child, slot);
-        }
-
-        grid.Children.Add(child);
+        Grid.SetRow(_docks, 1);
+        return new Grid { RowDefinitions = new RowDefinitions($"{TitleBar.BarHeight},*"), Children = { _titleBar, _docks } };
     }
 }

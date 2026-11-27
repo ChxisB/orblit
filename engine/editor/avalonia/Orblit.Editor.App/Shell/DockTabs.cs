@@ -1,149 +1,177 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Input;
 using Avalonia.Layout;
-using Avalonia.Media;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// A dock: an island with a strip of tabs over a body that shows the chosen tab's content. The menu at the end of the
-/// strip maps where the dock sits, shows and hides its tabs, and offers every other slot. The window moves the dock,
-/// so the menu only asks.
+/// A group of panels: an island with a strip of tabs over a body that shows the chosen panel. The strip ends with a
+/// menu that maps where it sits, and shows and hides its tabs. <see cref="DockArea"/> moves and floats the group, so
+/// the menu only asks, and it moves tabs from group to group.
 /// </summary>
 internal sealed class DockTabs : Border
 {
-    /// <summary>A 26 pixel row of tabs, 6 pixels of padding around it, and the line under it.</summary>
+    /// <summary>A 26 pixel row of tabs, the room around it, and the line under it.</summary>
     internal const double StripHeight = 39;
 
-    const double TabHeight = 26;
+    // Centers a tab in the strip, above the line under it.
+    internal const double StripInset = (StripHeight - 1 - DockTab.TabHeight) / 2;
 
-    const double TabPadding = 10;
+    // The tabs' items in the menu follow its first heading, its map and its second heading.
+    const int FirstTabItem = 3;
 
-    readonly string[] _titles;
-    readonly Border[] _tabs;
-    readonly Control[] _contents;
+    readonly List<DockTab> _tabs = [];
     readonly Border _body = new();
-    readonly Control?[] _tools;
     readonly Border _tool = new() { VerticalAlignment = VerticalAlignment.Center };
-    readonly MenuItem[] _moves;
-    readonly MenuItem _float = new() { Header = "Float" };
-    readonly Border[] _map;
-    DockSlot _slot;
+    readonly PanelMap _map = new();
+    readonly MenuItem _reset;
+    readonly MenuItem _lock;
+    readonly MenuFlyout _options;
+    DockTab? _chosen;
 
-    public DockTabs(params (string Title, Control Content)[] tabs)
+    public DockTabs(params DockPage[] pages)
     {
-        Title = tabs[0].Title;
         Classes.Add(EditorTheme.Island);
-        _titles = tabs.Select(tab => tab.Title).ToArray();
-        _contents = tabs.Select(tab => tab.Content).ToArray();
-        _tools = new Control?[tabs.Length];
-        _tabs = tabs.Select((tab, index) => MakeTab(tab.Title, index)).ToArray();
-        var headers = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
-        headers.Children.AddRange(_tabs);
-        var strip = new DockPanel();
-        _moves = [.. Enum.GetValues<DockSlot>().Select(slot => MoveItem(slot))];
-        _map = [.. Enum.GetValues<DockSlot>().Select(_ => new Border { CornerRadius = new CornerRadius(3) })];
-        _float.Click += (_, _) => FloatRequested?.Invoke();
-        MenuButton.Flyout = Options();
+        Strip = new OverflowBar { Spacing = Gaps.Joined };
+        _reset = Parts.ActionItem("Put all panels back", () => ResetRequested?.Invoke());
+        _lock = Parts.ActionItem("Lock layout", () => LockRequested?.Invoke(), note: "Stops panels moving by accident");
+        _lock.ToggleType = MenuItemToggleType.CheckBox;
+        MenuButton.Flyout = _options = Options();
+        // The menu shuts first, as a move takes its button along.
+        _map.Picked += slot =>
+        {
+            _options.Hide();
+            MoveRequested?.Invoke(slot);
+        };
+        _map.WindowPicked += () =>
+        {
+            _options.Hide();
+            FloatRequested?.Invoke();
+        };
         DockPanel.SetDock(MenuButton, Dock.Right);
         DockPanel.SetDock(_tool, Dock.Right);
-        strip.Children.Add(MenuButton);
-        strip.Children.Add(_tool);
-        strip.Children.Add(headers);
-        var bar = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(6), Child = strip };
+        var strip = new DockPanel { Children = { MenuButton, _tool, Strip } };
+        var bar = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(Gaps.Item, StripInset), Child = strip };
         Grid.SetRow(_body, 1);
         Child = new Grid { RowDefinitions = new RowDefinitions($"{StripHeight},*"), Children = { bar, _body } };
-        Select(0);
-        Slot = DockSlot.UpperLeft;
+        foreach (var page in pages)
+        {
+            Add(new DockTab(page));
+        }
     }
 
-    /// <summary>Raised with the slot the user chose in the dock menu. The dock has not moved.</summary>
+    /// <summary>Raised with the place the user chose on the menu's map. The group has not moved.</summary>
     public event Action<DockSlot>? MoveRequested;
 
-    /// <summary>Raised when the user chose Float, or Dock on a dock that floats. The dock has not moved.</summary>
+    /// <summary>Raised when the user chose a window of its own for the group. It has not moved.</summary>
     public event Action? FloatRequested;
 
-    /// <summary>Raised when the user asks for every dock back in its first slot.</summary>
+    /// <summary>Raised when the user asks for every group back in its first place.</summary>
     public event Action? ResetRequested;
 
-    internal Button MenuButton { get; } = Parts.IconButton("GuiTabMenuHl", "Dock options");
+    /// <summary>Raised when the user asks to lock the layout, or to unlock it.</summary>
+    public event Action? LockRequested;
 
-    /// <summary>The title of the first tab, which names the dock.</summary>
-    internal string Title { get; }
+    /// <summary>Raised when the chosen tab or the tabs that show may have changed.</summary>
+    public event Action? TabsChanged;
 
-    /// <summary>The mark of the dock's button on a folded side's rail.</summary>
-    internal required string Icon { get; init; }
+    internal Button MenuButton { get; } = new HoverCard("Panel options", "Move this panel, float it, pick its tabs or put every panel back.").On(Parts.IconButton("GuiTabMenuHl", ""));
 
-    /// <summary>The slot the dock sits in, which the map lights and the menu leaves out as a choice.</summary>
-    internal DockSlot Slot
-    {
-        get => _slot;
-        set
-        {
-            _slot = value;
-            for (var i = 0; i < _moves.Length; i++)
-            {
-                _moves[i].IsVisible = (DockSlot)i != value;
-                // The design draws the free slots in the tone of a lit guide.
-                _map[i].Background = (DockSlot)i == value ? EditorBrushes.Accent : EditorBrushes.GuideLit;
-            }
-        }
-    }
-
-    /// <summary>True while the dock sits in a window of its own, so the menu offers Dock in place of Float.</summary>
-    internal bool Floats
-    {
-        get => (string?)_float.Header == "Dock";
-        set => _float.Header = value ? "Dock" : "Float";
-    }
-
-    internal MenuItem FloatItem => _float;
-
-    /// <summary>The move item of each slot, by slot.</summary>
-    internal IReadOnlyList<MenuItem> MoveItems => _moves;
-
-    /// <summary>The cell of each slot on the map in the menu, by slot.</summary>
-    internal IReadOnlyList<Border> MapCells => _map;
-
-    internal int SelectedIndex { get; private set; }
-
-    internal IReadOnlyList<Border> Tabs => _tabs;
-
-    internal Control Content => _contents[SelectedIndex];
-
-    internal void Select(int index)
-    {
-        SelectedIndex = index;
-        _body.Child = _contents[index];
-        _tool.Child = _tools[index];
-        for (var i = 0; i < _tabs.Length; i++)
-        {
-            var active = i == index;
-            _tabs[i].Background = active ? EditorBrushes.Line : Brushes.Transparent;
-            // MakeTab always gives a tab its title block.
-            ((TextBlock)_tabs[i].Child!).Foreground = active ? EditorBrushes.Text : EditorBrushes.TextDim;
-        }
-    }
+    internal OverflowBar Strip { get; }
 
     /// <summary>
-    /// Shows the tab with this title if it is hidden, and hides it if it shows. A dock with no tab left hides and
-    /// keeps its slot. A hidden tab hands the body to the first tab that shows.
+    /// The title of the first tab that shows, or of the first when none does, which names the group. A group that has
+    /// lost its last tab has none.
     /// </summary>
-    internal void ToggleTab(string title)
+    internal string Title => (_tabs.Find(tab => tab.IsVisible) ?? _tabs.FirstOrDefault())?.Page.Title ?? "";
+
+    /// <summary>The page on show.</summary>
+    internal DockPage Chosen => _chosen!.Page;
+
+    /// <summary>The place the group sits in, or comes back to from a window of its own.</summary>
+    internal DockSlot Slot { get; set; }
+
+    /// <summary>
+    /// Marks the group's place on its map, and turns off what a locked layout does not allow.
+    /// </summary>
+    /// <param name="taken">The places that have a group.</param>
+    /// <param name="locked">Whether the layout is locked.</param>
+    /// <param name="joins">Whether a move to a taken place makes the two groups one, instead of trading them.</param>
+    internal void ShowPlaces(IReadOnlySet<DockSlot> taken, bool locked, bool joins)
     {
-        var tab = _tabs[Array.IndexOf(_titles, title)];
-        tab.IsVisible = !tab.IsVisible;
-        IsVisible = _tabs.Any(each => each.IsVisible);
-        if (IsVisible && !_tabs[SelectedIndex].IsVisible)
-        {
-            Select(Array.FindIndex(_tabs, each => each.IsVisible));
-        }
+        _map.Show(Slot, Floats, locked, taken, joins);
+        _reset.IsEnabled = !locked;
+        _reset.Header = Parts.Noted("Put all panels back", locked ? "The layout is locked" : "The layout Orblit started with");
+        _lock.IsChecked = locked;
     }
 
-    /// <summary>Shows every tab, and the dock with them.</summary>
+    /// <summary>True while the group sits in a window of its own.</summary>
+    internal bool Floats { get; set; }
+
+    internal PanelMap Map => _map;
+
+    internal int SelectedIndex => _tabs.IndexOf(_chosen!);
+
+    internal IReadOnlyList<DockTab> Tabs => _tabs;
+
+    internal Control Content => Chosen.Content;
+
+    /// <summary>Takes a tab at the end of the strip, with its menu item.</summary>
+    internal void Add(DockTab tab)
+    {
+        tab.Owner = this;
+        _tabs.Add(tab);
+        Strip.Add(tab);
+        _options.Items.Insert(FirstTabItem + _tabs.Count - 1, tab.Item);
+        _chosen ??= tab;
+        ShowTabs();
+    }
+
+    /// <summary>Lets a tab go, and its panel with it, for another group to take.</summary>
+    internal void Remove(DockTab tab)
+    {
+        _tabs.Remove(tab);
+        Strip.Children.Remove(tab);
+        _options.Items.Remove(tab.Item);
+        if (tab == _chosen)
+        {
+            _body.Child = null;
+            _tool.Child = null;
+            _chosen = _tabs.FirstOrDefault();
+        }
+
+        ShowTabs();
+    }
+
+    internal void Select(int index) => Select(_tabs[index]);
+
+    internal void Select(DockTab tab)
+    {
+        _chosen = tab;
+        _body.Child = Chosen.Content;
+        _tool.Child = Chosen.Tool;
+        Strip.Pinned = tab;
+        foreach (var each in _tabs)
+        {
+            each.Light(each == tab);
+        }
+
+        TabsChanged?.Invoke();
+    }
+
+    /// <summary>Shows the tab if it is hidden, and hides it if it shows.</summary>
+    internal void Toggle(DockTab tab)
+    {
+        tab.IsVisible = !tab.IsVisible;
+        ShowTabs();
+    }
+
+    /// <summary>Toggles the tab with this title.</summary>
+    internal void ToggleTab(string title) => Toggle(Tab(title));
+
+    /// <summary>Shows every tab, and the group with them.</summary>
     internal void ShowAllTabs()
     {
         foreach (var tab in _tabs)
@@ -151,94 +179,39 @@ internal sealed class DockTabs : Border
             tab.IsVisible = true;
         }
 
-        IsVisible = true;
+        ShowTabs();
     }
+
+    internal bool IsShown(string title) => Tab(title).IsVisible;
 
     /// <summary>Whether the tab with this title shows, now and after each change.</summary>
-    internal IObservable<bool> Shown(string title) => _tabs[Array.IndexOf(_titles, title)].GetObservable(IsVisibleProperty);
-
-    /// <summary>Puts a control in the strip, left of the menu, that shows while the tab with this title is chosen.</summary>
-    internal void AddTool(string title, Control tool)
-    {
-        _tools[Array.IndexOf(_titles, title)] = tool;
-        Select(SelectedIndex);
-    }
+    internal IObservable<bool> Shown(string title) => Tab(title).GetObservable(IsVisibleProperty);
 
     /// <summary>The titles of the tabs, in order.</summary>
-    internal IReadOnlyList<string> Titles => _titles;
+    internal IReadOnlyList<string> Titles => [.. _tabs.Select(tab => tab.Page.Title)];
+
+    DockTab Tab(string title) => _tabs.Single(tab => tab.Page.Title == title);
+
+    // A group with no tab to show hides and keeps its place. A hidden chosen tab hands the body to the first that shows.
+    void ShowTabs()
+    {
+        IsVisible = _tabs.Exists(tab => tab.IsVisible);
+        if (_chosen is not null)
+        {
+            Select(_chosen.IsVisible ? _chosen : _tabs.Find(tab => tab.IsVisible) ?? _chosen);
+        }
+    }
 
     // Under the button and right aligned, so the menu never covers the tabs.
     MenuFlyout Options()
     {
         var flyout = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
-        flyout.Items.Add(Parts.MenuHeading($"{Title} dock sits at"));
-        flyout.Items.Add(new MenuItem { IsEnabled = false, MinHeight = 0, Header = Map() });
-        flyout.Items.Add(Parts.MenuHeading("Show tabs"));
-        foreach (var title in _titles)
-        {
-            var item = Parts.ActionItem(title, () => ToggleTab(title));
-            item.ToggleType = MenuItemToggleType.CheckBox;
-            item.Bind(MenuItem.IsCheckedProperty, Shown(title));
-            flyout.Items.Add(item);
-        }
-
+        flyout.Items.Add(Parts.MenuHeading("Where this panel sits"));
+        flyout.Items.Add(_map.AsItem());
+        flyout.Items.Add(Parts.MenuHeading("Tabs in this panel"));
         flyout.Items.Add(new Separator());
-        foreach (var move in _moves)
-        {
-            flyout.Items.Add(move);
-        }
-
-        flyout.Items.Add(_float);
-        flyout.Items.Add(new Separator());
-        flyout.Items.Add(Parts.ActionItem("Reset Layout", () => ResetRequested?.Invoke()));
+        flyout.Items.Add(_reset);
+        flyout.Items.Add(_lock);
         return flyout;
-    }
-
-    // The window as three slots round the viewport: the left column over and under, the viewport, and the right.
-    Grid Map()
-    {
-        var viewport = new Border { CornerRadius = new CornerRadius(3), Background = EditorBrushes.Lifted, Margin = new Thickness(3, 0) };
-        Grid.SetColumn(viewport, 1);
-        Grid.SetRowSpan(viewport, 2);
-        _map[(int)DockSlot.UpperLeft].Margin = new Thickness(0, 0, 0, 1.5);
-        _map[(int)DockSlot.LowerLeft].Margin = new Thickness(0, 1.5, 0, 0);
-        Grid.SetRow(_map[(int)DockSlot.LowerLeft], 1);
-        Grid.SetColumn(_map[(int)DockSlot.Right], 2);
-        Grid.SetRowSpan(_map[(int)DockSlot.Right], 2);
-        return new Grid
-        {
-            Width = 118,
-            Height = 62,
-            Margin = new Thickness(0, 2, 0, 6),
-            ColumnDefinitions = new ColumnDefinitions("34,*,40"),
-            RowDefinitions = new RowDefinitions("*,*"),
-            Children = { _map[0], _map[1], viewport, _map[2] },
-        };
-    }
-
-    MenuItem MoveItem(DockSlot slot)
-    {
-        var item = new MenuItem { Header = $"Move to the {slot.Label()}" };
-        item.Click += (_, _) => MoveRequested?.Invoke(slot);
-        return item;
-    }
-
-    Border MakeTab(string title, int index)
-    {
-        var tab = new Border
-        {
-            Height = TabHeight,
-            CornerRadius = EditorTheme.Corners,
-            Padding = new Thickness(TabPadding, 0),
-            Child = new TextBlock { Text = title, FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
-        };
-        tab.PointerPressed += (_, e) =>
-        {
-            if (e.GetCurrentPoint(tab).Properties.IsLeftButtonPressed)
-            {
-                Select(index);
-            }
-        };
-        return tab;
     }
 }

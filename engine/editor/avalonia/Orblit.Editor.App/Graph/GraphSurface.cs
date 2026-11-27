@@ -18,6 +18,7 @@ internal sealed class GraphSurface : Control
     const double MinGridZoom = 0.4;
     const double WheelZoom = 1.1;
     const double LabelSize = 12;
+    // The wire label is drawn beside the pointer, so these place it by geometry.
     const double LabelPad = 4;
     const double LabelGap = 14;
     const int LabelChars = 60;
@@ -131,7 +132,7 @@ internal sealed class GraphSurface : Control
         {
             _gestures.Cancel();
         }
-        else if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None)
+        else if ((e.Key, e.KeyModifiers) is (Key.Space, KeyModifiers.None) or (Key.A, KeyModifiers.Shift))
         {
             _gestures.RequestPalette(_pointer);
         }

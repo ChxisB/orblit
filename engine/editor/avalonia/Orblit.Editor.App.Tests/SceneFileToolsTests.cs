@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -28,7 +29,7 @@ public sealed class SceneFileToolsTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var menuItem = Items(NativeMenu.GetMenu(window)!).Single(item => item.Header == "New Scene");
+            var menuItem = Items(NativeMenu.GetMenu(window)!).Single(item => item.Header == "New scene…");
             Action[] ways =
             [
                 () => ClickOn(window.SceneTabs.AddButton, window),
@@ -84,7 +85,7 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void A_new_scene_saves_the_open_one_first()
+    public void A_new_scene_asks_and_Save_saves_the_open_one_first()
     {
         UiThread.Run(() =>
         {
@@ -94,13 +95,18 @@ public sealed class SceneFileToolsTests
 
             CreateScene(window, "arena");
 
+            Assert.True(window.SaveChanges.IsVisible);
+            Assert.Empty(scene.Created);
+            Click(window.SaveChanges.MainButton);
+
             Assert.Equal(1, scene.Saves);
             Assert.Single(scene.Created);
+            Assert.False(window.NewScene.Dialog.IsVisible);
         });
     }
 
     [Fact]
-    public void A_failed_save_stops_the_new_scene_and_the_dialog_says_why()
+    public void A_failed_save_makes_no_new_scene_and_keeps_asking()
     {
         UiThread.Run(() =>
         {
@@ -109,10 +115,11 @@ public sealed class SceneFileToolsTests
             MakeAnEdit(window);
 
             CreateScene(window, "arena");
+            Click(window.SaveChanges.MainButton);
 
             Assert.Empty(scene.Created);
             Assert.Equal("The engine could not save the scene. Error code 7.", window.Status);
-            Assert.Equal("The engine could not save the scene. Error code 7.", window.NewScene.Fault);
+            Assert.True(window.SaveChanges.IsVisible);
             Assert.True(window.NewScene.Dialog.IsVisible);
         });
     }
@@ -151,7 +158,7 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void Close_saves_edits_then_leaves_no_scene_open()
+    public void Close_with_edits_asks_and_Save_and_close_saves_then_leaves_no_scene_open()
     {
         UiThread.Run(() =>
         {
@@ -161,6 +168,12 @@ public sealed class SceneFileToolsTests
 
             ClickOn(window.SceneTabs.CloseButton, window);
 
+            Assert.True(window.SaveChanges.IsVisible);
+            Assert.Equal((0, 0), (scene.Saves, scene.Closed));
+            Assert.Equal(["Save and close", "↵"], Texts(window.SaveChanges.MainButton));
+            Click(window.SaveChanges.MainButton);
+
+            Assert.False(window.SaveChanges.IsVisible);
             Assert.Equal(1, scene.Saves);
             Assert.Equal(1, scene.Closed);
             Assert.False(window.SceneTabs.Tab.IsVisible);
@@ -204,23 +217,31 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void The_instance_button_opens_a_dialog_that_turns_off_the_open_scene_and_leaves_out_folders()
+    public void Put_a_scene_inside_says_what_a_copy_is_and_why_the_open_scene_is_off()
     {
         UiThread.Run(() =>
         {
             var scene = new FakeScene { SceneFile = "res://field.oscn" };
             scene.ScenePaths.Add("res://levels/");
+            scene.ScenePaths.Add("res://planar.oscn");
+            scene.Kinds["res://levels/second.oscn"] = "3D";
+            scene.Kinds["res://planar.oscn"] = "2D";
             var window = OpenAtReferenceSize(scene);
+            var dialog = window.InstanceScene.Dialog;
             var list = window.InstanceScene.SceneList;
 
             ClickOn(window.InstanceScene.OpenButton, window);
 
-            Assert.True(window.InstanceScene.Dialog.IsVisible);
-            Assert.Equal("As a child of Field", window.InstanceScene.Dialog.Why.Text);
-            Assert.Equal(["field.oscn", "second.oscn"], list.Shown.Select(choice => choice.Name));
-            Assert.Equal([true, false], list.Shown.Select(choice => choice.Off));
-            Assert.Equal(["This scene. It cannot hold itself.", "res://levels/"], list.Shown.Select(choice => choice.Line));
-            Assert.Equal("second.oscn", list.Picked!.Name);
+            Assert.True(dialog.IsVisible);
+            Assert.Equal("Put a scene inside Field", dialog.Title);
+            Assert.Equal("Instance Scene", dialog.EngineName);
+            Assert.Equal(InstanceTool.WhatACopyIs, dialog.Why.Text);
+            Assert.Equal("Find a scene", list.SearchBox.PlaceholderText);
+            Assert.Equal(["field", "second", "planar"], list.Shown.Select(choice => choice.Name));
+            Assert.Equal([true, false, false], list.Shown.Select(choice => choice.Off));
+            Assert.Equal(["You are in field. A scene can't hold itself.", "3D · levels/", "2D"], list.Shown.Select(choice => choice.Line));
+            Assert.Equal("second", list.Picked!.Name);
+            Assert.Equal(["Put it in", "↵"], Texts(dialog.MainButton));
         });
     }
 
@@ -251,6 +272,7 @@ public sealed class SceneFileToolsTests
 
             window.InstanceScene.SceneList.SearchBox.Text = "zzz";
             Assert.False(instance.IsEnabled);
+            Assert.Equal("Pick a scene first.", ((HoverCard)ToolTip.GetTip(instance)!).Line);
 
             var empty = OpenAtReferenceSize(new FakeScene { StartsEmpty = true });
             Assert.False(empty.InstanceScene.OpenButton.IsEnabled);
@@ -288,7 +310,7 @@ public sealed class SceneFileToolsTests
 
             Assert.Equal([(FakeScene.Lamp.Handle, "res://field.oscn")], scene.Instanced);
             Assert.Equal("field", window.ScenePane.Selected!.Name);
-            Assert.Equal("Instanced field under Lamp.", window.Status);
+            Assert.Equal("Put field inside Lamp.", window.Status);
             Assert.StartsWith("(*)", window.Title);
             Assert.False(window.InstanceScene.Dialog.IsVisible);
         });
@@ -306,7 +328,7 @@ public sealed class SceneFileToolsTests
             Click(window.InstanceScene.Dialog.MainButton);
 
             Assert.Equal([(FakeScene.Field.Handle, "res://field.oscn")], scene.Instanced);
-            Assert.Equal("Instanced field under Field.", window.Status);
+            Assert.Equal("Put field inside Field.", window.Status);
         });
     }
 
@@ -325,47 +347,89 @@ public sealed class SceneFileToolsTests
         });
     }
 
-    static MenuItem TabItem(EditorWindow window, string header) =>
-        ((MenuFlyout)window.SceneTabs.MenuButton.Flyout!).Items.OfType<MenuItem>().Single(item => (string?)item.Header == header);
+    static IEnumerable<MenuItem> TabItems(EditorWindow window) => window.SceneTabs.Tab.ContextMenu!.Items.OfType<MenuItem>();
+
+    static MenuItem TabItem(EditorWindow window, string name) => TabItems(window).Single(item => AutomationProperties.GetName(item) == name);
+
+    static string? Note(MenuItem item) => item.Header is StackPanel { Children: [_, TextBlock note] } ? note.Text : null;
 
     [Fact]
-    public void The_scene_tab_menu_makes_runs_and_closes_the_scene()
+    public void A_right_click_on_the_scene_tab_names_each_item_with_its_key()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://levels/second.oscn" });
+
+            Assert.Equal(
+                [("New scene…", "⌃N"), ("Play this scene", "⌃R"), ("Close", "⌃W"), ("Show in Files", "")],
+                TabItems(window).Select(item => (AutomationProperties.GetName(item), item.InputGesture is { } key ? Parts.KeyText(key) : "")));
+            Assert.Equal("Asks first if there are unsaved changes", Note(TabItem(window, "Close")));
+            Assert.Equal("Finds second.oscn in the Files panel", Note(TabItem(window, "Show in Files")));
+        });
+    }
+
+    [Fact]
+    public void The_scene_tab_menu_makes_plays_and_closes_the_scene()
     {
         UiThread.Run(() =>
         {
             var scene = new FakeScene { SceneFile = "res://levels/one.oscn" };
             var window = OpenAtReferenceSize(scene);
 
-            TabItem(window, "New Scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            TabItem(window, "New scene…").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Assert.True(window.NewScene.Dialog.IsVisible);
             window.NewScene.Dialog.Close();
 
-            TabItem(window, "Run This Scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            TabItem(window, "Play this scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Assert.Equal("res://levels/one.oscn", scene.PlayedFlags[^1]);
 
-            TabItem(window, "Close Scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            TabItem(window, "Close").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Assert.False(window.SceneTabs.Tab.IsVisible);
-            Assert.False(TabItem(window, "Close Scene").IsEnabled);
+            Assert.False(TabItem(window, "Close").IsEnabled);
         });
     }
 
     [Fact]
-    public void Distraction_free_folds_both_sides_and_a_second_press_brings_both_back()
+    public void Command_W_closes_the_scene()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize(new FakeScene());
-            window.RightSide.Fold(true);
 
-            Click(window.SceneTabs.DistractionButton);
+            var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.W, KeyModifiers = window.CommandKey };
+            window.RaiseEvent(press);
 
-            Assert.True(window.LeftSide.IsFolded);
-            Assert.True(window.RightSide.IsFolded);
+            Assert.True(press.Handled);
+            Assert.False(window.SceneTabs.Tab.IsVisible);
+        });
+    }
 
-            Click(window.SceneTabs.DistractionButton);
+    [Fact]
+    public void Show_in_Files_brings_the_Files_tab_forward_and_selects_the_scene()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://levels/second.oscn" });
+            window.Scenes.FilterBox.Text = "spin";
+            window.FileDock.Select(1);
 
-            Assert.False(window.LeftSide.IsFolded);
-            Assert.False(window.RightSide.IsFolded);
+            TabItem(window, "Show in Files").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            Assert.Equal(0, window.FileDock.SelectedIndex);
+            Assert.Equal("", window.Scenes.FilterBox.Text);
+            Assert.Equal("res://levels/second.oscn", ((FileNode)window.Scenes.Tree.SelectedItem!).Path);
+        });
+    }
+
+    [Fact]
+    public void Show_in_Files_is_off_and_says_why_while_the_scene_has_no_file()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+
+            Assert.False(TabItem(window, "Show in Files").IsEnabled);
+            Assert.Equal("Save the scene first. Then it has a file.", Note(TabItem(window, "Show in Files")));
         });
     }
 }

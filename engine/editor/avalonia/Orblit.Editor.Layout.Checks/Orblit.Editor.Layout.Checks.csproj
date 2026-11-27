@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Orblit.Editor.Layout.Checks</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" Version="12.1.4" />
+    <PackageReference Include="xunit.assert" Version="2.9.3" />
+  </ItemGroup>
+
+  <!-- The window tests' scene held in memory, so the checks fill every panel with no engine. -->
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <ProjectReference Include="../Orblit.Editor.App/Orblit.Editor.App.csproj" />
+    <Compile Include="../Orblit.Editor.App.Tests/FakeScene.cs" Link="Fakes/FakeScene.cs" />
+    <Compile Include="../Orblit.Editor.App.Tests/ManualTime.cs" Link="Fakes/ManualTime.cs" />
+    <Compile Include="../Orblit.Editor.App.Tests/ReferenceWindow.cs" Link="Fakes/ReferenceWindow.cs" />
+    <Compile Include="../Orblit.Editor.App.Tests/Graph/FakeDebugChannel.cs" Link="Fakes/FakeDebugChannel.cs" />
+    <Compile Include="../Orblit.Editor.App.Tests/Graph/FakeGraphSource.cs" Link="Fakes/FakeGraphSource.cs" />
+  </ItemGroup>
+
+</Project>

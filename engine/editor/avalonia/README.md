@@ -36,8 +36,8 @@ has started it.
   button is on.
 - The Output panel shows what the engine and the games it runs log, read from
   their `--log-file`. It filters by words and by level, and counts each level.
-- Command+K opens the command palette: commands, project files and the
-  scene's entities in one list. Shift+Command+O opens a scene by name.
+- Command+K opens Search: scenes, scripts, things, actions, settings and
+  the guide's pages in one list. Shift+Command+O opens it on scenes.
 - New Scene and New Graph Script are dialogs. Toasts stack at the bottom
   right.
 - The workspace tabs are 2D, 3D, Script, Graph and Game. 2D
@@ -45,8 +45,13 @@ has started it.
   Script edits a project `.cs` file with syntax colors and an outline. Graph
   edits a `.ograph` graph script. Game runs the project and shows whether it
   runs.
+- Graph reads each start back as numbered sentences on a card over the
+  canvas, and reads them again after each edit. A number picks its step.
 - With no `--project` a launcher opens. It lists recent projects, opens a
-  project folder and makes a new project from a template.
+  project folder and makes a new project from a template. Each card's menu
+  opens, renames, shows or forgets its project. A listed folder that lost its
+  `project.orblit` is hidden. Settings holds the folder new projects go in,
+  and every key.
 - Undo and redo cover scene edits, and History lists them.
 - The inspector lists each class's properties and scrubs a number when its
   label is dragged. Copy and Paste Properties and Make Unique are in its
@@ -62,13 +67,16 @@ has started it.
   line shows C# build problems, and Roslyn's errors after a pause in typing.
 - 2D has Rotate, Scale, Pan, Snap and a grid. The 3D viewport has a
   ruler, Select from a list and the preview lights.
-- A dock floats in its own window from the dock menu.
+- A panel moves by its tab. The dock menu places it, or floats it in its own
+  window. Lock layout stops moves. The layout is saved in
+  `editor_settings.cfg`.
 - Project > Export exports the game with one of its presets, once export
   templates are installed. Download Templates takes them from the first
   https mirror in the release's list on orblitengine.com, or they install
   from a `.tpz` on disk.
 - Game passes its run settings to the game as engine flags, and shows the
-  running game's monitors and live scene tree. The Debugger panel shows the
+  running game's monitors and live scene tree. It runs one to four copies,
+  and brings the game window to the front on macOS and Windows. The Debugger panel shows the
   game's process id for an outside IDE to attach to.
 - A C# game plays under netcoredbg when `ORBLIT_NETCOREDBG` names it or it
   is on `PATH`. A click in the Script gutter sets a breakpoint. A stop opens
@@ -77,27 +85,26 @@ has started it.
 
 ## What is not built
 
+A part that is not built does not show. A control that shows but is off
+says why on hover.
+
 - A copy of netcoredbg in the download. The person installs it. C#
   breakpoints last while the editor is open, and there are no conditions,
   watches or exception stops.
-- The script slot's New Script is not built.
 - Template mirror lists before 1.1.0. An older release says no templates are
   published for it.
 - Drag to reparent in the outliner, and a pick by mesh bounds. A big mesh is
   hard to hit away from its pivot.
 - Picking several entities in the viewport. Move, Remove and Duplicate act
   on the selected entity alone, and only it is outlined.
-- Saved layouts. Docking changes, moves and floated docks are kept in memory
-  only.
-- The 2D Ruler. The Audio, Animation and Shader Editor bottom panels.
-- The Scenes list's file menu, apart from Open. Open Documentation in the
-  inspector tools.
-- Game has no live copy of the game window, no Pause, no bring to front and
-  no run choices. Run a chosen scene, Movie maker mode and Customize Run
-  Instances in the run menu.
-- A menu item with no action carries a Soon tag.
-- The launcher's Templates and Settings places and each card's
-  More menu. A listed folder that lost its `project.orblit` is hidden.
+- The Audio, Animation and Shader Editor bottom panels.
+- Save as, Save all, Reopen closed scene and Find in files.
+- New C# script, New folder, Rename, Duplicate, Move to and Delete in the
+  Files menus.
+- Game has no live copy of the game window and no Pause. It plays the main
+  scene or the open one, not a scene picked from a list. Update while
+  playing, a video of the game and Test on a device.
+- The Help menu's links. Search finds the guide's pages.
 - Windows and Linux use. The release starts the packaged editor on both
   with a headless engine, and nothing more has run there.
 
@@ -112,10 +119,22 @@ Each panel is an island on a near-black window. One orange accent marks the choi
   Fluent controls.
 - Words are set in Geist and values, paths and keys in Geist Mono. The font
   files ship in the app.
-- A menu item that is not built carries a Soon tag, and a tool carries a small
-  amber dot. A click on either shows a toast at the bottom right for 4
-  seconds. A worded button that is not built is off, and its tip says "Not
-  built yet".
+
+The editor is written for a person who has never used an engine, and stays
+quick for one who has. Eight rules hold everywhere:
+
+1. Every button has a word.
+2. The key sits on the button, in dim mono, as on a menu item.
+3. Hover gives a card: a plain title, a line on what it does, the key, and
+   the engine's name when it differs. `HoverCard` in `Shell` draws it.
+4. Menu items have a note under the name. An item that opens a window ends
+   in "…". On the macOS menu bar the note is the item's tip.
+5. A control that is off says why, and what to do first.
+   `HoverCard.SaysWhyOff` gives the reason while the control is off.
+6. An empty place says what goes there and offers the first step.
+7. A part that is not built is not in the editor at all.
+8. The plain name comes first. The engine's name follows in dim mono, so a
+   person who knows it can still find it. Search matches either.
 
 ## Run it
 
@@ -153,7 +172,7 @@ starts. One process holds one engine.
 
 A release zip holds the published app, named `Orblit`, beside the engine
 library, the engine program and `OrblitSharp`. The app finds the library in
-its own folder. On macOS that folder is `Orblit.app/Contents/MacOS`, and
+its own folder. On macOS that folder is `Orblit Engine.app/Contents/MacOS`, and
 `OrblitSharp` stays in `Contents/Resources`, where the engine looks next.
 `.github/workflows/release.yml` builds it.
 
@@ -170,11 +189,17 @@ dotnet test Orblit.Editor.App.Tests
 dotnet run --project Orblit.Editor.Bridge.Checks
 dotnet run --project Orblit.Editor.Bridge.Checks -- --windowed
 dotnet run --project Orblit.Editor.Bridge.Checks -- --csharp
+dotnet run --project Orblit.Editor.Layout.Checks
 ```
 
-The window tests run on a scene held in memory, with no engine. The headless
-checks run a real engine with no window and read the scene back from the
-file. The windowed checks open their own window and read frames back.
+The window tests run on a scene held in memory, with no engine. The layout
+checks draw every workspace, panel and dialog with the real fonts, at the
+smallest window and a large one. A part that is cut, spills out of its box,
+sits on another or touches one fails the view. The run first checks that each
+of these rules finds a broken layout made for it. Pass `--shots <folder>` to
+save a picture of each. The headless checks run a real engine with no window
+and read the scene back from the file. The windowed checks open their own
+window and read frames back.
 
 The `--csharp` checks attach a script through the bridge with the C# module on.
 They need a library built with `module_csharp_enabled=yes` and `dotnet` on the
@@ -192,7 +217,7 @@ A live run copies the `view_demo` fixture twice, runs the editor with a real
 engine window, then runs the sample game UI in a second engine window. Run it
 with no other engine process open.
 
-- The editor run has 17 steps. It selects, frames, drags the Move arrow,
+- The editor run has 23 steps. It selects, frames, drags the Move arrow,
   drags the Scale center handle, turns a ring, drags with snap in local space,
   opens the other workspaces and saves with Command+S. Each step reads the
   result back from the engine.
@@ -223,5 +248,5 @@ The cause is not known.
   `calls.json` lists the engine calls the editor uses. `EngineCalls.g.cs`
   holds the matching call table.
 - `Orblit.Editor.App` is the Avalonia window and its panels.
-- `Orblit.Editor.App.Tests` and `Orblit.Editor.Bridge.Checks` hold the
-  tests and the checks.
+- `Orblit.Editor.App.Tests`, `Orblit.Editor.Bridge.Checks` and
+  `Orblit.Editor.Layout.Checks` hold the tests and the checks.

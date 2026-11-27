@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Input;
+using Avalonia.LogicalTree;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.Bridge;
 
@@ -12,7 +13,7 @@ public sealed class PaletteTests
     static (FakeGraphSource Source, GraphCanvas Canvas) Open(FakeGraphSource? source = null)
     {
         source ??= FakeGraphSource.Sample();
-        return (source, new GraphCanvas(source));
+        return (source, new GraphCanvas(source, KeyModifiers.Meta));
     }
 
     static void Drag(GraphCanvas canvas, Point from, Point to)
@@ -31,6 +32,10 @@ public sealed class PaletteTests
     static GraphStepEntry Entry(string group, string label) => new(label.ToLowerInvariant(), group, label, new Dictionary<string, string>());
 
     static string[] Tags(PalettePopup palette) => [.. palette.Rows.Select(row => row.Tag as string ?? "")];
+
+    static string[] Words(Avalonia.Controls.Control control) => [.. control.GetLogicalDescendants().OfType<Avalonia.Controls.TextBlock>().Select(text => text.Text ?? "")];
+
+    static void Press(Avalonia.Controls.Button button) => button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
 
     static string[] Labels(GraphCanvas canvas) => [.. canvas.Palette.Entries.Select(entry => entry.Label)];
 
@@ -92,11 +97,11 @@ public sealed class PaletteTests
         {
             var palette = new PalettePopup();
             IReadOnlyList<GraphStepEntry> found = [Entry("Flow", "Branch"), Entry("Math", "Add"), Entry("Flow", "Loop"), Entry("Math", "Sine")];
-            palette.Open(default, new Size(2000, 2000), _ => found, (_, _) => { });
+            palette.Open(default, new Size(2000, 2000), new PaletteJob(_ => found, (_, _) => { }));
 
             Assert.Equal(["Branch", "Loop", "Add", "Sine"], palette.Entries.Select(entry => entry.Label));
             Assert.Equal(["palette:group:Flow", "palette:step:0", "palette:step:1", "palette:group:Math"], Tags(palette));
-            Assert.Equal("Flow Branch", palette.Preview);
+            Assert.StartsWith("Choices and loops If Branch If the check is true", palette.Preview);
 
             Key(palette.SearchBox, Avalonia.Input.Key.Down);
             Key(palette.SearchBox, Avalonia.Input.Key.Down);
@@ -240,6 +245,100 @@ public sealed class PaletteTests
     }
 
     [Fact]
+    public void Steps_and_groups_show_plain_names_with_the_engine_names_dim_beside_them()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            canvas.OpenPalette(new Point(100, 100), null);
+
+            var rows = canvas.Palette.Rows.ToList();
+            Assert.Equal(["1", "Choices and loops", "Flow"], Words(rows[0]));
+            Assert.Equal(["If", "Branch", "Goes one way or the other."], Words(rows[1]));
+            Assert.Equal("Find a step, like wait or if", canvas.Palette.SearchBox.PlaceholderText);
+            Assert.Contains("Good for: doors that need a key", canvas.Palette.Preview);
+        });
+    }
+
+    [Fact]
+    public void A_plain_name_finds_its_step_first()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            canvas.OpenPalette(new Point(100, 100), null);
+
+            canvas.Palette.SearchBox.Text = "if";
+
+            Assert.Equal("branch", canvas.Palette.Entries[0].Kind);
+            Assert.StartsWith("Choices and loops If Branch", canvas.Palette.Preview);
+        });
+    }
+
+    [Fact]
+    public void Pin_to_the_top_keeps_the_step_first_until_it_is_unpinned()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            canvas.OpenPalette(new Point(100, 100), null);
+            canvas.Palette.SearchBox.Text = "print";
+
+            Press(canvas.Palette.PinButton);
+            canvas.Palette.SearchBox.Text = "";
+
+            Assert.Equal(("print", "Pinned"), (canvas.Palette.Entries[0].Kind, canvas.Palette.Entries[0].Group));
+            Assert.Equal(["palette:group:Pinned", "palette:step:0", "palette:group:Flow"], Tags(canvas.Palette).Take(3));
+            Assert.Equal("Unpin", canvas.Palette.PinButton.Content);
+
+            Key(canvas.Palette.SearchBox, Avalonia.Input.Key.Escape);
+            canvas.OpenPalette(new Point(100, 100), null);
+            Assert.Equal("Pinned", canvas.Palette.Entries[0].Group);
+
+            Press(canvas.Palette.PinButton);
+
+            Assert.Equal(["Branch", "Translate", "Print", "Constant"], Labels(canvas));
+            Assert.Equal("Pin to the top", canvas.Palette.PinButton.Content);
+        });
+    }
+
+    [Fact]
+    public void A_step_found_only_by_search_has_no_pin()
+    {
+        UiThread.Run(() =>
+        {
+            var palette = new PalettePopup();
+            palette.Open(default, new Size(2000, 2000), new PaletteJob(text => text == "" ? [Entry("Flow", "Branch")] : [Entry("Calls", "Move")], (_, _) => { }));
+            Assert.True(palette.PinButton.IsVisible);
+
+            palette.SearchBox.Text = "move";
+
+            Assert.Equal("Move", palette.Entries[0].Label);
+            Assert.False(palette.PinButton.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void The_foot_names_the_step_a_new_one_joins_to()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            canvas.OpenPalette(new Point(100, 100), null);
+            Assert.Equal("↑ ↓ move ↵ Add here", canvas.Palette.Footer);
+            canvas.Palette.Close();
+
+            canvas.Select([3]);
+            canvas.OpenPalette(new Point(100, 100), null);
+            Assert.Equal("↑ ↓ move ↵ Add here ⇧↵ Add and join to step 3", canvas.Palette.Footer);
+            canvas.Palette.Close();
+
+            Drag(canvas, Pin(canvas, 2, false, 1), Empty);
+            Assert.Equal("↑ ↓ move ↵ Add and join to step 2", canvas.Palette.Footer);
+        });
+    }
+
+    [Fact]
     public void Escape_closes_the_palette_and_adds_nothing()
     {
         UiThread.Run(() =>
@@ -289,14 +388,16 @@ public sealed class PaletteTests
         });
     }
 
-    [Fact]
-    public void Space_opens_the_palette()
+    [Theory]
+    [InlineData(Avalonia.Input.Key.Space, KeyModifiers.None)]
+    [InlineData(Avalonia.Input.Key.A, KeyModifiers.Shift)]
+    public void Space_or_shift_A_opens_the_palette(Key key, KeyModifiers keys)
     {
         UiThread.Run(() =>
         {
             var (_, canvas) = Open();
 
-            Key(canvas.Surface, Avalonia.Input.Key.Space);
+            Key(canvas.Surface, key, keys);
 
             Assert.True(canvas.Palette.IsOpen);
             Assert.Equal(4, canvas.Palette.Entries.Count);

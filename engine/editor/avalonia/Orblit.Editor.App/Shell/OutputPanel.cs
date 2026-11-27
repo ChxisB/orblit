@@ -16,7 +16,7 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The log of the engine and of the games it ran, on an island of its own. The strip holds the title, a filter, a
-/// chip for each level with its count, Copy all and Clear. Each line shows the time it came, its level and, for a
+/// worded chip for each level with its count, Copy all and Clear. Each line shows the time it came, its level and, for a
 /// fault, the file it came from. The panel only shows the lines it is given and asks the window to copy or clear them.
 /// </summary>
 internal sealed class OutputPanel : Border
@@ -27,6 +27,7 @@ internal sealed class OutputPanel : Border
     internal const double StripHeight = 36;
 
     const double FilterWidth = 180;
+    const double LeastFilterWidth = 120;
     const double BoxHeight = 28;
     const double LineIcon = 13;
     const double StampWidth = 64;
@@ -34,13 +35,13 @@ internal sealed class OutputPanel : Border
     /// <summary>The class of the time on each line.</summary>
     internal const string Stamp = "stamp";
 
-    // The mark, its tint, the text's tint and the chip's tip of each level, in the order of LogLevel. A list of
-    // cases, so it is data. Plain messages keep the panel's text colour.
-    static readonly (string Icon, IBrush Tint, IBrush? Text, string Tip)[] s_levels =
+    // The mark, its tint, the text's tint, the chip's word and the line of its card for each level, in the order of
+    // LogLevel. A list of cases, so it is data. Plain messages keep the panel's text colour.
+    static readonly (string Icon, IBrush Tint, IBrush? Text, string Word, string Line)[] s_levels =
     [
-        ("FaultCircle", EditorBrushes.Fault, EditorBrushes.FaultText, "Errors"),
-        ("WarnTriangle", EditorBrushes.Warn, EditorBrushes.Warn, "Warnings"),
-        ("InfoCircle", EditorBrushes.TextDim, null, "Messages"),
+        ("FaultCircle", EditorBrushes.Fault, EditorBrushes.FaultText, "Errors", "Lines where something failed. Click to hide or show them."),
+        ("WarnTriangle", EditorBrushes.Warn, EditorBrushes.Warn, "Warnings", "Lines on something that may go wrong. Click to hide or show them."),
+        ("InfoCircle", EditorBrushes.TextDim, null, "Messages", "Every other line. Click to hide or show them."),
     ];
 
     readonly ListBox _list = new()
@@ -54,22 +55,24 @@ internal sealed class OutputPanel : Border
         {
             new Style(x => x.OfType<ListBoxItem>())
             {
-                Setters = { new Setter(TemplatedControl.PaddingProperty, new Thickness(12, 3)), new Setter(Layoutable.MinHeightProperty, 0.0) },
+                Setters = { new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Group, Gaps.Joined)), new Setter(Layoutable.MinHeightProperty, 0.0) },
             },
         },
     };
     readonly TextBox _filter = new()
     {
-        PlaceholderText = "Filter messages",
-        Width = FilterWidth,
+        PlaceholderText = "Find in messages",
+        MinWidth = LeastFilterWidth,
+        MaxWidth = FilterWidth,
+        Margin = new Thickness(0, 0, Gaps.Tight, 0),
         Height = BoxHeight,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Center,
         InnerRightContent = Parts.SearchIcon(),
     };
-    readonly Chip[] _chips = [.. s_levels.Select(level => new Chip(level.Icon, level.Tint, level.Text, level.Tip))];
-    readonly Button _copy = Parts.IconButton("ActionCopy", "Copy all");
-    readonly Button _clear = Parts.IconButton("Clear", "Clear Output");
+    readonly Chip[] _chips = [.. s_levels.Select(level => new Chip(level.Icon, level.Tint, level.Text, new HoverCard(level.Word, level.Line)))];
+    readonly Button _copy = Parts.Dress(new Button { VerticalAlignment = VerticalAlignment.Center }, "ActionCopy", new HoverCard("Copy all", "Copies every line, to paste in a bug report."));
+    readonly Button _clear = Parts.Dress(new Button { VerticalAlignment = VerticalAlignment.Center }, "Clear", new HoverCard("Clear", "Empties the list. New lines still come in."));
     // The time each line came, kept in step with the lines. The engine writes no time of its own.
     readonly List<DateTimeOffset> _times = [];
     IReadOnlyList<string> _lines = [];
@@ -95,22 +98,18 @@ internal sealed class OutputPanel : Border
             chip.IsCheckedChanged += (_, _) => ShowEntries();
         }
 
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
-        tools.Children.Add(_filter);
-        tools.Children.AddRange(_chips);
-        tools.Children.Add(Parts.Rule());
-        tools.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Children = { _copy, _clear } });
-        DockPanel.SetDock(tools, Dock.Right);
+        var rule = Parts.Rule();
+        rule.Margin = new Thickness(Gaps.Tight, 0);
+        var tools = new OverflowBar([_filter, .. _chips, rule, _copy, _clear]) { HorizontalAlignment = HorizontalAlignment.Right };
+        var title = new TextBlock { Text = "Output", FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, Gaps.Group, 0), VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(title, Dock.Left);
         Strip = new Border
         {
             Height = StripHeight,
-            Padding = new Thickness(12, 0, 6, 0),
+            Padding = new Thickness(Gaps.Group, 0, Gaps.Tight, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Child = new DockPanel
-            {
-                Children = { tools, new TextBlock { Text = "Output", FontSize = 12, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center } },
-            },
+            Child = new DockPanel { Children = { title, tools } },
         };
         DockPanel.SetDock(Strip, Dock.Top);
         Child = new DockPanel { Children = { Strip, _list } };
@@ -152,7 +151,7 @@ internal sealed class OutputPanel : Border
                 ErrorsAdded?.Invoke(errors);
             }
 
-            RefreshSoon();
+            QueueRefresh();
         };
         Refresh();
     }
@@ -176,7 +175,7 @@ internal sealed class OutputPanel : Border
     }
 
     // The log grows a line at a time, so one refresh reads a whole batch.
-    void RefreshSoon()
+    void QueueRefresh()
     {
         if (_refreshPending)
         {
@@ -219,7 +218,7 @@ internal sealed class OutputPanel : Border
     // The time, the level's mark, the text, and the place the engine named on the right. A long line wraps.
     static DockPanel Row(LogEntry entry)
     {
-        var (icon, tint, text, _) = s_levels[(int)entry.Level];
+        var (icon, tint, text, _, _) = s_levels[(int)entry.Level];
         var stamp = new TextBlock
         {
             Text = entry.Time.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
@@ -227,14 +226,14 @@ internal sealed class OutputPanel : Border
             Foreground = EditorBrushes.Disabled,
             Classes = { Stamp },
         };
-        var mark = new EditorIcon(icon) { Width = LineIcon, Height = LineIcon, Margin = new Thickness(0, 2, 8, 0), VerticalAlignment = VerticalAlignment.Top };
+        var mark = new EditorIcon(icon) { Width = LineIcon, Height = LineIcon, Margin = new Thickness(0, Gaps.Joined, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Top };
         TextElement.SetForeground(mark, tint);
         DockPanel.SetDock(stamp, Dock.Left);
         DockPanel.SetDock(mark, Dock.Left);
         var row = new DockPanel { Children = { stamp, mark } };
         if (entry.Source != "")
         {
-            var source = new TextBlock { Text = entry.Source, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
+            var source = new TextBlock { Text = entry.Source, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Group, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
             DockPanel.SetDock(source, Dock.Right);
             row.Children.Add(source);
         }
@@ -250,12 +249,12 @@ internal sealed class OutputPanel : Border
     }
 
     /// <summary>A level's switch: its mark and how many lines it has. It is lit while the level's lines show.</summary>
-    internal sealed class Chip : ToggleButton
+    internal sealed class Chip : ToggleButton, IOverflowTool
     {
         const double ChipHeight = 24;
         const double ChipIcon = 12;
 
-        public Chip(string icon, IBrush tint, IBrush? text, string tip)
+        public Chip(string icon, IBrush tint, IBrush? text, HoverCard card)
         {
             var mark = new EditorIcon(icon) { Width = ChipIcon, Height = ChipIcon, VerticalAlignment = VerticalAlignment.Center };
             TextElement.SetForeground(mark, tint);
@@ -269,15 +268,22 @@ internal sealed class OutputPanel : Border
             Height = ChipHeight;
             MinHeight = 0;
             MinWidth = 0;
-            Padding = new Thickness(9, 0);
+            Padding = new Thickness(Gaps.Item, 0);
             VerticalAlignment = VerticalAlignment.Center;
-            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, Children = { mark, Count } };
+            Word = card.Title;
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { mark, new TextBlock { Text = Word, FontSize = 11, VerticalAlignment = VerticalAlignment.Center }, Count } };
             IsChecked = true;
             IsCheckedChanged += (_, _) => Opacity = IsChecked == true ? 1 : 0.4;
-            ToolTip.SetTip(this, tip);
+            card.On(this);
         }
 
+        internal string Word { get; }
+
         internal TextBlock Count { get; }
+
+        string IOverflowTool.MenuWords => $"{Word} {Count.Text}";
+
+        Button IOverflowTool.MenuButton => this;
 
         // Drawn as a worded button, so the chip shares the raised look of the other buttons.
         protected override Type StyleKeyOverride => typeof(Button);

@@ -24,17 +24,19 @@ internal interface IImportFiles
 }
 
 /// <summary>
-/// The Import tab: the options of the file picked in FileSystem, in groups. Reimport writes them to the file's
+/// The Import tab: the options of the file picked in Files, in groups. Reimport writes them to the file's
 /// .import file and asks the engine to import it again. Reset puts back the options the file held.
 /// </summary>
 internal sealed class ImportPane : DockPanel
 {
-    readonly StackPanel _empty = Parts.EmptyState("ImportArrow", "Nothing to import", "Select a model, image or sound in FileSystem to set how it imports.");
+    const string ChangeFirst = "Change an option first.";
+
+    readonly StackPanel _empty = Parts.EmptyState("ImportArrow", "Pick a file to set how it comes in", "Models, pictures and sounds have import settings. Click one in Files and they show here.");
     readonly TextBlock _name = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly Border _badge = Parts.Badge("");
-    readonly StackPanel _groups = new() { Spacing = 4 };
+    readonly StackPanel _groups = new() { Spacing = Gaps.Tight };
     readonly TextBlock _status = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
-    readonly DockPanel _form = new() { Margin = new Thickness(12) };
+    readonly DockPanel _form = new() { Margin = new Thickness(Gaps.Group) };
     IImportFiles? _files;
     string? _open;
     ImportFile? _read;
@@ -42,20 +44,22 @@ internal sealed class ImportPane : DockPanel
 
     public ImportPane()
     {
-        var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(0, 0, 0, 8) };
+        var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(0, 0, 0, Gaps.Item) };
         var icon = Parts.RowIcon("ImportArrow", EditorBrushes.TreeIcon);
         Grid.SetColumn(_name, 1);
         Grid.SetColumn(_badge, 2);
         head.Children.AddRange([icon, _name, _badge]);
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0), Children = { ResetButton, ReimportButton } };
-        _status.Margin = new Thickness(0, 6, 0, 0);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, Gaps.Group, 0, 0), Children = { ResetButton, ReimportButton } };
+        _status.Margin = new Thickness(0, Gaps.Item, 0, 0);
         SetDock(head, Dock.Top);
         SetDock(_status, Dock.Bottom);
         SetDock(actions, Dock.Bottom);
         _form.Children.AddRange([head, _status, actions, new ScrollViewer { Content = _groups }]);
         Children.AddRange([_empty, _form]);
-        ToolTip.SetTip(ResetButton, "Put back the options the file holds");
-        ToolTip.SetTip(ReimportButton, "Write the options and import the file again");
+        var reset = new HoverCard("Reset", "Puts back the options the file holds.");
+        reset.SaysWhyOff(reset.On(ResetButton), ChangeFirst);
+        var reimport = new HoverCard("Reimport", "Writes the options and brings the file in again.");
+        reimport.SaysWhyOff(reimport.On(ReimportButton), ChangeFirst);
         ResetButton.Click += (_, _) => Show(_read!);
         ReimportButton.Click += (_, _) => Reimport();
         Show((ImportFile?)null);

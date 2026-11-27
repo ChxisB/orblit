@@ -21,11 +21,10 @@ internal sealed class PasteChoiceBar : Border
         BorderBrush = EditorBrushes.Accent;
         BorderThickness = new Thickness(1);
         CornerRadius = new CornerRadius(4);
-        Padding = new Thickness(10, 4);
+        Padding = new Thickness(Gaps.Group, Gaps.Tight);
         HorizontalAlignment = HorizontalAlignment.Center;
-        VerticalAlignment = VerticalAlignment.Top;
-        Margin = new Thickness(12);
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        Margin = new Thickness(Gaps.Group);
+        var row = new WrapPanel { ItemSpacing = Gaps.Item, LineSpacing = Gaps.Item };
         row.Children.Add(_text);
         row.Children.Add(PanelFields.Small("paste:keep_both", "Keep both", () => clipboard.Resolve(GraphPasteChoice.KeepBoth)));
         row.Children.Add(PanelFields.Small("paste:reuse", "Reuse", () => clipboard.Resolve(GraphPasteChoice.Reuse)));

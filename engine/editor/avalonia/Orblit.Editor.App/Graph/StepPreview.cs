@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
@@ -9,7 +10,7 @@ namespace Orblit.Editor.App.Graph;
 internal sealed class StepPreview : Control
 {
     // Room for the pins, which sit across the step's left and right edges.
-    const double Pad = 6;
+    internal const double Pad = Gaps.Item;
 
     static readonly GraphGrowth s_fixed = new(GraphGrowthSide.None, 0, 0, 0);
     static readonly HashSet<PinRef> s_unwired = [];

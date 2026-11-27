@@ -121,6 +121,23 @@ public sealed class DialogTests
     }
 
     [Fact]
+    public void A_body_taller_than_the_window_scrolls_and_the_footer_stays_in_view()
+    {
+        UiThread.Run(() =>
+        {
+            var dialog = new Dialog("New Scene", "Pick what the scene is for.", new Border { Height = 2000 }) { MainText = "Create" };
+            var window = new Window { Width = 1000, Height = 500, Content = dialog };
+            window.Show();
+            dialog.Open();
+            window.UpdateLayout();
+
+            Assert.InRange(BoxOf(dialog.Card, dialog).Top, 0, 500);
+            Assert.InRange(BoxOf(dialog.MainButton, dialog).Bottom, 0, 500);
+            Assert.NotNull(dialog.Card.FindDescendantOfType<ScrollViewer>());
+        });
+    }
+
+    [Fact]
     public void The_title_is_bold_with_a_dim_line_on_why_under_it()
     {
         UiThread.Run(() =>
@@ -133,6 +150,17 @@ public sealed class DialogTests
             Assert.Equal(12, dialog.Why.FontSize);
             Assert.Same(EditorBrushes.TextDim, dialog.Why.Foreground);
             Assert.True(BoxOf(dialog.Why, dialog).Y > BoxOf(dialog.Heading, dialog).Bottom);
+        });
+    }
+
+    [Fact]
+    public void The_close_button_is_as_big_as_the_other_icon_buttons()
+    {
+        UiThread.Run(() =>
+        {
+            var close = Opened(NewDialog()).CloseButton;
+
+            Assert.Equal((26d, 26d), (close.Bounds.Width, close.Bounds.Height));
         });
     }
 
@@ -150,7 +178,7 @@ public sealed class DialogTests
             Assert.Equal(EditorColors.Accent, ((ISolidColorBrush)main.Background!).Color);
             Assert.Equal(30, main.Bounds.Height);
             Assert.Same(EditorBrushes.TextSoft, cancel.Foreground);
-            Assert.Equal(BoxOf(dialog.Card, dialog).Right - 1 - 12, BoxOf(main, dialog).Right);
+            Assert.Equal(BoxOf(dialog.Card, dialog).Right - 1 - 16, BoxOf(main, dialog).Right);
             Assert.Equal(BoxOf(cancel, dialog).Right + 8, BoxOf(main, dialog).X);
         });
     }
@@ -163,7 +191,7 @@ public sealed class DialogTests
             var drop = new Button { Content = "Close without saving", Classes = { EditorTheme.TextButton, EditorTheme.Danger } };
             var dialog = Opened(new Dialog("Save changes?", "Closing without saving drops them.", new TextBlock()) { LeadButton = drop, Closable = false });
 
-            Assert.Equal(BoxOf(dialog.Card, dialog).X + 1 + 12, BoxOf(drop, dialog).X);
+            Assert.Equal(BoxOf(dialog.Card, dialog).X + 1 + 16, BoxOf(drop, dialog).X);
             Assert.Same(EditorBrushes.FaultText, drop.Foreground);
             Assert.False(dialog.CloseButton.IsVisible);
         });
@@ -174,7 +202,7 @@ public sealed class DialogTests
     {
         UiThread.Run(() =>
         {
-            var dialog = Opened(new Dialog("Add an entity", "", new TextBox()) { CardWidth = 320, MainText = "Add", Hint = "↑ ↓ to move, ↵ to add" });
+            var dialog = Opened(new Dialog("Add an entity", "", new TextBox()) { CardWidth = 320, MainText = "Add", Hint = Parts.KeyHint("add", "↵") });
 
             var word = dialog.MainButton.GetVisualDescendants().OfType<TextBlock>().Single();
             var box = BoxOf(word, dialog.MainButton);

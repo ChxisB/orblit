@@ -355,9 +355,9 @@ jobs:
       # engine looks when no OrblitSharp sits beside the running program.
       - name: Assemble the app
         run: |
-          mv "$(ls -d bin/*.app)" Orblit.app
-          macos=Orblit.app/Contents/MacOS
-          test -d Orblit.app/Contents/Resources/OrblitSharp
+          mv "$(ls -d bin/*.app)" "Orblit Engine.app"
+          macos="Orblit Engine.app/Contents/MacOS"
+          test -d "Orblit Engine.app/Contents/Resources/OrblitSharp"
           mv "$macos/Orblit" "$macos/orblit.macos.editor.universal.csharp"
           lipo -create bin/liborblit.macos.editor.x86_64.dylib bin/liborblit.macos.editor.arm64.dylib -output "$macos/liborblit.macos.editor.universal.dylib"
           cp -R app-osx-arm64/. "$macos/"
@@ -370,18 +370,18 @@ jobs:
       # in Contents/MacOS, the engine program with the same entitlements as the app.
       - name: Sign and check the app
         run: |
-          codesign --force --deep --sign - --options runtime --entitlements dist/macos/editor.entitlements Orblit.app
-          codesign --verify --deep --strict Orblit.app
-          Orblit.app/Contents/MacOS/orblit.macos.editor.universal.csharp --version
-          Orblit.app/Contents/MacOS/orblit.macos.editor.universal.csharp --help > /dev/null
+          codesign --force --deep --sign - --options runtime --entitlements dist/macos/editor.entitlements "Orblit Engine.app"
+          codesign --verify --deep --strict "Orblit Engine.app"
+          "Orblit Engine.app/Contents/MacOS/orblit.macos.editor.universal.csharp" --version
+          "Orblit Engine.app/Contents/MacOS/orblit.macos.editor.universal.csharp" --help > /dev/null
 
       - name: Start the packaged editor
-        run: ./dist/scripts/check_packaged_editor.sh Orblit.app/Contents/MacOS/Orblit
+        run: ./dist/scripts/check_packaged_editor.sh "Orblit Engine.app/Contents/MacOS/Orblit"
 
       - name: Package
         run: |
           mkdir "$PACKAGE"
-          mv Orblit.app "$PACKAGE/"
+          mv "Orblit Engine.app" "$PACKAGE/"
           cp LICENSE.md "$PACKAGE/"
           ditto -c -k --keepParent "$PACKAGE" "$PACKAGE.zip"
           ls -l "$PACKAGE.zip"

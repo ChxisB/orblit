@@ -6,19 +6,28 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App;
 
 /// <summary>
-/// The Instance a scene dialog. It lists the project's scene files and puts the chosen one under the selected
-/// entity, or under the root with none selected. The open scene is listed but off, with the reason.
+/// The Put a scene inside dialog. It lists the project's scene files, each with 2D or 3D, and puts the chosen one
+/// under the selected entity, or under the root with none selected. The open scene is listed but off, with the
+/// reason.
 /// </summary>
 internal sealed class InstanceTool
 {
-    readonly ChoiceList _scenes = new("Search scenes");
+    internal const string WhatACopyIs = "It shows up as one thing. Change the original, and every copy changes with it.";
+
+    readonly ChoiceList _scenes = new("Find a scene");
+    // Two scenes in different folders can share a name and a kind, so each choice maps to its path by reference.
+    readonly Dictionary<Choice, string> _paths = new(ReferenceEqualityComparer.Instance);
     IEditorScene? _scene;
     OutlineNode? _root;
     OutlineNode? _selected;
 
     public InstanceTool()
     {
-        Dialog = new Dialog("Instance a scene", "", _scenes) { CardWidth = 320, MainText = "Instance" };
+        Dialog = new Dialog("", WhatACopyIs, _scenes) { CardWidth = 420, EngineName = "Instance Scene" };
+        Dialog.MainButton.Content = Parts.Keyed("Put it in", "↵");
+        var card = new HoverCard("Put it in", "Puts a copy of the lit scene inside.", "↵");
+        card.SaysWhyOff(Dialog.MainButton, "Pick a scene first.");
+        card.On(Dialog.MainButton);
         _scenes.PickedChanged += () => Dialog.MainButton.IsEnabled = _scenes.Picked is not null;
         OpenButton.Click += (_, _) => Open();
         Dialog.MainButton.Click += (_, _) => Run();
@@ -31,8 +40,8 @@ internal sealed class InstanceTool
     /// <summary>Raised with the reason when the scene refused the instance.</summary>
     public event Action<string>? Failed;
 
-    /// <summary>The link of the Scene dock. It opens the dialog.</summary>
-    internal Button OpenButton { get; } = Parts.IconButton("Instance", "Instance a scene as a child of the selected entity");
+    /// <summary>The link of the Scene dock. It opens the dialog. The dock gives it a card with its key.</summary>
+    internal Button OpenButton { get; } = Parts.IconButton("Instance", "");
 
     internal Dialog Dialog { get; }
 
@@ -48,30 +57,58 @@ internal sealed class InstanceTool
     }
 
     // shortcut: only the open scene is off, so A inside B inside A is not caught. Check the chain when the
-    // bridge can read the scenes a file instances. The line is the folder, as the bridge cannot read a root's class.
+    // bridge can read the scenes a file instances.
     void Open()
     {
-        Dialog.Why.Text = $"As a child of {(_selected ?? _root)!.Name}";
-        _scenes.Show([.. _scene!.Scenes().Where(path => !path.EndsWith('/')).Select(path => new Choice("SceneFile", Path.GetFileName(path))
+        Dialog.Title = $"Put a scene inside {(_selected ?? _root)!.Name}";
+        _paths.Clear();
+        foreach (var path in _scene!.Scenes().Where(path => !path.EndsWith('/')))
         {
-            Tint = EditorBrushes.SceneIcon,
-            Off = path == _scene.SceneFile,
-            Line = path == _scene.SceneFile ? "This scene. It cannot hold itself." : path[..(path.LastIndexOf('/') + 1)],
-        })]);
+            _paths[SceneChoice(path)] = path;
+        }
+
+        _scenes.Show([.. _paths.Keys]);
         Dialog.Open();
         _scenes.SearchBox.Focus();
     }
 
-    void Run()
+    // A scene outside the top folder adds its folder to the line, so two of the same name tell apart.
+    Choice SceneChoice(string path)
+    {
+        var name = Path.GetFileNameWithoutExtension(path);
+        var folder = path[..(path.LastIndexOf('/') + 1)].Replace("res://", "");
+        return new Choice("SceneFile", name)
+        {
+            Tint = EditorBrushes.SceneIcon,
+            Off = path == _scene!.SceneFile,
+            Line = path == _scene.SceneFile
+                ? $"You are in {name}. A scene can't hold itself."
+                : string.Join(" · ", new[] { _scene.SceneKindOf(path), folder }.Where(part => part != "")),
+        };
+    }
+
+    /// <summary>Puts a copy of the scene at the res:// path inside the selected thing, or inside the top thing when none is picked.</summary>
+    public void Use(string path)
+    {
+        if (_root is null)
+        {
+            Failed?.Invoke("Open a scene first.");
+            return;
+        }
+
+        Put(path);
+    }
+
+    void Run() => Put(_paths[_scenes.Picked!]);
+
+    void Put(string path)
     {
         try
         {
             var parent = (_selected ?? _root)!;
-            // A choice that is on has its folder as its line, so the two make the path.
-            var path = _scenes.Picked!.Line + _scenes.Picked.Name;
             var made = _scene!.Instance(parent.Handle, path);
             Dialog.Close();
-            Changed?.Invoke(new EntityEdit(made, $"Instanced {Path.GetFileNameWithoutExtension(path)} under {parent.Name}."));
+            Changed?.Invoke(new EntityEdit(made, $"Put {Path.GetFileNameWithoutExtension(path)} inside {parent.Name}."));
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException)
         {

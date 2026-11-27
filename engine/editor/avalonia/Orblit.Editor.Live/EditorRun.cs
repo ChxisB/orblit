@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
@@ -50,7 +51,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Step("Command Z and Command Shift Z undo and redo a move, and History steps back and forward", UndoesAndRedoes);
         await Step("the Signals tab lists the engine's signals, Connect links one and Command Z takes the link out", ConnectsASignal);
         await Step("Command and S write the live transform to the scene file", SaveWritesTheTransform);
-        await Step("Add Metadata makes a value on the entity and Command and S writes it to the scene file", KeepsMetadata);
+        await Step("Add a custom value makes a value on the entity and Command and S writes it to the scene file", KeepsMetadata);
         await Step("the plus opens Add an entity on the engine's classes, and a search lights Timer", ListsTheEngineClasses);
         await Step("the Output button opens the panel with the engine's log lines", OpensTheEngineLog);
         await Step("Clear empties the Output panel and a second click on its button shuts it", ClearsAndShutsTheLog);
@@ -163,7 +164,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     {
         var tool = window.Inspector.MetadataTool;
         await _input.Click(window.Inspector.MetadataButton);
-        await Wait(() => window.Inspector.MetadataFlyout.IsOpen && tool.AddButton.IsAttachedToVisualTree(), "the Add Metadata flyout to open");
+        await Wait(() => window.Inspector.MetadataFlyout.IsOpen && tool.AddButton.IsAttachedToVisualTree(), "the Add a custom value flyout to open");
         // The name box takes text, which this run does not type. Setting it is the only part that is not injected.
         tool.NameBox.Text = "tag";
         await _input.Click(tool.AddButton);
@@ -184,7 +185,9 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         var tools = window.Tools;
         var opening = Stopwatch.StartNew();
         await _input.Click(tools.AddButton);
-        await Wait(() => tools.AddDialog.IsVisible && tools.ClassList.Shown.Count > 0, "the Add an entity dialog to open");
+        await Wait(() => tools.AddDialog.IsVisible && tools.ClassList.Shown.Count > 0, "the Add a thing dialog to open");
+        await _input.Click(tools.ClassList.FoldRows[0]);
+        await Settle();
         Console.WriteLine($"  the Add dialog listed {tools.ClassList.Shown.Count} classes in {opening.ElapsedMilliseconds} ms");
         Expect(tools.ClassList.Shown.Count > 200, $"the dialog lists only {tools.ClassList.Shown.Count} classes");
         // The search box takes text, which this run does not type. Setting it is the only part that is not injected.
@@ -332,19 +335,19 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
             Expect(window.Game.RunButton.IsEnabled && !window.Game.StopButton.IsEnabled, "the game view offered the wrong buttons");
 
             await _input.Click(window.Game.RunButton);
-            await Wait(() => engine.IsPlaying && window.Game.State.Text!.Contains("is running"), "the game to start");
+            await Wait(() => engine.IsPlaying && window.Game.Status.Text == "Playing", "the game to start");
             // The game sends its monitors once a second and its tree after each, so both come within a few seconds.
-            await Wait(() => window.Game.Rate.Text != "—" && window.Game.LiveRows.Count() == 4, "the game's monitors and its four entities in the live scene");
+            await Wait(() => window.Game.MonitorValues.First() != "—" && window.Game.LiveRows.Count() == 4, "the game's monitors and its four entities in the live scene");
             await Settle();
             Shots.Save(window, Path.Combine(output, "game-running.png"));
             await _input.Click(window.Game.StopButton);
-            Expect(!engine.IsPlaying && window.Game.State.Text!.StartsWith("No game"), "Stop did not end the game");
+            Expect(!engine.IsPlaying && window.Game.Status.Text == "Stopped", "Stop did not end the game");
 
             // The user closes the game's own window, which the editor learns only at its next poll.
             await _input.Click(window.PlayButton);
             await Wait(() => engine.IsPlaying, "a second game to start");
             CloseTheGame();
-            await Wait(() => !window.StopButton.IsEnabled && window.Game.State.Text!.StartsWith("No game"), "the view to show the closed game as stopped");
+            await Wait(() => !window.StopButton.IsEnabled && window.Game.Status.Text == "Stopped", "the view to show the closed game as stopped");
 
             // Play after a game that ended on its own runs Stop on a process that has exited.
             await _input.Click(window.PlayButton);
@@ -413,7 +416,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Wait(() => graph.FileMenu.IsOpen && NewItem(graph).IsAttachedToVisualTree(), "the File menu to open");
         await _input.Click(NewItem(graph));
         // The dialog sits hidden in the window from the start, so its button has a place only after a layout.
-        await Wait(() => graph.Form.CreateButton.IsEffectivelyVisible && graph.Form.CreateButton.Bounds.Width > 0, "the New Graph Script dialog to open");
+        await Wait(() => graph.Form.CreateButton.IsEffectivelyVisible && graph.Form.CreateButton.Bounds.Width > 0, "the New graph dialog to open");
         // The boxes take text, which this run does not type. Setting it is the only part that is not injected.
         graph.Form.NameBox.Text = "live";
         await _input.Click(graph.Form.CreateButton);
@@ -443,9 +446,9 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Wait(() => window.Viewport.IsEffectivelyVisible && Viewport.Bounds.Width > 0, "the viewport to show again");
     }
 
-    static MenuItem NewItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == "New...");
+    static MenuItem NewItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == "New graph…");
 
-    static MenuItem CloseItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == "Close");
+    static MenuItem CloseItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == "Close");
 
     WorkspaceTab Tab(string label) => window.Bar.Tabs.Single(tab => tab.Label == label);
 

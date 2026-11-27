@@ -6,9 +6,47 @@ using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App;
 
-/// <summary>What the editor window needs from the open scene. The window owns this interface.</summary>
-internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExportGame
+/// <summary>
+/// What the window shows of a project from its folder alone, so it can fill those parts before the engine
+/// starts. The window owns this interface.
+/// </summary>
+internal interface IProjectFiles
 {
+    /// <summary>The res:// path of the open scene, or an empty string when it has no file.</summary>
+    string SceneFile { get; }
+
+    /// <summary>The project's name, or an empty string when it has none.</summary>
+    string ProjectName { get; }
+
+    /// <summary>The res:// paths of the project's scene files and, with a slash on the end, of its folders.</summary>
+    IReadOnlyList<string> Scenes();
+
+    /// <summary>The res:// paths of the project's C# files.</summary>
+    IReadOnlyList<string> Scripts();
+
+    /// <summary>The res:// paths of the project's graph scripts.</summary>
+    IReadOnlyList<string> GraphScripts();
+
+    /// <summary>The res:// paths of the files the engine imports.</summary>
+    IReadOnlyList<string> ImportedFiles();
+
+    /// <summary>When the project file was last written, in UTC.</summary>
+    DateTime ModifiedOf(string resourcePath);
+
+    /// <summary>"2D" or "3D" by the root of the scene file, or empty when the root is neither or the file cannot be read.</summary>
+    string SceneKindOf(string resourcePath);
+}
+
+/// <summary>What the editor window needs from the open scene. The window owns this interface.</summary>
+internal interface IEditorScene : IProjectFiles, IScriptFiles, IGraphFiles, IImportFiles, IExportGame
+{
+    // The script, graph and import views each name one of these lists too, so the scene names each once.
+    new IReadOnlyList<string> Scripts();
+
+    new IReadOnlyList<string> GraphScripts();
+
+    new IReadOnlyList<string> ImportedFiles();
+
     // Both script views ask for the classes a new script can extend, so the window names the one list they share.
     new IReadOnlyList<string> AddableClasses();
 
@@ -159,15 +197,6 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
 
     void Save();
 
-    /// <summary>The res:// path of the open scene, or an empty string when it has no file.</summary>
-    string SceneFile { get; }
-
-    /// <summary>The project's name, or an empty string when it has none.</summary>
-    string ProjectName { get; }
-
-    /// <summary>The res:// paths of the project's scene files and, with a slash on the end, of its folders.</summary>
-    IReadOnlyList<string> Scenes();
-
     /// <summary>Replaces the open scene with this one. Throws <see cref="IOException"/> when it cannot.</summary>
     void Open(string resourcePath);
 
@@ -182,9 +211,6 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
 
     /// <summary>Adds the scene file under the entity as a reference and not a copy, and returns the new entity.</summary>
     nint Instance(nint parent, string resourcePath);
-
-    /// <summary>When the project file was last written, in UTC.</summary>
-    DateTime ModifiedOf(string resourcePath);
 
     /// <summary>The entity's class and each class it comes from, its own first, down to Entity.</summary>
     IReadOnlyList<string> ClassChainOf(nint entity);
@@ -247,6 +273,9 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
     /// <summary>Whether the game <see cref="Play"/> started is still running.</summary>
     bool IsPlaying { get; }
 
+    /// <summary>Whether the game <see cref="Play"/> started closed by itself with an error code. False while it runs and after <see cref="Stop"/>.</summary>
+    bool EndedWithError { get; }
+
     /// <summary>The process id of the game <see cref="Play"/> started, or null when none runs.</summary>
     int? GameId { get; }
 
@@ -254,11 +283,15 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
     /// Runs the project in its own process, linked to <see cref="IGraphFiles.Debug"/>, and stopping on the breakpoints given,
     /// each a source and a step id. A project with C# runs under netcoredbg when the person has it, linked to
     /// <see cref="IScriptFiles.Csharp"/> and stopping on the code breakpoints, each a script's res:// path and a line. The flags go to
-    /// the engine as they are, such as <c>--debug-collisions</c>. A game already running is stopped first. Throws
+    /// the engine as they are, such as <c>--debug-collisions</c>. Past the first, each copy is another game with the same
+    /// flags and no link, for testing online play. A game already running is stopped first, with its copies. Throws
     /// <see cref="IOException"/> when a link cannot be opened or netcoredbg does not start.
     /// </summary>
-    void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags);
+    void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags, int copies);
 
     /// <summary>Ends the running game. Does nothing when none runs.</summary>
     void Stop();
+
+    /// <summary>Brings the running game's window to the front. Does nothing when none runs.</summary>
+    void ShowGameWindow();
 }

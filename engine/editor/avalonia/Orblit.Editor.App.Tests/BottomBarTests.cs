@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
+using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -30,12 +31,12 @@ public sealed class BottomBarTests
         {
             var tabs = BarOf(OpenAtReferenceSize()).Tabs;
 
-            Assert.Equal(["Output", "Debugger", "Audio", "Animation", "Shader Editor"], tabs.Select(tab => Labels(tab).Single()));
+            Assert.Equal(["Output", "Debugger"], tabs.Select(tab => Labels(tab).Single()));
         });
     }
 
     [Fact]
-    public void The_first_tab_starts_six_pixels_in_with_ten_before_its_icon_and_six_after_it()
+    public void The_first_tab_starts_eight_pixels_in_with_eight_before_its_icon_and_four_after_it()
     {
         UiThread.Run(() =>
         {
@@ -44,10 +45,10 @@ public sealed class BottomBarTests
             var icon = bar.Tabs[0].GetVisualDescendants().OfType<EditorIcon>().Single();
             var text = Words(bar.Tabs[0]).Single();
 
-            AssertBox(293 + 6, 1241, BoxOf(bar.Tabs[0], window).Width, 26, BoxOf(bar.Tabs[0], window));
+            AssertBox(297 + 8, 1239, BoxOf(bar.Tabs[0], window).Width, 26, BoxOf(bar.Tabs[0], window));
             // A 13 pixel icon in a 26 pixel tab is half a pixel off center. Geist's line box rounds it up.
-            AssertBox(309, 1247, 13, 13, BoxOf(icon, window));
-            Assert.Equal(309 + 13 + 6, BoxOf(text, window).X);
+            AssertBox(313, 1245, 13, 13, BoxOf(icon, window));
+            Assert.Equal(313 + 13 + 4, BoxOf(text, window).X);
         });
     }
 
@@ -59,7 +60,7 @@ public sealed class BottomBarTests
             var bar = BarOf(OpenAtReferenceSize());
             var icons = bar.Tabs.Select(tab => tab.GetVisualDescendants().OfType<EditorIcon>().Single()).ToArray();
 
-            Assert.Equal(["Output", "Debug", "AudioStreamPlayer", "Animation", "ShaderDock"], icons.Select(icon => icon.IconName));
+            Assert.Equal(["Output", "Debug"], icons.Select(icon => icon.IconName));
             Assert.All(icons, icon => Assert.Equal((13d, 13d), (icon.Bounds.Width, icon.Bounds.Height)));
             Assert.Empty(bar.Tabs.SelectMany(tab => tab.GetVisualDescendants().OfType<Ellipse>()));
         });
@@ -73,8 +74,8 @@ public sealed class BottomBarTests
             var window = OpenAtReferenceSize();
             var texts = BarOf(window).Tabs.SelectMany(Words).ToArray();
 
-            Assert.Equal(5, texts.Length);
-            Assert.All(texts, text => Assert.InRange(BoxOf(text, window).Y + text.Bounds.Height / 2, 1253.5, 1254.5));
+            Assert.Equal(2, texts.Length);
+            Assert.All(texts, text => Assert.InRange(BoxOf(text, window).Y + text.Bounds.Height / 2, 1251, 1252));
         });
     }
 
@@ -94,14 +95,13 @@ public sealed class BottomBarTests
     }
 
     [Fact]
-    public void The_built_tabs_are_dim_and_the_unbuilt_tabs_dimmer_all_rounded_with_no_border()
+    public void The_tabs_are_dim_rounded_and_have_no_border()
     {
         UiThread.Run(() =>
         {
             var tabs = BarOf(OpenAtReferenceSize()).Tabs;
 
-            Assert.All(tabs.Take(2), tab => Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)tab.Foreground!).Color));
-            Assert.All(tabs.Skip(2), tab => Assert.Equal((Color.Parse("#5C6573"), "Not built yet"), (((ISolidColorBrush)tab.Foreground!).Color, ToolTip.GetTip(tab))));
+            Assert.All(tabs, tab => Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)tab.Foreground!).Color));
             Assert.All(tabs, tab => Assert.Equal((0d, EditorTheme.Corners), (tab.BorderThickness.Left, tab.CornerRadius)));
         });
     }
@@ -118,7 +118,7 @@ public sealed class BottomBarTests
             var status = bar.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "Saved.");
             var separator = BoxOf(bar.Separator, window);
 
-            AssertBox(BoxOf(status, window).Right + 8, 1245, 1, 18, separator);
+            AssertBox(BoxOf(status, window).Right + 8, 1243, 1, 18, separator);
             Assert.Equal(separator.Right + 8, BoxOf(bar.VersionButton, window).X);
             Assert.Equal(Color.Parse("#262C37"), ((ISolidColorBrush)bar.Separator.Background!).Color);
         });
@@ -132,7 +132,7 @@ public sealed class BottomBarTests
             var version = BarOf(OpenAtReferenceSize()).VersionButton;
             var text = version.GetVisualDescendants().OfType<TextBlock>().Single();
 
-            Assert.Equal("1.3.stable", text.Text);
+            Assert.Equal("1.4.stable", text.Text);
             Assert.Equal((11d, EditorColors.TextDim, 1d), (text.FontSize, ((ISolidColorBrush)version.Foreground!).Color, version.Opacity));
             Assert.Empty(version.GetVisualDescendants().OfType<EditorIcon>());
         });
@@ -150,13 +150,13 @@ public sealed class BottomBarTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal("Copy the version", ToolTip.GetTip(version));
-            Assert.Equal("1.3.stable", await window.Clipboard!.TryGetTextAsync());
-            Assert.Equal(("Copied 1.3.stable.", "Tick"), (window.Status, BarOf(window).StatusIcon.IconName));
+            Assert.Equal("1.4.stable", await window.Clipboard!.TryGetTextAsync());
+            Assert.Equal(("Copied 1.4.stable.", "Tick"), (window.Status, BarOf(window).StatusIcon.IconName));
         });
     }
 
     [Fact]
-    public void The_pin_icon_ends_eleven_pixels_from_the_bar_edge_and_follows_the_version_by_eleven()
+    public void The_pin_icon_ends_thirteen_pixels_from_the_bar_edge_and_follows_the_version_by_thirteen()
     {
         UiThread.Run(() =>
         {
@@ -165,11 +165,11 @@ public sealed class BottomBarTests
             var icon = BoxOf(bar.PinButton.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
             var text = BoxOf(bar.VersionButton.GetVisualDescendants().OfType<TextBlock>().Single(), window);
 
-            Assert.Equal(293 + 2818 - 11, icon.Right);
+            Assert.Equal(297 + 2810 - 13, icon.Right);
             Assert.Equal("Pin", bar.PinButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
             Assert.Equal(16, icon.Width);
-            Assert.InRange(icon.X - text.Right, 10.5, 11.5);
-            AssertBox(3079, 1241, 26, 26, BoxOf(bar.PinButton, window));
+            Assert.InRange(icon.X - text.Right, 12.5, 13.5);
+            AssertBox(3073, 1239, 26, 26, BoxOf(bar.PinButton, window));
         });
     }
 
@@ -184,10 +184,10 @@ public sealed class BottomBarTests
             var icon = bar.StatusIcon;
 
             Assert.Equal("Info", icon.IconName);
-            Assert.Equal(BoxOf(icon, window).Right + 6, BoxOf(status, window).X);
+            Assert.Equal(BoxOf(icon, window).Right + 4, BoxOf(status, window).X);
             Assert.Equal((13d, EditorColors.TextDim), (icon.Bounds.Width, ((ISolidColorBrush)TextElement.GetForeground(icon)!).Color));
             Assert.Equal((12d, EditorColors.TextSoft), (status.FontSize, ((ISolidColorBrush)status.Foreground!).Color));
-            Assert.InRange(BoxOf(status, window).Y + status.Bounds.Height / 2, 1253.5, 1254.5);
+            Assert.InRange(BoxOf(status, window).Y + status.Bounds.Height / 2, 1251, 1252);
         });
     }
 
@@ -225,11 +225,8 @@ public sealed class BottomBarTests
         });
     }
 
-    [Theory]
-    [InlineData(2, "Audio", "Buses and effects for the project sound.")]
-    [InlineData(3, "Animation", "Tracks and keys for the picked entity.")]
-    [InlineData(4, "Shader Editor", "Shader code and its preview.")]
-    public void Each_unbuilt_tab_opens_a_soon_note_and_leaves_the_status_alone(int index, string name, string line)
+    [Fact]
+    public void The_debugger_tab_lights_while_its_panel_shows_and_dims_when_it_closes()
     {
         UiThread.Run(() =>
         {
@@ -237,21 +234,20 @@ public sealed class BottomBarTests
             var bar = BarOf(window);
             var before = window.Status;
 
-            ClickOn(bar.Tabs[index], window);
+            ClickOn(bar.Tabs[1], window);
             window.UpdateLayout();
 
-            var panel = window.Center.Panels[index];
+            var panel = window.Center.Panels[1];
             Assert.True(panel.IsVisible);
-            Assert.Equal([name, name, "Soon", line], Labels(panel));
-            Assert.Equal(EditorColors.Text, ((ISolidColorBrush)bar.Tabs[index].Foreground!).Color);
+            Assert.Equal(EditorColors.Text, ((ISolidColorBrush)bar.Tabs[1].Foreground!).Color);
             Assert.False(window.Center.Output.IsVisible);
             Assert.Equal(before, window.Status);
             Assert.Equal(OutputPanel.PanelHeight, panel.Bounds.Height);
 
-            ClickOn(bar.Tabs[index], window);
+            ClickOn(bar.Tabs[1], window);
 
             Assert.False(panel.IsVisible);
-            Assert.Equal(Color.Parse("#5C6573"), ((ISolidColorBrush)bar.Tabs[index].Foreground!).Color);
+            Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)bar.Tabs[1].Foreground!).Color);
         });
     }
 
@@ -264,15 +260,15 @@ public sealed class BottomBarTests
             var bar = BarOf(window);
 
             ClickOn(bar.OutputTab, window);
-            ClickOn(bar.Tabs[3], window);
+            ClickOn(bar.Tabs[1], window);
 
-            Assert.Equal([false, false, false, true, false], window.Center.Panels.Select(panel => panel.IsVisible));
+            Assert.Equal([false, true], window.Center.Panels.Select(panel => panel.IsVisible));
             Assert.False(bar.OutputOpen);
         });
     }
 
     [Fact]
-    public void The_debugger_says_no_game_is_connected_and_runs_the_project()
+    public void The_debugger_says_no_game_is_playing_and_plays_the_game()
     {
         UiThread.Run(() =>
         {
@@ -283,8 +279,15 @@ public sealed class BottomBarTests
             window.UpdateLayout();
 
             Assert.True(window.Center.Panels[1].IsVisible);
-            Assert.Equal(["Debugger", "No game is connected", "Run the project and the debugger joins it.", "Run the project"], Labels(window.Center.Panels[1]));
+            Assert.Equal(
+                [
+                    "Debugger", "No game is playing",
+                    "Press Play and the debugger joins in. It shows errors, pauses and the value of everything while the game runs.",
+                    "Play the game", Parts.KeyText(new KeyGesture(Key.B, window.CommandKey)),
+                ],
+                Labels(window.Center.Panels[1]));
             Assert.True(debugger.RunButton.IsEnabled);
+            Assert.Equal("Starts the scene Play settings pick.", Assert.IsType<HoverCard>(ToolTip.GetTip(debugger.RunButton)).Line);
 
             debugger.RunButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
@@ -321,7 +324,7 @@ public sealed class BottomBarTests
             window.Game.StopButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
             Assert.False(debugger.CopyButton.IsVisible);
-            Assert.Equal("No game is connected", debugger.Title.Text);
+            Assert.Equal("No game is playing", debugger.Title.Text);
         });
     }
 
@@ -348,6 +351,7 @@ public sealed class BottomBarTests
 
             scene.CsharpChannel.Next = DebugState.None;
             window.Poll();
+            window.UpdateLayout();
 
             Assert.NotSame(debugger.Session, debugger.Child);
             Assert.Null(debugger.Session.Content);
@@ -365,7 +369,8 @@ public sealed class BottomBarTests
 
             Assert.Equal("Starting the engine.", window.Status);
             Assert.False(window.Center.Debugger.RunButton.IsEnabled);
-            Assert.Equal("No game is connected", window.Center.Debugger.Title.Text);
+            Assert.Equal("Open a scene first.", Assert.IsType<HoverCard>(ToolTip.GetTip(window.Center.Debugger.RunButton)).Line);
+            Assert.Equal("No game is playing", window.Center.Debugger.Title.Text);
         });
     }
 
@@ -393,7 +398,7 @@ public sealed class BottomBarTests
             var window = OpenAtReferenceSize();
 
             Assert.IsType<BottomBar>(window.Center.BottomBar.Child);
-            AssertBox(293, 1236, 2818, 36, BoxOf(BarOf(window), window));
+            AssertBox(297, 1234, 2810, 36, BoxOf(BarOf(window), window));
         });
     }
 }

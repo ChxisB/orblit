@@ -1,13 +1,14 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
 
 namespace Orblit.Editor.App.Theme;
 
-/// <summary>Draws one editor icon at the size of the control. The themed colour is the inherited text foreground.</summary>
+/// <summary>Draws one editor icon inside the control, in its own proportions. The themed color is the inherited text foreground.</summary>
 internal sealed class EditorIcon : Control
 {
     public const double DefaultSize = 16;
@@ -17,6 +18,9 @@ internal sealed class EditorIcon : Control
     static EditorIcon()
     {
         AffectsRender<EditorIcon>(TextElement.ForegroundProperty);
+        // A stretched icon would grow to its row. An icon is 16 square unless a size is set.
+        HorizontalAlignmentProperty.OverrideDefaultValue<EditorIcon>(HorizontalAlignment.Center);
+        VerticalAlignmentProperty.OverrideDefaultValue<EditorIcon>(VerticalAlignment.Center);
     }
 
     public EditorIcon(string name)
@@ -30,7 +34,7 @@ internal sealed class EditorIcon : Control
     /// <summary>The icon drawn into a square bitmap, for a window icon. Only icons with fixed colors suit it.</summary>
     public static WindowIcon ToWindowIcon(string name, int side)
     {
-        var icon = new EditorIcon(name);
+        var icon = new EditorIcon(name) { Width = side, Height = side };
         icon.Measure(new Size(side, side));
         icon.Arrange(new Rect(0, 0, side, side));
         var bitmap = new RenderTargetBitmap(new PixelSize(side, side));
@@ -38,12 +42,22 @@ internal sealed class EditorIcon : Control
         return new WindowIcon(bitmap);
     }
 
+    /// <summary>Where the art lands in a box: as large as it fits without changing shape, in the middle.</summary>
+    internal Rect DrawnIn(Size box)
+    {
+        var scale = Math.Min(box.Width / _drawing.Width, box.Height / _drawing.Height);
+        var size = new Size(_drawing.Width * scale, _drawing.Height * scale);
+        return new Rect(new Point((box.Width - size.Width) / 2, (box.Height - size.Height) / 2), size);
+    }
+
     protected override Size MeasureOverride(Size availableSize) => new(DefaultSize, DefaultSize);
 
     public override void Render(DrawingContext context)
     {
         var themed = TextElement.GetForeground(this) ?? Brushes.Gray;
-        using var scale = context.PushTransform(Matrix.CreateScale(Bounds.Width / _drawing.Width, Bounds.Height / _drawing.Height));
+        var drawn = DrawnIn(Bounds.Size);
+        var scale = drawn.Width / _drawing.Width;
+        using var fitted = context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(drawn.X, drawn.Y));
         foreach (var shape in _drawing.Shapes)
         {
             using var placed = context.PushTransform(shape.Transform);

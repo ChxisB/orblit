@@ -1,12 +1,14 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Orblit.Editor.App.Graph;
+using Orblit.Editor.App.Shell;
 
 namespace Orblit.Editor.App.Tests.Graph;
 
 public sealed class FindTests
 {
-    static GraphCanvas Open(FakeGraphSource? source = null) => new(source ?? FakeGraphSource.Sample());
+    static GraphCanvas Open(FakeGraphSource? source = null) => new(source ?? FakeGraphSource.Sample(), KeyModifiers.Meta);
 
     static void Click(GraphCanvas canvas, string id) => canvas.Find<Button>($"find:{id}")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 
@@ -50,6 +52,12 @@ public sealed class FindTests
             Assert.Empty(StepSearch.Find(steps, "   "));
             Assert.Empty(StepSearch.Find(steps, "nothing like this"));
         });
+    }
+
+    [Fact]
+    public void A_search_finds_a_step_by_its_number()
+    {
+        UiThread.Run(() => Assert.Contains(2, StepSearch.Find(Open().Scene.Steps, "2")));
     }
 
     [Fact]
@@ -131,7 +139,7 @@ public sealed class FindTests
 
             Click(canvas, "next");
 
-            Assert.Equal("No steps match.", canvas.FindBar.Status);
+            Assert.Equal("No step matches. Search looks at names and numbers.", canvas.FindBar.Status);
             Assert.Equal([2], Selected(canvas));
         });
     }
@@ -149,12 +157,12 @@ public sealed class FindTests
 
             box.Text = "99";
             Press(box, Key.Enter);
-            Assert.Equal("This function has no step 99.", canvas.FindBar.Status);
+            Assert.Equal("No step has the number 99.", canvas.FindBar.Status);
             Assert.Equal([3], Selected(canvas));
 
             box.Text = "three";
             Press(box, Key.Enter);
-            Assert.Equal("Type a step id, a whole number.", canvas.FindBar.Status);
+            Assert.Equal("Type a step number, like 12.", canvas.FindBar.Status);
         });
     }
 
@@ -197,7 +205,7 @@ public sealed class FindTests
 
             Assert.Empty(canvas.Scene.Bookmarked);
             Click(canvas, "bookmark_next");
-            Assert.Equal("No bookmarks.", canvas.FindBar.Status);
+            Assert.Equal("No bookmarks yet. Bookmark a step with ⌘F2.", canvas.FindBar.Status);
         });
     }
 
@@ -211,7 +219,7 @@ public sealed class FindTests
 
             Click(canvas, "bookmark");
 
-            Assert.Equal("Select one step to bookmark.", canvas.FindBar.Status);
+            Assert.Equal("Pick one step to bookmark.", canvas.FindBar.Status);
             Assert.Empty(canvas.Scene.Bookmarked);
         });
     }
@@ -246,6 +254,39 @@ public sealed class FindTests
 
             Press(canvas.Find<TextBox>("find:text")!, Key.Escape);
             Assert.False(canvas.FindBar.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void The_find_bar_names_each_button_puts_its_key_on_its_card_and_labels_the_bookmark_pair()
+    {
+        UiThread.Run(() =>
+        {
+            var canvas = Open();
+            var buttons = new[] { "previous", "next", "open_goto", "bookmark", "bookmark_previous", "bookmark_next", "close" }.Select(id => canvas.Find<Button>($"find:{id}")!).ToArray();
+
+            Assert.Equal(["Back", "Next", "Go to number", "Bookmark", "Back", "Next", "Close"], buttons.Select(button => button.Content));
+            Assert.Equal(["⇧↵", "↵", "⌘L", "⌘F2", "⇧F2", "F2", "Esc"], buttons.Select(button => ((HoverCard)ToolTip.GetTip(button)!).Key));
+            Assert.Contains("Bookmarks", ReferenceWindow.Texts(canvas.FindBar));
+            Assert.Equal("Find a step, like print", canvas.Find<TextBox>("find:text")!.PlaceholderText);
+        });
+    }
+
+    [Fact]
+    public void Go_to_number_shows_the_number_box_with_its_hint_and_find_hides_it()
+    {
+        UiThread.Run(() =>
+        {
+            var canvas = Open();
+            canvas.FindBar.Open();
+            Assert.False(canvas.FindBar.ShowsGoto);
+
+            Click(canvas, "open_goto");
+
+            Assert.True(canvas.FindBar.ShowsGoto);
+            Assert.Contains("Type a step number, like 12. Problems and Output name steps by number.", ReferenceWindow.Texts(canvas.FindBar));
+            Press(canvas.Surface, Key.F, KeyModifiers.Meta);
+            Assert.False(canvas.FindBar.ShowsGoto);
         });
     }
 }

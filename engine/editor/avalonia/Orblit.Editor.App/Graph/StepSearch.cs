@@ -1,11 +1,13 @@
+using System.Globalization;
+
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>Finds steps by the text they show, and walks a list of steps in reading order, wrapping at the ends.</summary>
 internal static class StepSearch
 {
     /// <summary>
-    /// The ids of the steps that show the text in a title, a kind, a pin name or a parameter value, in reading
-    /// order. Case is ignored. Empty text finds nothing.
+    /// The ids of the steps that show the text in a title, a kind, a pin name or a parameter value, or whose number
+    /// is the text, in reading order. Case is ignored. Empty text finds nothing.
     /// </summary>
     public static List<int> Find(IEnumerable<StepView> steps, string text)
     {
@@ -40,7 +42,7 @@ internal static class StepSearch
     static bool Shows(StepView view, string needle)
     {
         var step = view.Step;
-        return new[] { view.Title, step.Kind }
+        return view.Id.ToString(CultureInfo.InvariantCulture) == needle || new[] { view.Title, step.Kind }
             .Concat(step.Inputs.Select(port => port.Name))
             .Concat(step.Outputs.Select(port => port.Name))
             .Concat(step.Parameters.Values)

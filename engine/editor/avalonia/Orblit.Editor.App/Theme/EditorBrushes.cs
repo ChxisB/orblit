@@ -23,9 +23,7 @@ internal static class EditorBrushes
     public static readonly IBrush TextDim = new ImmutableSolidColorBrush(EditorColors.TextDim);
     public static readonly IBrush Disabled = new ImmutableSolidColorBrush(EditorColors.Disabled);
     public static readonly IBrush DisabledFill = new ImmutableSolidColorBrush(EditorColors.DisabledFill);
-    public static readonly IBrush Unbuilt = new ImmutableSolidColorBrush(EditorColors.Unbuilt);
     public static readonly IBrush Warn = new ImmutableSolidColorBrush(EditorColors.Warn);
-    public static readonly IBrush WarnSoft = new ImmutableSolidColorBrush(EditorColors.WarnSoft);
     public static readonly IBrush Done = new ImmutableSolidColorBrush(EditorColors.Done);
     public static readonly IBrush DoneSoft = new ImmutableSolidColorBrush(EditorColors.DoneSoft);
     public static readonly IBrush Fault = new ImmutableSolidColorBrush(EditorColors.Fault);

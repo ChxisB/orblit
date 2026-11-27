@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input.Platform;
@@ -195,7 +196,7 @@ public sealed class OutputPanelTests
     }
 
     [Fact]
-    public void The_panel_is_an_island_6_pixels_under_the_viewport_with_a_36_pixel_strip_for_the_title_copy_and_clear()
+    public void The_panel_is_an_island_8_pixels_under_the_viewport_with_a_36_pixel_strip_for_the_title_copy_and_clear()
     {
         UiThread.Run(() =>
         {
@@ -211,8 +212,8 @@ public sealed class OutputPanelTests
             Assert.Equal(36, strip.Height);
             Assert.Equal(EditorBrushes.Line, panel.Strip.BorderBrush);
             Assert.Equal(("Output", FontWeight.SemiBold, strip.X + 12), (title.Text, title.FontWeight, BoxOf(title, window).X));
-            Assert.Equal(strip.Right - 6, BoxOf(panel.ClearButton, window).Right);
-            Assert.Equal(BoxOf(panel.ClearButton, window).X - 2, BoxOf(panel.CopyButton, window).Right);
+            Assert.Equal(strip.Right - 4, BoxOf(panel.ClearButton, window).Right);
+            Assert.Equal(BoxOf(panel.ClearButton, window).X - 4, BoxOf(panel.CopyButton, window).Right);
             Assert.Equal(strip.Bottom, BoxOf(panel.List, window).Y);
         });
     }
@@ -230,7 +231,9 @@ public sealed class OutputPanelTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal("ActionCopy", window.Center.Output.CopyButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.Equal("Copy all", ToolTip.GetTip(window.Center.Output.CopyButton));
+            Assert.Empty(Texts(window.Center.Output.CopyButton));
+            Assert.Equal("Copy all", AutomationProperties.GetName(window.Center.Output.CopyButton));
+            Assert.Equal("Copies every line, to paste in a bug report.", ((HoverCard)ToolTip.GetTip(window.Center.Output.CopyButton)!).Line);
             Assert.Equal("one\nERROR: two", await window.Clipboard!.TryGetTextAsync());
             Assert.Equal("Copied the output.", window.Status);
         });
@@ -271,7 +274,9 @@ public sealed class OutputPanelTests
             Write(window, scene, "ERROR: broke", "WARNING: slow", "plain", "also plain");
 
             Assert.Equal(["1", "1", "2"], output.Chips.Select(chip => chip.Count.Text));
-            Assert.Equal(["Errors", "Warnings", "Messages"], output.Chips.Select(chip => ToolTip.GetTip(chip)));
+            Assert.Equal(["Errors", "1", "Warnings", "1", "Messages", "2"], output.Chips.SelectMany(Texts));
+            Assert.Equal(["Errors", "Warnings", "Messages"], output.Chips.Select(chip => ((HoverCard)ToolTip.GetTip(chip)!).Title));
+            Assert.Equal("Lines where something failed. Click to hide or show them.", ((HoverCard)ToolTip.GetTip(output.Chips[0])!).Line);
 
             ClickOn(output.Chips[2], window);
             window.UpdateLayout();
@@ -295,7 +300,7 @@ public sealed class OutputPanelTests
             window.UpdateLayout();
 
             Assert.Equal(["alpha", "Alphabet"], Shown(window));
-            Assert.Equal("Filter messages", window.Center.Output.FilterBox.PlaceholderText);
+            Assert.Equal("Find in messages", window.Center.Output.FilterBox.PlaceholderText);
         });
     }
 
@@ -357,7 +362,7 @@ public sealed class OutputPanelTests
     }
 
     [Fact]
-    public void The_clear_button_has_the_clear_icon_and_a_tip()
+    public void The_clear_button_is_the_clear_icon_alone_with_its_name_on_a_card()
     {
         UiThread.Run(() =>
         {
@@ -366,7 +371,10 @@ public sealed class OutputPanelTests
             var button = window.Center.Output.ClearButton;
 
             Assert.Equal("Clear", button.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.Equal("Clear Output", ToolTip.GetTip(button));
+            Assert.Empty(Texts(button));
+            Assert.Equal("Clear", AutomationProperties.GetName(button));
+            Assert.Equal("Clear", ((HoverCard)ToolTip.GetTip(button)!).Title);
+            Assert.Equal("Empties the list. New lines still come in.", ((HoverCard)ToolTip.GetTip(button)!).Line);
         });
     }
 

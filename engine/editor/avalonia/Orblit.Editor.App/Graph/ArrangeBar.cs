@@ -1,65 +1,149 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
-/// The buttons that line up, lay out and tidy the selected steps, in three named rows on a floating pill: align
-/// the edges, lay the steps out in a row, a column or even gaps, then straighten, select a flow, expand a call or
-/// collapse steps to a function.
+/// The tools for the picked steps, on a floating pill. Line up and Spread open menus. Tidy up holds the buttons that
+/// straighten wires, pick joined steps, open up a call and make an action. A tool that needs other steps picked is
+/// off, and its card or note says what to pick first.
 /// </summary>
 internal sealed class ArrangeBar : Border
 {
-    const double LabelWidth = 52;
+    const string CallKind = "call_function";
+    const string PickTwo = "Pick two or more steps first.";
+    const string PickThree = "Pick three or more steps first.";
+    const string EvenGaps = "The same space between each";
 
-    public ArrangeBar(GraphArranger arranger, Action<IEnumerable<int>> select, GraphEdits edits)
+    readonly Button _lineUp;
+    readonly Button _spread;
+    readonly Button _straighten;
+    readonly Button _expand;
+    readonly MenuItem[] _gaps;
+
+    public ArrangeBar(GraphArranger arranger, Action<IEnumerable<int>> select, GraphEdits edits, KeyModifiers command)
     {
         IsVisible = false;
         Classes.Add(EditorTheme.Island);
         Background = EditorBrushes.Floating;
         BorderBrush = EditorBrushes.LineStrong;
         BoxShadow = BoxShadows.Parse("0 6 20 0 #59000000");
-        Padding = new Thickness(8);
+        Padding = new Thickness(Gaps.Item);
         HorizontalAlignment = HorizontalAlignment.Left;
-        VerticalAlignment = VerticalAlignment.Top;
-        Margin = new Thickness(12, 8, 0, 0);
-        var rows = new StackPanel { Spacing = 6 };
-        foreach (var group in Buttons(arranger, select, edits).GroupBy(button => button.Group))
-        {
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-            row.Children.Add(new TextBlock { Text = group.Key, Width = LabelWidth, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center });
-            foreach (var (_, id, label, tip, run) in group)
-            {
-                var button = PanelFields.Small($"arrange:{id}", label, run);
-                button.Classes.AddRange([EditorTheme.TextButton, EditorTheme.Segment]);
-                button.Padding = new Thickness(7, 0);
-                ToolTip.SetTip(button, tip);
-                row.Children.Add(button);
-            }
-            rows.Children.Add(row);
-        }
-
-        Child = rows;
+        Margin = new Thickness(Gaps.Group, 0);
+        _gaps =
+        [
+            Item("spread_across", "Even gaps across", () => arranger.Distribute(Axis.Horizontal), EvenGaps),
+            Item("spread_down", "Even gaps down", () => arranger.Distribute(Axis.Vertical), EvenGaps),
+        ];
+        _lineUp = Menu("line_up", new HoverCard("Line up", "Lines up the picked steps by their edges or centers."), PickTwo, LineUpItems(arranger));
+        _spread = Menu("spread", new HoverCard("Spread", "Puts the picked steps in a row or a column, or evens out the gaps."), PickTwo,
+        [
+            Item("stack_row", "Side by side", () => arranger.Stack(Axis.Horizontal), "One row, in the order they sit"),
+            Item("stack_column", "One under another", () => arranger.Stack(Axis.Vertical), "One column"),
+            new Separator(),
+            .. _gaps,
+        ]);
+        _straighten = Tool("straighten", new HoverCard("Straighten wires", "Moves steps up or down until the wires between them are level."), arranger.Straighten, "Pick two or more joined steps first.");
+        _expand = Tool("expand", new HoverCard("Open up the call", "Puts the steps of the action it runs in its place."), edits.Expand, "Pick a step that runs an action first.");
+        var box = Tool("box", new HoverCard("Put in a box", "Draws a box round the picked steps.", Parts.KeyText(new KeyGesture(Key.G, command))), () => edits.FrameSelection());
+        var joined = Tool("flow", new HoverCard("Pick joined steps", "Adds every step joined by a run wire to what is picked."), () => select(arranger.Flow()));
+        var action = Tool("collapse", new HoverCard("Make an action", "Moves the picked steps into a new action and runs it from here."), edits.Collapse);
+        var tidy = new TextBlock { Text = "Tidy up", FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Joined, 0, Gaps.Tight, 0) };
+        Child = new StackPanel { Spacing = Gaps.Item, Children = { Row(_lineUp, _spread, box), Row(tidy, _straighten, joined, _expand, action) } };
     }
 
-    static (string Group, string Id, string Label, string Tip, Action Run)[] Buttons(GraphArranger arranger, Action<IEnumerable<int>> select, GraphEdits edits) =>
+    /// <summary>The items of the Line up and Spread menus that run a tool, in menu order.</summary>
+    internal IEnumerable<MenuItem> Items =>
+        new[] { _lineUp, _spread }.Select(menu => menu.Flyout).OfType<MenuFlyout>().SelectMany(flyout => flyout.Items.OfType<MenuItem>()).Where(item => item.Tag is string);
+
+    /// <summary>Shows the bar while steps are picked, and turns on the tools that fit the kinds of the picked steps.</summary>
+    internal void Sync(IReadOnlyList<string> picked)
+    {
+        IsVisible = picked.Count > 0;
+        foreach (var tool in new[] { _lineUp, _spread, _straighten })
+        {
+            tool.IsEnabled = picked.Count > 1;
+        }
+
+        _expand.IsEnabled = picked is [CallKind];
+        foreach (var gaps in _gaps)
+        {
+            gaps.IsEnabled = picked.Count > 2;
+            gaps.Header = Parts.Noted(AutomationProperties.GetName(gaps) ?? "", gaps.IsEnabled ? EvenGaps : PickThree);
+        }
+    }
+
+    static Control[] LineUpItems(GraphArranger arranger) =>
     [
-        ("Align", "align_left", "Left", "Line up the left edges", () => arranger.Align(Edge.Left)),
-        ("Align", "align_center", "Center", "Line up the centers across", () => arranger.Align(Edge.Center)),
-        ("Align", "align_right", "Right", "Line up the right edges", () => arranger.Align(Edge.Right)),
-        ("Align", "align_top", "Top", "Line up the top edges", () => arranger.Align(Edge.Top)),
-        ("Align", "align_middle", "Middle", "Line up the centers down", () => arranger.Align(Edge.Middle)),
-        ("Align", "align_bottom", "Bottom", "Line up the bottom edges", () => arranger.Align(Edge.Bottom)),
-        ("Lay out", "stack_row", "Row", "Put the steps side by side", () => arranger.Stack(Axis.Horizontal)),
-        ("Lay out", "stack_column", "Column", "Put the steps one under another", () => arranger.Stack(Axis.Vertical)),
-        ("Lay out", "spread_across", "Spread across", "Give the gaps between three or more steps in a row one size", () => arranger.Distribute(Axis.Horizontal)),
-        ("Lay out", "spread_down", "Spread down", "Give the gaps between three or more steps in a column one size", () => arranger.Distribute(Axis.Vertical)),
-        ("Tidy", "straighten", "Straighten", "Move steps up or down until the wires between them are level", arranger.Straighten),
-        ("Tidy", "flow", "Flow", "Select every step joined to the selection by flow wires", () => select(arranger.Flow())),
-        ("Tidy", "expand", "Expand", "Open the selected Call step out into the steps of its function", edits.Expand),
-        ("Tidy", "collapse", "To function", "Move the selected steps into a new function and call it from here", edits.Collapse),
+        Parts.MenuHeading("Line up the picked steps"),
+        Item("align_left", "Left edges", () => arranger.Align(Edge.Left)),
+        Item("align_center", "Centers across", () => arranger.Align(Edge.Center)),
+        Item("align_right", "Right edges", () => arranger.Align(Edge.Right)),
+        new Separator(),
+        Item("align_top", "Top edges", () => arranger.Align(Edge.Top)),
+        Item("align_middle", "Centers down", () => arranger.Align(Edge.Middle)),
+        Item("align_bottom", "Bottom edges", () => arranger.Align(Edge.Bottom)),
     ];
+
+    static MenuItem Item(string id, string name, Action run, string? note = null)
+    {
+        var item = Parts.ActionItem(name, run, note: note);
+        item.Tag = $"arrange:{id}";
+        return item;
+    }
+
+    // The tool's word with an arrow that says a menu opens.
+    static Button Menu(string id, HoverCard card, string off, Control[] entries)
+    {
+        var chevron = new EditorIcon("GuiDropdown") { VerticalAlignment = VerticalAlignment.Center };
+        TextElement.SetForeground(chevron, EditorBrushes.TextDim);
+        var flyout = new MenuFlyout();
+        foreach (var entry in entries)
+        {
+            flyout.Items.Add(entry);
+        }
+
+        var button = new Button
+        {
+            Tag = $"arrange:{id}",
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { new TextBlock { Text = card.Title, VerticalAlignment = VerticalAlignment.Center }, chevron } },
+            Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
+            Flyout = flyout,
+        };
+        card.SaysWhyOff(button, off);
+        return card.On(button);
+    }
+
+    static Button Tool(string id, HoverCard card, Action run, string? off = null)
+    {
+        var button = new Button
+        {
+            Tag = $"arrange:{id}",
+            Content = card.Title,
+            VerticalAlignment = VerticalAlignment.Center,
+            Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
+        };
+        button.Click += (_, _) => run();
+        if (off is not null)
+        {
+            card.SaysWhyOff(button, off);
+        }
+
+        return card.On(button);
+    }
+
+    static WrapPanel Row(params Control[] tools)
+    {
+        var row = new WrapPanel { ItemSpacing = Gaps.Tight, LineSpacing = Gaps.Tight };
+        row.Children.AddRange(tools);
+        return row;
+    }
 }

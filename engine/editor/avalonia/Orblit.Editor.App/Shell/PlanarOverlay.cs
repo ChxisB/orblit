@@ -1,9 +1,11 @@
 using System.Globalization;
 using System.Numerics;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -17,11 +19,12 @@ internal enum PlanarTool { Select, Move, Rotate, Scale, Pan, }
 
 /// <summary>
 /// What floats over the viewport in the 2D workspace: the grid, rulers on the top and left that follow the view,
-/// the tool pill at the top left, the View menu at the top right and the zoom pill at the bottom right. In Select
-/// a drag on the mark moves the selection. In Move, Rotate and Scale a drag anywhere moves, turns or scales it, and
-/// in Pan every drag pans. Snap, Lock and Group press the 3D toolbar's buttons and show what they show. A scene
-/// that has nothing the 2D view draws gets a note over the whole view. The overlay has no fill, so a press between
-/// the pills goes to the viewport.
+/// the tool pill at the top left, the View menu at the top right and the zoom pill at the bottom right. Each tool
+/// shows its icon, with its name and key on its card, as the 3D bar does. In Pick a drag on the mark moves the selection. In Move, Turn and
+/// Resize a drag anywhere moves, turns or resizes it, and in Pan every drag pans. Snap, Lock and Group press the 3D
+/// toolbar's buttons and show what they show. A scene that has nothing the 2D view draws gets a note over the whole
+/// view that says why and offers Go to 3D, Open a 2D scene and Add a 2D thing. The overlay has no fill, so a press
+/// between the pills goes to the viewport.
 /// </summary>
 internal sealed class PlanarOverlay : Grid
 {
@@ -35,16 +38,16 @@ internal sealed class PlanarOverlay : Grid
     readonly FixedToggle _pan = new("ToolPan", "Pan mode", lit: false);
     readonly (FixedToggle Button, PlanarTool Tool)[] _tools;
     readonly PlanarGrid _grid = new();
-    readonly FixedToggle _gridButton = new("GridToggle", "Show the grid", lit: true);
-    readonly MenuItem _gridItem = new() { Header = "Show Grid", ToggleType = MenuItemToggleType.CheckBox, IsChecked = true };
+    readonly FixedToggle _gridButton = new("GridToggle", "Grid", lit: true);
+    readonly MenuItem _gridItem = Shown("Grid", "Lines to line things up with");
     readonly Ruler _top = new() { VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(Ruler.Thickness, 0, 0, 0) };
     readonly Ruler _side = new();
     readonly Grid _rulers = new();
-    readonly MenuItem _rulersItem = new() { Header = "Show Rulers", ToggleType = MenuItemToggleType.CheckBox, IsChecked = true };
+    readonly MenuItem _rulersItem = Shown("Rulers", "The pixel rulers at the edges");
     readonly Button _view = ViewButton();
-    readonly Button _center = SizedIcon("CenterView", "Center the view", 15);
-    readonly Button _zoomOut = SizedIcon("ZoomLess", "Zoom out", 14);
-    readonly Button _zoomIn = SizedIcon("ZoomMore", "Zoom in", 14);
+    readonly Button _center = Parts.IconButton("CenterView", "Center the view", 15);
+    readonly Button _zoomOut = new();
+    readonly Button _zoomIn = new();
     readonly Button _zoom = new()
     {
         Content = "100%",
@@ -60,21 +63,16 @@ internal sealed class PlanarOverlay : Grid
         VerticalContentAlignment = VerticalAlignment.Center,
     };
     readonly TextBlock _noteTitle = new() { FontWeight = FontWeight.SemiBold, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap };
-    readonly Button _switch = new()
-    {
-        Classes = { EditorTheme.Primary },
-        Content = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-            Children = { new EditorIcon("Cube") { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Switch to 3D" } },
-        },
-    };
-    readonly Button _open = new() { Classes = { EditorTheme.Ghost }, Content = "Open a Scene..." };
+    readonly TextBlock _noteLine = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap };
+    readonly Button _switch = new() { Classes = { EditorTheme.Primary } };
+    readonly Button _open = new() { Classes = { EditorTheme.Ghost } };
+    readonly Button _add = new() { Classes = { EditorTheme.Ghost } };
+    readonly FixedToggle _snap;
     readonly Border _note;
     IEditorScene? _scene;
 
-    public PlanarOverlay(FixedToggle locks, FixedToggle groups, FixedToggle snaps)
+    /// <summary>The 2D tools over the 3D bar's lock, group and snap buttons. Cards name keys with this command key.</summary>
+    public PlanarOverlay(FixedToggle locks, FixedToggle groups, FixedToggle snaps, KeyModifiers command)
     {
         _tools = [(_select, PlanarTool.Select), (_move, PlanarTool.Move), (_rotate, PlanarTool.Rotate), (_scale, PlanarTool.Scale), (_pan, PlanarTool.Pan)];
         foreach (var (button, _) in _tools)
@@ -94,17 +92,6 @@ internal sealed class PlanarOverlay : Grid
             _rulers.IsVisible = !_rulers.IsVisible;
             _rulersItem.IsChecked = _rulers.IsVisible;
         };
-        _view.Flyout = new MenuFlyout
-        {
-            Items =
-            {
-                _rulersItem,
-                _gridItem,
-                new Separator(),
-                Parts.PressItem("Center the View", _center),
-                Parts.PressItem("Zoom to 100%", _zoom),
-            },
-        };
         _rulers.Children.AddRange([Corner(), _top, new LayoutTransformControl
         {
             Width = Ruler.Thickness,
@@ -113,39 +100,31 @@ internal sealed class PlanarOverlay : Grid
             LayoutTransform = new RotateTransform(-90),
             Child = _side,
         }]);
+        var hold = Parts.KeyText(new KeyGesture(Key.None, command));
+        _snap = Mirror(snaps, "Snap", new HoverCard("Snap", $"Moves go in grid steps. Hold {hold} to flip it for one drag.", "Y", "Use Snap"));
         Tools = Parts.Float(
         [
-            _select,
-            _move,
-            _rotate,
-            _scale,
+            .. DressTools(hold),
             Parts.Rule(),
-            _pan,
-            Unbuilt.Tool("Ruler", "Ruler"),
-            Parts.Rule(),
-            Mirror(snaps, "Snap", "Snap to the grid. Hold Ctrl or Command to flip it for one drag."),
+            _snap,
             _gridButton,
             Parts.Rule(),
-            Mirror(locks, "Lock", "Lock the selection"),
-            Mirror(groups, "Group", "Group the selection"),
+            Mirror(locks, "Lock", new HoverCard("Lock", "Stops the picked thing being moved by accident.", Parts.KeyText(new KeyGesture(Key.L, command)), "Lock"), "Lock stops it being moved by accident."),
+            Mirror(groups, "Group", new HoverCard("Group", "A click on a part picks this thing, so the parts move as one.", Parts.KeyText(new KeyGesture(Key.G, command)), "Group"), "Group makes its parts move as one."),
         ]);
-        // The pill sits 10 pixels clear of the rulers.
-        Tools.Margin = new Thickness(Ruler.Thickness + 10, Ruler.Thickness + 10, 0, 0);
+        // The pill sits 12 pixels clear of the rulers.
+        Tools.Margin = new Thickness(Ruler.Thickness + Gaps.Group, Ruler.Thickness + Gaps.Group, 0, 0);
         Tools.HorizontalAlignment = HorizontalAlignment.Left;
         Tools.VerticalAlignment = VerticalAlignment.Top;
-        var viewPill = Parts.Float([_view, _center]);
-        viewPill.Margin = new Thickness(0, Ruler.Thickness + 10, 10, 0);
-        viewPill.HorizontalAlignment = HorizontalAlignment.Right;
-        viewPill.VerticalAlignment = VerticalAlignment.Top;
-        var zoomPill = Parts.Float([_zoomOut, _zoom, _zoomIn]);
-        zoomPill.HorizontalAlignment = HorizontalAlignment.Right;
-        zoomPill.VerticalAlignment = VerticalAlignment.Bottom;
-        _note = NoteCard(_noteTitle, _switch, _open);
-        Children.AddRange([_grid, _rulers, Tools, viewPill, zoomPill, _note]);
+        Children.AddRange([_grid, _rulers, Tools, .. ViewPills(command)]);
+        _note = NoteCard(_noteTitle, _noteLine, [Way(_switch, ("Cube", "Go to 3D"), new KeyGesture(Key.D2, command)), Way(_open, ("Load", "Open a 2D scene…"), new KeyGesture(Key.O, command | KeyModifiers.Shift)), Way(_add, ("Add", "Add a 2D thing"), new KeyGesture(Key.A, command))]);
+        Children.Add(_note);
     }
 
     /// <summary>The pill at the top left.</summary>
     internal Border Tools { get; }
+
+    internal FixedToggle SelectButton => _select;
 
     internal FixedToggle MoveButton => _move;
 
@@ -159,7 +138,13 @@ internal sealed class PlanarOverlay : Grid
 
     internal FixedToggle GridButton => _gridButton;
 
+    /// <summary>The Snap button, which presses the 3D bar's.</summary>
+    internal FixedToggle SnapButton => _snap;
+
     internal MenuItem GridItem => _gridItem;
+
+    /// <summary>The menu of the View button at the top right.</summary>
+    internal MenuFlyout ViewMenu => (MenuFlyout)_view.Flyout!;
 
     /// <summary>The world units between two grid lines, which is the step a snapped move keeps to.</summary>
     internal double GridStep => _grid.Step;
@@ -184,9 +169,14 @@ internal sealed class PlanarOverlay : Grid
 
     internal TextBlock NoteTitle => _noteTitle;
 
+    internal TextBlock NoteLine => _noteLine;
+
     internal Button SwitchButton => _switch;
 
     internal Button OpenButton => _open;
+
+    /// <summary>Add a 2D thing in the note. The window has it press the Add button.</summary>
+    internal Button AddButton => _add;
 
     /// <summary>The lit mode.</summary>
     internal PlanarTool Tool => _tools.First(tool => tool.Button.IsChecked == true).Tool;
@@ -206,7 +196,9 @@ internal sealed class PlanarOverlay : Grid
     public void ShowScene(IEditorScene scene, OutlineNode? root, string file)
     {
         _scene = scene;
-        _noteTitle.Text = $"{file} is a 3D scene";
+        var name = Path.GetFileNameWithoutExtension(file);
+        _noteTitle.Text = $"{name} is a 3D scene";
+        _noteLine.Text = $"This view shows 2D scenes and menus. {name} has no 2D things yet.";
         _note.IsVisible = root is not null && !Draws(scene, root);
         Refresh();
     }
@@ -257,22 +249,74 @@ internal sealed class PlanarOverlay : Grid
 
     static bool Draws(IEditorScene scene, OutlineNode node) => scene.IsCanvasItem(node.Handle) || node.Children.Any(child => Draws(scene, child));
 
-    // The 3D toolbar's button keeps the flag, so this one presses it and shows what it shows.
-    static FixedToggle Mirror(FixedToggle of, string icon, string tip)
+    // The four modes and Pan, each card with its name, its key and what a drag does in it.
+    Control[] DressTools(string hold) =>
+    [
+        Parts.Dress(_select, "ToolSelect", new HoverCard("Pick", "Click a thing to pick it. Drag its mark to move it.", "Q", "Select mode")),
+        Parts.Dress(_move, "ToolMove", new HoverCard("Move", $"Drag anywhere to move the picked thing. Hold {hold} to snap to the grid.", "W", "Move mode")),
+        Parts.Dress(_rotate, "ToolRotate", new HoverCard("Turn", "Drag anywhere to turn the picked thing.", "E", "Rotate mode")),
+        Parts.Dress(_scale, "ToolScale", new HoverCard("Resize", "Drag anywhere to make the picked thing bigger or smaller.", "R", "Scale mode")),
+        Parts.Rule(),
+        Parts.Dress(_pan, "ToolPan", new HoverCard("Pan", "Drag to look around. Nothing in the scene moves.", engine: "Pan mode")),
+    ];
+
+    // The View pill at the top right and the zoom pill at the bottom right. Each zoom button's card gives its key.
+    Border[] ViewPills(KeyModifiers command)
     {
-        var mirror = new FixedToggle(icon, tip, lit: false);
+        var actual = new KeyGesture(Key.D0, command);
+        _view.Flyout = new MenuFlyout
+        {
+            Items =
+            {
+                _rulersItem,
+                _gridItem,
+                new Separator(),
+                Parts.PressItem("Center the view", _center, null, "Puts the point 0, 0 in the middle"),
+                Parts.PressItem("Actual size", _zoom, actual, "One pixel on screen is one in the game"),
+            },
+        };
+        Parts.Dress(_gridButton, "GridToggle", new HoverCard("Grid", "Lines to line things up with."));
+        new HoverCard("Center the view", "Puts the point 0, 0 in the middle.").On(_center);
+        new HoverCard("Actual size", "One pixel on screen is one in the game.", Parts.KeyText(actual)).On(_zoom);
+        Parts.Dress(_zoomOut, "ZoomLess", new HoverCard("Zoom out", "See more of the scene.", Parts.KeyText(new KeyGesture(Key.OemMinus, command))));
+        Parts.Dress(_zoomIn, "ZoomMore", new HoverCard("Zoom in", "See the scene closer.", Parts.KeyText(new KeyGesture(Key.OemPlus, command))));
+        var viewPill = Parts.Float([_view, _center]);
+        viewPill.Margin = new Thickness(0, Ruler.Thickness + Gaps.Group, Gaps.Group, 0);
+        viewPill.HorizontalAlignment = HorizontalAlignment.Right;
+        viewPill.VerticalAlignment = VerticalAlignment.Top;
+        var zoomPill = Parts.Float([_zoomOut, _zoom, _zoomIn]);
+        zoomPill.HorizontalAlignment = HorizontalAlignment.Right;
+        zoomPill.VerticalAlignment = VerticalAlignment.Bottom;
+        return [viewPill, zoomPill];
+    }
+
+    // The 3D toolbar's button keeps the flag, so this one presses it and shows what it shows. Lock and Group act on
+    // a thing that has a place, so their cards say so while they are off.
+    static FixedToggle Mirror(FixedToggle of, string icon, HoverCard card, string? off = null)
+    {
+        var mirror = Parts.Dress(new FixedToggle(icon, card.Title, lit: false), icon, card);
         mirror.Bind(ToggleButton.IsCheckedProperty, of.GetObservable(ToggleButton.IsCheckedProperty));
         mirror.Bind(IsEnabledProperty, of.GetObservable(IsEnabledProperty));
         mirror.Click += (_, _) => of.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        if (off is not null)
+        {
+            card.SaysWhyOff(mirror, $"Pick a thing you can move first. {off}");
+        }
+
         return mirror;
     }
 
-    // The design draws these icons smaller than 16 in the usual 26 pixel button.
-    static Button SizedIcon(string icon, string tip, double side)
+    static MenuItem Shown(string name, string note)
     {
-        var button = Parts.IconButton(icon, tip);
-        button.Content = new EditorIcon(icon) { Width = side, Height = side };
-        button.Padding = new Thickness((26 - side) / 2);
+        var item = new MenuItem { Header = Parts.Noted(name, note), ToggleType = MenuItemToggleType.CheckBox, IsChecked = true };
+        AutomationProperties.SetName(item, name);
+        return item;
+    }
+
+    // A way out of the note: its icon, its words and its key.
+    static Button Way(Button button, (string Icon, string Words) name, KeyGesture key)
+    {
+        button.Content = Parts.Worded(name.Icon, name.Words, Parts.KeyText(key));
         return button;
     }
 
@@ -285,13 +329,13 @@ internal sealed class PlanarOverlay : Grid
             Content = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 4,
+                Spacing = Gaps.Tight,
                 Children = { new TextBlock { Text = "View", VerticalAlignment = VerticalAlignment.Center }, chevron },
             },
             Height = 26,
             MinWidth = 0,
             MinHeight = 0,
-            Padding = new Thickness(10, 0, 6, 0),
+            Padding = new Thickness(Gaps.Item, 0, Gaps.Tight, 0),
             BorderThickness = new Thickness(0),
             VerticalContentAlignment = VerticalAlignment.Center,
         };
@@ -309,41 +353,28 @@ internal sealed class PlanarOverlay : Grid
         BorderThickness = new Thickness(0, 0, 1, 1),
     };
 
-    static Border NoteCard(TextBlock title, Button switchTo, Button open)
+    static Border NoteCard(TextBlock title, TextBlock line, Button[] ways)
     {
         var mark = new EditorIcon("Cube") { Width = 26, Height = 26, HorizontalAlignment = HorizontalAlignment.Center };
         TextElement.SetForeground(mark, EditorBrushes.Spatial);
+        var buttons = new WrapPanel { Margin = new Thickness(0, Gaps.Tight, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
+        foreach (var way in ways)
+        {
+            way.Margin = new Thickness(Gaps.Tight);
+            buttons.Children.Add(way);
+        }
+
         return new Border
         {
             Background = EditorBrushes.Stage,
             IsVisible = false,
             Child = new StackPanel
             {
-                MaxWidth = 280,
-                Spacing = 8,
+                MaxWidth = 460,
+                Spacing = Gaps.Item,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Children =
-                {
-                    mark,
-                    title,
-                    new TextBlock
-                    {
-                        Text = "The 2D view draws 2D and UI entities. This scene has none.",
-                        FontSize = 12,
-                        Foreground = EditorBrushes.TextDim,
-                        TextAlignment = TextAlignment.Center,
-                        TextWrapping = TextWrapping.Wrap,
-                    },
-                    new StackPanel
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Spacing = 8,
-                        Margin = new Thickness(0, 4, 0, 0),
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        Children = { switchTo, open },
-                    },
-                },
+                Children = { mark, title, line, buttons },
             },
         };
     }

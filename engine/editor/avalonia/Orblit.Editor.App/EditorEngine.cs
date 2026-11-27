@@ -25,9 +25,11 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     readonly EditorSession _session;
     readonly ViewportParts? _viewport;
     readonly string _project;
+    readonly DiskProject _disk;
     readonly EngineDebugChannel _debug;
     readonly CsharpDebugChannel _csharp;
     Process? _game;
+    readonly List<Process> _copies = [];
     bool _sunPreview = true;
     bool _skyPreview = true;
 
@@ -38,9 +40,9 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         _session = session;
         _viewport = viewport;
         _project = options.Project;
+        _disk = new DiskProject(options);
         _csharp = new CsharpDebugChannel(options.Project);
-        ProjectName = ProjectSettings.NameOf(options.Project);
-        SceneFile = options.HasScene ? options.Scene : "";
+        SceneFile = _disk.SceneFile;
     }
 
     /// <summary>Follows the log files of this engine and of every game Play starts.</summary>
@@ -78,7 +80,8 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         ViewportReadback? readback = null;
         try
         {
-            host = EngineHost.Create(EngineLibrary.Find(), ["--path", options.Project, "--resolution", ViewportResolution, "--log-file", log.NewFile()]);
+            // The viewport is read from the rendering device, which only the render thread may do.
+            host = EngineHost.Create(EngineLibrary.Find(), ["--path", options.Project, "--resolution", ViewportResolution, "--render-thread", "safe", "--log-file", log.NewFile()]);
             host.Start();
             var session = new EditorSession(host, new RunningScene(host));
             OpenFirstScene(session, options);
@@ -306,12 +309,11 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void Save() => _session.Save();
 
-    public IReadOnlyList<string> Scenes() => ProjectScenes.Find(_project);
+    public IReadOnlyList<string> Scenes() => _disk.Scenes();
 
     public string SceneFile { get; private set; }
 
-    /// <summary>Read once, because the title asks for it on every edit and the name does not change while the editor runs.</summary>
-    public string ProjectName { get; }
+    public string ProjectName => _disk.ProjectName;
 
     public void Open(string resourcePath)
     {
@@ -358,9 +360,9 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public string? ScriptOf(nint entity) => _session.ScriptOf(entity);
 
-    public IReadOnlyList<string> Scripts() => ProjectScripts.Find(_project);
+    public IReadOnlyList<string> Scripts() => _disk.Scripts();
 
-    public IReadOnlyList<string> GraphScripts() => ProjectScripts.FindGraphs(_project);
+    public IReadOnlyList<string> GraphScripts() => _disk.GraphScripts();
 
     public IGraphFile OpenGraph(string resourcePath) => new SessionGraphFile(GraphScriptSession.Open(_host, resourcePath));
 
@@ -391,7 +393,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         return Directory.Exists(api) ? [.. Directory.GetFiles(api, "OrblitSharp.dll", SearchOption.AllDirectories).Take(1)] : [];
     }
 
-    public IReadOnlyList<string> ImportedFiles() => ProjectScripts.FindImported(_project);
+    public IReadOnlyList<string> ImportedFiles() => _disk.ImportedFiles();
 
     public string ReadImport(string resourcePath) => File.ReadAllText(ImportFileOf(resourcePath));
 
@@ -517,9 +519,16 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void ClearOutput() => Log.Clear();
 
-    public DateTime ModifiedOf(string resourcePath) => File.GetLastWriteTimeUtc(Path.Combine(_project, resourcePath[FileTree.Root.Length..]));
+    public DateTime ModifiedOf(string resourcePath) => _disk.ModifiedOf(resourcePath);
 
-    public bool IsPlaying => _game is { HasExited: false };
+    public string SceneKindOf(string resourcePath) => _disk.SceneKindOf(resourcePath);
+
+    // A copy keeps Stop on after the first game closes, so no copy runs on out of reach.
+    public bool IsPlaying => _game is { HasExited: false } || _copies.Exists(copy => !copy.HasExited);
+
+    // Stop drops the game, so a code read here is one the game chose or a crash gave it. Under netcoredbg the process
+    // is the debugger, so the game's own code comes from the debug channel. A debugger that dies first gives its own.
+    public bool EndedWithError => _game is { HasExited: true } game && (_csharp.ExitCode ?? game.ExitCode) != 0;
 
     // Under netcoredbg the process Play started is netcoredbg, and the game is its child.
     public int? GameId => _game is { HasExited: false } game ? _csharp.ProcessId ?? game.Id : null;
@@ -532,7 +541,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     /// Runs the project in its own process, because one process holds one engine. A project with C# runs under the
     /// person's netcoredbg when there is one, so its breakpoints hold.
     /// </summary>
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags)
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags, int copies)
     {
         Stop();
         var port = _debug.Listen();
@@ -545,6 +554,25 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
         var debugger = Directory.EnumerateFiles(_project, "*.csproj").Any() ? Netcoredbg.Find() : null;
         _game = debugger is null ? Process.Start(player) : StartDebugged(debugger, player, logFile, codeBreakpoints);
+        for (var copy = 1; copy < copies; copy++)
+        {
+            StartCopy(player.FileName, flags);
+        }
+    }
+
+    // A copy has no link, so the debugger, the log and the live scene follow the first game only.
+    void StartCopy(string playerPath, IEnumerable<string> flags)
+    {
+        var copy = new ProcessStartInfo(playerPath) { ArgumentList = { "--path", _project } };
+        foreach (var flag in flags)
+        {
+            copy.ArgumentList.Add(flag);
+        }
+
+        if (Process.Start(copy) is { } started)
+        {
+            _copies.Add(started);
+        }
     }
 
     // netcoredbg starts the game itself once the breakpoints are set, so one in OnStart holds.
@@ -585,6 +613,13 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void Stop()
     {
+        foreach (var copy in _copies)
+        {
+            Kill(copy);
+            copy.Dispose();
+        }
+
+        _copies.Clear();
         if (_game is null)
         {
             return;
@@ -603,6 +638,14 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
         _game.Dispose();
         _game = null;
+    }
+
+    public void ShowGameWindow()
+    {
+        if (GameId is { } id)
+        {
+            GameWindow.Raise(id);
+        }
     }
 
     static void Kill(Process process)
@@ -637,12 +680,11 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         remove => _host.Destroyed -= value;
     }
 
-    // The readback holds a texture the engine owns, so it goes first. A game still running is left to run, but a
-    // game under netcoredbg is ended with it, since a paused one would stay frozen once the editor is gone.
+    // Games end with the editor, since nothing would be left to stop them and a paused one would stay frozen. The
+    // readback holds a texture the engine owns, so it goes before the host.
     public void Dispose()
     {
-        _csharp.End();
-        _game?.Dispose();
+        Stop();
         _debug.Dispose();
         _viewport?.Readback.Dispose();
         _host.Dispose();
