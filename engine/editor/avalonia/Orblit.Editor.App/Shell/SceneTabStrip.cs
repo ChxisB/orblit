@@ -10,7 +10,7 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The strip over the viewport: one tab for the open scene, a plus, and Hide panels at the right end. The tab is
+/// The strip over the viewport: one tab for the open scene, a plus, and Lock layout and Hide panels at the right end. The tab is
 /// raised on a fine edge with its icon in the accent, like a chosen dock tab. A right-click on the tab
 /// makes, plays, closes and finds the scene.
 /// </summary>
@@ -32,13 +32,16 @@ internal sealed class SceneTabStrip : Grid
     readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", ""));
     readonly Button _add = Parts.IconButton("Add", "");
     readonly Button _panels = new();
+    readonly Button _lock = new();
+    readonly HoverCard _locks = new(LockLayout, "Stops panels moving by accident. Collapsing still works.");
+    readonly HoverCard _unlocks = new(UnlockLayout, "Lets panels drag, move and resize again.");
     readonly HoverCard _hide;
     readonly HoverCard _show;
     readonly MenuItem _find;
 
     public SceneTabStrip(Button runScene, KeyModifiers command)
     {
-        ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*,Auto");
+        ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*,Auto,Auto");
         Margin = new Thickness(Gaps.Item, 0);
         TextElement.SetForeground(_icon, EditorBrushes.Accent);
         TextElement.SetForeground(_close, EditorBrushes.TextDim);
@@ -59,9 +62,13 @@ internal sealed class SceneTabStrip : Grid
         _add.Margin = new Thickness(Gaps.Tight, 0, 0, 0);
         _add.VerticalAlignment = VerticalAlignment.Center;
         _panels.VerticalAlignment = VerticalAlignment.Center;
+        _lock.VerticalAlignment = VerticalAlignment.Center;
+        _lock.Margin = new Thickness(0, 0, Gaps.Tight, 0);
+        ShowLayoutLocked(false);
         Place(_tab, 0);
         Place(_add, 1);
-        Place(_panels, 3);
+        Place(_lock, 3);
+        Place(_panels, 4);
         _find = Parts.PressItem(ShowInFiles, ShowInFilesButton);
         _tab.ContextMenu = new ContextMenu
         {
@@ -96,6 +103,15 @@ internal sealed class SceneTabStrip : Grid
     internal const string ShowPanels = "Show panels";
 
     internal Button PanelsButton => _panels;
+
+    internal const string LockLayout = "Lock layout";
+
+    internal const string UnlockLayout = "Unlock layout";
+
+    internal Button LockButton => _lock;
+
+    /// <summary>Shows whether the layout is locked, and names the button for what a press does.</summary>
+    internal void ShowLayoutLocked(bool locked) => Parts.Dress(_lock, locked ? "Lock" : "Unlock", locked ? _unlocks : _locks);
 
     /// <summary>Names the panels button for what a press does: Show panels while every panel group is collapsed, else Hide panels.</summary>
     internal void ShowPanelsHidden(bool hidden)

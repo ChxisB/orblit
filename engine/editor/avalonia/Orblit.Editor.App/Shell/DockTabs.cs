@@ -30,6 +30,8 @@ internal sealed class DockTabs : Border
     readonly Border _tool = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly MenuItem[] _moves;
     readonly MenuItem _float = new();
+    readonly MenuItem _reset;
+    readonly MenuItem _lock;
     readonly Border[] _map;
     readonly MenuFlyout _options;
     DockTab? _chosen;
@@ -41,6 +43,9 @@ internal sealed class DockTabs : Border
         _moves = [.. Enum.GetValues<DockSlot>().Select(MoveItem)];
         _map = [.. Enum.GetValues<DockSlot>().Select(_ => new Border { CornerRadius = new CornerRadius(3) })];
         _float.Click += (_, _) => FloatRequested?.Invoke();
+        _reset = Parts.ActionItem("Put all panels back", () => ResetRequested?.Invoke());
+        _lock = Parts.ActionItem("Lock layout", () => LockRequested?.Invoke(), note: "Stops panels moving by accident");
+        _lock.ToggleType = MenuItemToggleType.CheckBox;
         Floats = false;
         MenuButton.Flyout = _options = Options();
         CollapseButton.Click += (_, _) => CollapseRequested?.Invoke();
@@ -69,6 +74,9 @@ internal sealed class DockTabs : Border
     /// <summary>Raised when the user asks for every group back in its first place.</summary>
     public event Action? ResetRequested;
 
+    /// <summary>Raised when the user asks to lock the layout, or to unlock it.</summary>
+    public event Action? LockRequested;
+
     internal Button MenuButton { get; } = new HoverCard("Panel options", "Move this panel, float it, pick its tabs or put every panel back.").On(Parts.IconButton("GuiTabMenuHl", ""));
 
     internal Button CollapseButton { get; } = Parts.Dress(new Button { Margin = new Thickness(0, 0, Gaps.Joined, 0) }, "Back", new HoverCard("Collapse to the side", "Folds this panel to a button at the window's edge."));
@@ -84,19 +92,32 @@ internal sealed class DockTabs : Border
     /// <summary>The place the group sits in, or comes back to from a window of its own.</summary>
     internal DockSlot Slot { get; set; }
 
-    /// <summary>Marks the group's place on its map and menu, and points its collapse button at the near edge.</summary>
+    const string LockedNote = "The layout is locked";
+
+    /// <summary>
+    /// Marks the group's place on its map and menu, points its collapse button at the near edge, and turns off what a
+    /// locked layout does not allow.
+    /// </summary>
     /// <param name="taken">The places that have a group.</param>
-    internal void ShowPlaces(IReadOnlySet<DockSlot> taken)
+    /// <param name="locked">Whether the layout is locked.</param>
+    internal void ShowPlaces(IReadOnlySet<DockSlot> taken, bool locked)
     {
         foreach (var slot in Enum.GetValues<DockSlot>())
         {
             var here = slot == Slot;
             var move = _moves[(int)slot];
-            move.IsEnabled = !here;
-            move.Header = Parts.Noted(slot.Label(), here ? "It is here now" : taken.Contains(slot) ? "Trades places with the panel there" : "Nothing is there yet");
+            move.IsEnabled = !here && !locked;
+            move.Header = Parts.Noted(slot.Label(), here ? "It is here now" : locked ? LockedNote : taken.Contains(slot) ? "Trades places with the panel there" : "Nothing is there yet");
             // The design draws the other places in the tone of a lit guide.
             _map[(int)slot].Background = here ? EditorBrushes.Accent : EditorBrushes.GuideLit;
         }
+
+        // Putting a window back does what closing it does, so a lock leaves it on.
+        _float.IsEnabled = !locked || Floats;
+        _float.Header = Parts.Noted(Floats ? PutBack : PopOut, !_float.IsEnabled ? LockedNote : Floats ? "Docks it where it sat" : "Float it over the editor");
+        _reset.IsEnabled = !locked;
+        _reset.Header = Parts.Noted("Put all panels back", locked ? LockedNote : "The layout Orblit started with");
+        _lock.IsChecked = locked;
 
         CollapseButton.Content = new EditorIcon(Slot.IsLeft() ? "Back" : "Forward");
     }
@@ -107,9 +128,7 @@ internal sealed class DockTabs : Border
         get => AutomationProperties.GetName(_float) == PutBack;
         set
         {
-            var name = value ? PutBack : PopOut;
-            AutomationProperties.SetName(_float, name);
-            _float.Header = Parts.Noted(name, value ? "Docks it where it sat" : "Float it over the editor");
+            AutomationProperties.SetName(_float, value ? PutBack : PopOut);
             CollapseButton.IsVisible = !value;
         }
     }
@@ -230,7 +249,8 @@ internal sealed class DockTabs : Border
 
         flyout.Items.Add(_float);
         flyout.Items.Add(new Separator());
-        flyout.Items.Add(Parts.ActionItem("Put all panels back", () => ResetRequested?.Invoke(), note: "The layout Orblit started with"));
+        flyout.Items.Add(_reset);
+        flyout.Items.Add(_lock);
         return flyout;
     }
 

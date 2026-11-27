@@ -308,12 +308,13 @@ public sealed class MenusTests
 
             // The map is the item with no text.
             Assert.Equal(
-                ["WHERE THIS PANEL SITS", null, "TABS IN THIS PANEL", "Files", "History", "Left column, top", "Left column, bottom", "Right column, top", "Right column, bottom", "Pop out into a window", "Put all panels back"],
+                ["WHERE THIS PANEL SITS", null, "TABS IN THIS PANEL", "Files", "History", "Left column, top", "Left column, bottom", "Right column, top", "Right column, bottom", "Pop out into a window", "Put all panels back", "Lock layout"],
                 items.Where(item => item.IsVisible).Select(item => AutomationProperties.GetName(item) ?? (item.Header as TextBlock)?.Text));
             Assert.Equal("Every file in the project", Note(DockItem(window.FileDock, "Files")));
             Assert.Equal("Every change, to undo back to", Note(DockItem(window.FileDock, "History")));
             Assert.Equal("Float it over the editor", Note(window.FileDock.FloatItem));
             Assert.Equal("The layout Orblit started with", Note(DockItem(window.FileDock, "Put all panels back")));
+            Assert.Equal("Stops panels moving by accident", Note(DockItem(window.FileDock, "Lock layout")));
         });
     }
 

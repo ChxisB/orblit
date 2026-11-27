@@ -209,7 +209,12 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         _center = new CenterArea(new CenterParts(_sceneTabs, _toolbar, _viewport, _bottomBar, CommandKey));
         _docks = new DockArea(_center, _sceneDock, _fileDock, _inspectorDock) { LeastMiddle = ViewportMiddle };
         _docks.Said += message => Say(message);
-        _docks.Changed += () => _sceneTabs.ShowPanelsHidden(_docks.AllCollapsed);
+        _sceneTabs.LockButton.Click += (_, _) => _docks.Locked = !_docks.Locked;
+        _docks.Changed += () =>
+        {
+            _sceneTabs.ShowPanelsHidden(_docks.AllCollapsed);
+            _sceneTabs.ShowLayoutLocked(_docks.Locked);
+        };
         _center.Output.ClearRequested += () =>
         {
             _scene?.ClearOutput();
@@ -773,6 +778,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             ["Redo"] = Named(_redo, "Redo"),
             ["Search"] = Pressing(_titleBar.SearchButton),
             ["Hide panels"] = Pressing(_sceneTabs.PanelsButton),
+            ["Lock layout"] = Pressing(_sceneTabs.LockButton) with { Checked = _docks.GetObservable(DockArea.LockedProperty) },
             ["Full screen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
             ["Play the game"] = Pressing(_playButton),
             ["Play this scene"] = Pressing(_playSceneButton),

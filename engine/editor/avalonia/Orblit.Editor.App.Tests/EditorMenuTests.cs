@@ -25,7 +25,7 @@ public sealed class EditorMenuTests
         ["View"] =
         [
             "Panels", "  Scene", "  Import", "  Files", "  History", "  Inspector", "  Signals",
-            "-", "Hide panels", "Full screen",
+            "-", "Hide panels", "Lock layout", "Full screen",
         ],
         ["Play"] =
         [
@@ -139,6 +139,7 @@ public sealed class EditorMenuTests
                     "Inspector: Settings for the picked thing",
                     "Signals: Messages things send each other",
                     "Hide panels: Gives the view the whole window",
+                    "Lock layout: Stops panels moving by accident",
                     "Full screen: ",
                     "Play the game: Starts the scene Play settings pick",
                     "Play this scene: Starts from the scene you are in",
@@ -273,6 +274,7 @@ public sealed class EditorMenuTests
                     "History=True",
                     "Inspector=True",
                     "Signals=True",
+                    "Lock layout=False",
                     "Collision shapes=False",
                     "Paths=False",
                     "Navigation=False",

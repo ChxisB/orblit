@@ -11,6 +11,8 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class DockArea : Grid
 {
+    public static readonly StyledProperty<bool> LockedProperty = AvaloniaProperty.Register<DockArea, bool>(nameof(Locked));
+
     readonly List<DockTabs> _groups;
     readonly (DockTabs Group, DockTab[] Tabs, DockSlot Slot)[] _homes;
     readonly Dictionary<DockTabs, Window> _floats = [];
@@ -63,6 +65,16 @@ internal sealed class DockArea : Grid
     internal DockSide Right { get; }
 
     internal Control Middle { get; }
+
+    /// <summary>While true, no panel drags, moves or resizes. Collapsing, closing a window and hiding a tab still work.</summary>
+    internal bool Locked
+    {
+        get => GetValue(LockedProperty);
+        set => SetValue(LockedProperty, value);
+    }
+
+    /// <summary>Says why a drag does nothing while the layout is locked.</summary>
+    internal void Refuse() => Said?.Invoke("The layout is locked. Unlock it in View or a panel's menu.");
 
     /// <summary>The narrowest the middle may get, as what it shows needs.</summary>
     internal double LeastMiddle
@@ -165,6 +177,29 @@ internal sealed class DockArea : Grid
     /// <summary>Where a control of the area sits in it.</summary>
     internal Rect Box(Control control) => new(control.TranslatePoint(default, this)!.Value, control.Bounds.Size);
 
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == LockedProperty)
+        {
+            ApplyLock();
+        }
+    }
+
+    // shortcut: the system still moves a floating window by its title bar while locked. Take the title bar's drag away
+    // if that matters.
+    void ApplyLock()
+    {
+        Left.Locked = Right.Locked = Locked;
+        foreach (var window in _floats.Values)
+        {
+            window.CanResize = !Locked;
+        }
+
+        Refresh();
+        Said?.Invoke(Locked ? "Locked the layout. Panels stay where they are." : "Unlocked the layout. Panels can move again.");
+    }
+
     DockTab TabOf(string title) => _homes.SelectMany(home => home.Tabs).Single(tab => tab.Page.Title == title);
 
     void Wire()
@@ -185,6 +220,7 @@ internal sealed class DockArea : Grid
         group.MoveRequested += to => Move(group, to);
         group.FloatRequested += () => Float(group);
         group.ResetRequested += Reset;
+        group.LockRequested += () => Locked = !Locked;
         group.CollapseRequested += () =>
         {
             _collapsed.Collapse(group.Slot);
@@ -219,7 +255,7 @@ internal sealed class DockArea : Grid
         var taken = _groups.Select(group => group.Slot).ToHashSet();
         foreach (var group in _groups)
         {
-            group.ShowPlaces(taken);
+            group.ShowPlaces(taken, Locked);
         }
 
         foreach (var (group, window) in _floats)
@@ -438,6 +474,7 @@ internal sealed class DockArea : Grid
             Height = size.Height + 2 * Edge,
             Padding = new Thickness(Edge),
             ShowInTaskbar = false,
+            CanResize = !Locked,
             WindowStartupLocation = WindowStartupLocation.Manual,
             Position = at,
         };

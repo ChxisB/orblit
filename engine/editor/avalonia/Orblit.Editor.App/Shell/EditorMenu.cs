@@ -232,6 +232,7 @@ internal static class EditorMenu
         new("Panels", Items: Panels()) { Note = "Show or hide a panel" },
         Separator,
         new("Hide panels", Key.OemPipe, Cmd) { Note = "Gives the view the whole window" },
+        new("Lock layout", Check: false) { Note = "Stops panels moving by accident" },
         new("Full screen", Key.F, Cmd | KeyModifiers.Control),
     ];
 

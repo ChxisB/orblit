@@ -41,6 +41,12 @@ internal sealed class DockSide : Grid
     /// <summary>The splitter between this side and the middle. It hides while the side has nothing open.</summary>
     internal GridSplitter Splitter { get; } = new() { Background = Brushes.Transparent, ResizeDirection = GridResizeDirection.Columns };
 
+    /// <summary>While true, neither splitter moves.</summary>
+    internal bool Locked
+    {
+        set => Splitter.IsEnabled = _between.IsEnabled = !value;
+    }
+
     /// <summary>The window puts the rail outside the columns, at its edge.</summary>
     internal Border Rail { get; }
 

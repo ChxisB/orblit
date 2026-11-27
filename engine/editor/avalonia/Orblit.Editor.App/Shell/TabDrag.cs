@@ -66,6 +66,13 @@ internal sealed class TabDrag
                 return;
             }
 
+            if (_area.Locked)
+            {
+                _pressed = null;
+                _area.Refuse();
+                return;
+            }
+
             _top = top;
             e.Pointer.Capture(_tab);
             top.AddHandler(InputElement.KeyDownEvent, Key, RoutingStrategies.Tunnel);
