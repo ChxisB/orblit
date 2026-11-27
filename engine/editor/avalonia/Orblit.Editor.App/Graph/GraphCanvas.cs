@@ -315,6 +315,7 @@ internal sealed class GraphCanvas : Grid
             _palette.Close();
         };
         _gestures.PaletteRequested += OpenPalette;
+        _gestures.WireStepRequested += OpenWirePalette;
         _gestures.WireClashed += OfferConvert;
         _offerButton.Click += (_, _) =>
         {
@@ -414,6 +415,14 @@ internal sealed class GraphCanvas : Grid
             DraggedFrom = from?.Step,
             Picked = picked?.Step,
         };
+        _palette.Open(screen, _surface.Bounds.Size, job);
+    }
+
+    // The palette lists steps that take what the wire carries, and the step picked there goes on the wire.
+    void OpenWirePalette(Point screen, GraphWire wire)
+    {
+        var (side, type, sort) = DraggedKind(new PinRef(wire.FromStep, wire.FromPort, false));
+        var job = new PaletteJob(text => _source.FindSteps(text, side, type, sort), (entry, _) => _edits.AddOnWire(entry, _viewport.ToGraph(screen), wire));
         _palette.Open(screen, _surface.Bounds.Size, job);
     }
 

@@ -62,6 +62,9 @@ internal sealed class GraphGestures
     /// </summary>
     public event Action<PinRef, PinRef, Point>? WireClashed;
 
+    /// <summary>Raised with a screen point and the wire when a right click lands on a wire. The canvas asks for a step to put on it.</summary>
+    public event Action<Point, GraphWire>? WireStepRequested;
+
     /// <summary>Raised when a frame title is pressed twice. The canvas puts a text box over it.</summary>
     public event Action<FrameView>? TitleEditRequested;
 
@@ -145,6 +148,9 @@ internal sealed class GraphGestures
         Cancel();
         switch (mode)
         {
+            case Mode.Steps when moved && LoneWireAt(members, screen) is { } wire:
+                _edits.DropOnWire(members[0], graphDelta, wire);
+                break;
             case Mode.Steps when moved:
                 _edits.MoveSteps(members, graphDelta);
                 break;
@@ -189,8 +195,9 @@ internal sealed class GraphGestures
         }
     }
 
-    // A wire let go over empty space, or a right click that did not drag, asks for a step to put there. A press
-    // keeps its button until the next press, so the release can still read it.
+    // A wire let go over empty space, or a right click that did not drag, asks for a step to put there. A right
+    // click on a wire asks for one to put on the wire. A press keeps its button until the next press, so the
+    // release can still read it.
     void AskForStep(Mode mode, bool moved, PinRef wireFrom, Point screen)
     {
         if (mode == Mode.Wire && moved && _scene.HitStep(_viewport.ToGraph(screen)) is null)
@@ -199,9 +206,22 @@ internal sealed class GraphGestures
         }
         else if (mode == Mode.Pan && !moved && _button == MouseButton.Right)
         {
-            RequestPalette(screen);
+            if (_scene.HitStep(_pressGraph) is null && _scene.WireAt(_pressGraph) is { } wire)
+            {
+                WireStepRequested?.Invoke(screen, wire);
+            }
+            else
+            {
+                RequestPalette(screen);
+            }
         }
     }
+
+    // A lone step with no wires of its own goes into the wire it is let go over.
+    GraphWire? LoneWireAt(List<int> members, Point screen) =>
+        members.Count == 1 && !_scene.Wires.Any(wire => wire.FromStep == members[0] || wire.ToStep == members[0])
+            ? _scene.WireAt(_viewport.ToGraph(screen))
+            : null;
 
     static Rect Normalized(Point a, Point b) => new(new Point(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y)), new Point(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y)));
 

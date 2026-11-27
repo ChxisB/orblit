@@ -16,6 +16,7 @@ internal sealed class GraphEdits
     const string ConvertTo = "to";
     const double FramePadding = 20;
     const string NewFrameTitle = "Frame";
+    const string NotOnWire = "The step has no ports that fit the wire, so it was added on its own.";
 
     readonly IGraphSource _source;
     readonly GraphScene _scene;
@@ -167,6 +168,36 @@ internal sealed class GraphEdits
         }
     });
 
+    /// <summary>
+    /// Adds a step on a wire, so it runs between the two steps the wire joined, as one undo. A step that cannot
+    /// take the wire on both sides is added on its own and the wire stays.
+    /// </summary>
+    public void AddOnWire(GraphStepEntry entry, Point at, GraphWire wire) => Batch(() =>
+    {
+        var id = _source.NextStepId();
+        AddStep(entry, at, null);
+        if (StepOf(id) is not { } step)
+        {
+            return;
+        }
+        if (!Takes(step, wire))
+        {
+            Refused?.Invoke(NotOnWire);
+            return;
+        }
+        Splice(id, wire);
+    });
+
+    /// <summary>Moves one step and puts it between the two steps a wire joined when it can take the wire, as one undo.</summary>
+    public void DropOnWire(int id, Vector delta, GraphWire wire) => Batch(() =>
+    {
+        MoveSteps([id], delta);
+        if (StepOf(id) is { } step && Takes(step, wire))
+        {
+            Splice(id, wire);
+        }
+    });
+
     /// <summary>Puts a frame around the selected steps.</summary>
     public bool FrameSelection()
     {
@@ -216,7 +247,7 @@ internal sealed class GraphEdits
     // wire. A port the engine refuses is passed over, and the first refusal is shown if none takes it.
     void JoinAdded(int id, PinRef pin)
     {
-        var added = _source.Function?.Steps.FirstOrDefault(step => step.Id == id);
+        var added = StepOf(id);
         var dragged = _scene.Find(pin.Step)?.Step;
         if (added is null || dragged is null)
         {
@@ -242,6 +273,31 @@ internal sealed class GraphEdits
         {
             Report(refused);
         }
+    }
+
+    // The source and not the scene, because a step added in this batch is not in the scene until it settles.
+    GraphStep? StepOf(int id) => _source.Function?.Steps.FirstOrDefault(step => step.Id == id);
+
+    // The engine joins a value of the wrong type and reports it later. So the first port of the wire's sort on each
+    // side must take the value, and a step let go over a wire it does not fit never cuts it.
+    bool Takes(GraphStep step, GraphWire wire)
+    {
+        var from = _scene.PortOf(new PinRef(wire.FromStep, wire.FromPort, false));
+        var to = _scene.PortOf(new PinRef(wire.ToStep, wire.ToPort, true));
+        var input = step.Inputs.FirstOrDefault(port => port.Sort == from?.Sort);
+        var output = step.Outputs.FirstOrDefault(port => port.Sort == from?.Sort);
+        return from is not null && to is not null && input is not null && output is not null
+            && VariantTypes.Fits(from.Type, input.Type) && VariantTypes.Fits(output.Type, to.Type);
+    }
+
+    void Splice(int id, GraphWire wire)
+    {
+        if (!Report(_source.Disconnect(wire)))
+        {
+            return;
+        }
+        JoinAdded(id, new PinRef(wire.FromStep, wire.FromPort, false));
+        JoinAdded(id, new PinRef(wire.ToStep, wire.ToPort, true));
     }
 
     // A wire that carries the order of steps takes a flow reroute, and any other wire takes a data reroute.

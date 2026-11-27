@@ -651,6 +651,68 @@ public sealed class GraphCanvasTests
         });
     }
 
+    static Point MiddleOf(GraphCanvas canvas, GraphWire wire)
+    {
+        var shape = canvas.Scene.VisibleWires().First(found => found.Wire == wire);
+        return new Point((shape.From.X + shape.To.X) / 2, (shape.From.Y + shape.To.Y) / 2);
+    }
+
+    [Fact]
+    public void A_step_picked_after_a_right_click_on_a_wire_goes_between_its_steps_as_one_undo()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, canvas) = Open();
+            _ = source.History;
+            var at = MiddleOf(canvas, new GraphWire(1, 0, 2, 0));
+
+            canvas.Gestures.Press(at, MouseButton.Right, KeyModifiers.None, 1);
+            canvas.Gestures.Release(at);
+            canvas.Palette.SearchBox.Text = "print";
+            canvas.Palette.Pick();
+
+            Assert.Equal(["Disconnect 1.0 2.0", "Connect 1.0 4.0", "Connect 4.0 2.0"], source.Calls.Skip(3));
+            Assert.DoesNotContain(new GraphWire(1, 0, 2, 0), canvas.Scene.Wires);
+            Assert.True(source.History.Undo().Ok);
+            Assert.False(source.History.CanUndo);
+            Assert.Contains(new GraphWire(1, 0, 2, 0), source.Function!.Wires);
+        });
+    }
+
+    [Fact]
+    public void A_lone_step_dropped_on_a_wire_goes_between_its_steps_as_one_undo()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, canvas) = Open(WithFreeStep());
+            _ = source.History;
+
+            Drag(canvas, HeaderOf(canvas, 4), MiddleOf(canvas, new GraphWire(2, 0, 3, 0)));
+
+            Assert.Equal(["Disconnect 2.0 3.0", "Connect 2.0 4.0", "Connect 4.0 3.0"], source.Calls.Skip(1));
+            Assert.True(source.History.Undo().Ok);
+            Assert.False(source.History.CanUndo);
+            Assert.Contains(new GraphWire(2, 0, 3, 0), source.Function!.Wires);
+        });
+    }
+
+    [Fact]
+    public void A_step_that_cannot_take_a_wire_or_has_wires_of_its_own_only_moves_when_dropped_on_one()
+    {
+        UiThread.Run(() =>
+        {
+            var source = FakeGraphSource.Sample();
+            source.Put(FakeGraphSource.MakeStep(4, "constant", 0, 200, [], [FakeGraphSource.Data("value", 4)]));
+            var (_, canvas) = Open(source);
+
+            Drag(canvas, HeaderOf(canvas, 4), MiddleOf(canvas, new GraphWire(2, 0, 3, 0)));
+            Drag(canvas, HeaderOf(canvas, 3), MiddleOf(canvas, new GraphWire(1, 0, 2, 0)));
+
+            Assert.All(source.Calls, call => Assert.StartsWith("MoveStep", call));
+            Assert.Equal(2, canvas.Scene.Wires.Count);
+        });
+    }
+
     [Fact]
     public void A_value_box_starts_after_a_long_input_name_and_keeps_its_place_after_a_short_one()
     {
