@@ -424,6 +424,27 @@ public sealed class GraphCanvasTests
     }
 
     [Fact]
+    public void A_touchpad_pinch_zooms_around_the_pointer()
+    {
+        UiThread.Run(() =>
+        {
+            // A surface outside a window has no root to take the pointer position from.
+            var canvas = Shown();
+            var point = new Point(100, 50);
+            var under = canvas.Viewport.ToGraph(point);
+            var zoom = canvas.Viewport.Zoom;
+            var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
+
+            canvas.Surface.RaiseEvent(new PointerDeltaEventArgs(
+                InputElement.PointerTouchPadGestureMagnifyEvent, canvas.Surface, pointer, canvas.Surface, point, 0, new PointerPointProperties(), KeyModifiers.None, new Vector(0.5, 0)));
+
+            Assert.Equal(zoom * 1.5, canvas.Viewport.Zoom, 6);
+            Assert.Equal(under.X, canvas.Viewport.ToGraph(point).X, 6);
+            Assert.Equal(under.Y, canvas.Viewport.ToGraph(point).Y, 6);
+        });
+    }
+
+    [Fact]
     public void A_drag_while_zoomed_moves_the_step_by_graph_distance()
     {
         UiThread.Run(() =>

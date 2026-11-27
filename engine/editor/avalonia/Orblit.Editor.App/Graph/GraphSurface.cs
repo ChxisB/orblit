@@ -44,6 +44,7 @@ internal sealed class GraphSurface : Control
         ClipToBounds = true;
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DropEvent, OnDrop);
+        AddHandler(PointerTouchPadGestureMagnifyEvent, OnMagnify);
     }
 
     /// <summary>The hover that shows the value of a wire while a game is stopped, given by the canvas that owns the surface.</summary>
@@ -113,6 +114,13 @@ internal sealed class GraphSurface : Control
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         _viewport.ZoomAt(e.GetPosition(this), e.Delta.Y > 0 ? WheelZoom : 1 / WheelZoom);
+        Changed();
+    }
+
+    // A touchpad pinch gives the change of scale since the last event in the x of its delta.
+    void OnMagnify(object? sender, PointerDeltaEventArgs e)
+    {
+        _viewport.ZoomAt(e.GetPosition(this), 1 + e.Delta.X);
         Changed();
     }
 
