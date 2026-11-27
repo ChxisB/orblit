@@ -31,6 +31,9 @@ public sealed class ViewportReadback : IDisposable
         _server = host.Singleton("RenderingSystem");
         _device = host.RenderingSystemGetRenderingDevice(_server);
         _target = host.RenderingSystemViewportGetTexture(_server, host.ViewportGetViewportRid(_root));
+        // The engine draws only while one of its windows can be seen, and the editor covers its
+        // window. A registered output keeps it drawing.
+        host.DisplaySystemRegisterAdditionalOutput(host.Singleton("DisplaySystem"), _root);
     }
 
     public void Resize(int width, int height) => _host.WindowSetSize(_root, new Int2(width, height));

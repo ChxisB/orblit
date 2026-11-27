@@ -17,6 +17,7 @@
   "Window.get_size",
   "Viewport.get_texture",
   "Viewport.get_viewport_rid",
+  "DisplaySystem.register_additional_output",
   "RenderingSystem.get_rendering_device",
   "RenderingSystem.viewport_get_texture",
   "RenderingSystem.texture_get_rd_texture",

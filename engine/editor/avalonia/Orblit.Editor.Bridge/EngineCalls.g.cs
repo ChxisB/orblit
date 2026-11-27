@@ -34,6 +34,7 @@ public static unsafe class EngineCalls
     static readonly EngineMethod WindowGetSizeMethod = new("Window", "get_size", 3690982128);
     static readonly EngineMethod ViewportGetTextureMethod = new("Viewport", "get_texture", 1746695840);
     static readonly EngineMethod ViewportGetViewportRidMethod = new("Viewport", "get_viewport_rid", 2944877500);
+    static readonly EngineMethod DisplaySystemRegisterAdditionalOutputMethod = new("DisplaySystem", "register_additional_output", 3975164845);
     static readonly EngineMethod RenderingSystemGetRenderingDeviceMethod = new("RenderingSystem", "get_rendering_device", 1405107940);
     static readonly EngineMethod RenderingSystemViewportGetTextureMethod = new("RenderingSystem", "viewport_get_texture", 3814569979);
     static readonly EngineMethod RenderingSystemTextureGetRdTextureMethod = new("RenderingSystem", "texture_get_rd_texture", 2790148051);
@@ -332,6 +333,13 @@ public static unsafe class EngineCalls
         ulong result = 0;
         host.Call(ViewportGetViewportRidMethod, target, null, &result);
         return result;
+    }
+
+    public static void DisplaySystemRegisterAdditionalOutput(this EngineHost host, nint target, nint output)
+    {
+        nint a0 = output;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(DisplaySystemRegisterAdditionalOutputMethod, target, args, null);
     }
 
     public static nint RenderingSystemGetRenderingDevice(this EngineHost host, nint target)

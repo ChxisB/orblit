@@ -59,6 +59,9 @@ internal sealed partial class EditorRun
         var left = level.Children.Single(node => node.Name == "Left").Handle;
         var right = level.Children.Single(node => node.Name == "Right").Handle;
 
+        // A real click puts the editor over the engine's window. The view has to keep drawing then.
+        window.Activate();
+        await Settle();
         var world = FrameHash();
         await _input.Click(Tab("2D"));
         await Wait(() => FrameHash() != world, "the 2D backdrop to replace the 3D world");
