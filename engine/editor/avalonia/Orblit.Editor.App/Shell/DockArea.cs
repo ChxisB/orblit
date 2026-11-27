@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
@@ -65,7 +66,7 @@ internal sealed class DockArea : Grid
     public event Action? Changed;
 
     /// <summary>Raised with a key pressed in a floating panel's window.</summary>
-    public event Action<KeyEventArgs>? FloatKeyDown;
+    public event Action<Window, KeyEventArgs>? FloatKeyDown;
 
     /// <summary>Every panel, with the place it starts in.</summary>
     internal IReadOnlyList<(string Title, DockSlot Home)> Panels =>
@@ -129,6 +130,11 @@ internal sealed class DockArea : Grid
     internal void Show(string title)
     {
         var tab = TabOf(title);
+        if (!tab.IsVisible)
+        {
+            tab.Owner.Toggle(tab);
+        }
+
         tab.Owner.Select(tab);
         Uncover(tab.Owner);
     }
@@ -297,7 +303,12 @@ internal sealed class DockArea : Grid
         group.FloatRequested += () => Float(group);
         group.ResetRequested += Reset;
         group.LockRequested += () => Locked = !Locked;
-        group.TabsChanged += () => Changed?.Invoke();
+        group.TabsChanged += () =>
+        {
+            Changed?.Invoke();
+            // Settled once the move or menu that changed the tabs has ended.
+            Dispatcher.UIThread.Post(() => Settle(group));
+        };
         group.CollapseRequested += () =>
         {
             _collapsed.Collapse(group.Slot);
@@ -310,6 +321,19 @@ internal sealed class DockArea : Grid
                 Refresh();
             }
         };
+    }
+
+    // A rail button and a window take their names from the group's tabs, and a window with none to show closes.
+    void Settle(DockTabs group)
+    {
+        if (!group.IsVisible && _floats.TryGetValue(group, out var window))
+        {
+            window.Close();
+        }
+        else if (_collapsed.Has(group.Slot) || IsFloating(group))
+        {
+            Refresh();
+        }
     }
 
     // Puts each group in its place, then lays out the sides.
@@ -332,7 +356,8 @@ internal sealed class DockArea : Grid
         var taken = _groups.Select(group => group.Slot).ToHashSet();
         foreach (var group in _groups)
         {
-            group.ShowPlaces(taken, Locked);
+            // A floating group whose home is taken has no place to trade, so a move makes the two one.
+            group.ShowPlaces(taken, Locked, IsFloating(group) && Docked(group.Slot) is not null);
         }
 
         foreach (var (group, window) in _floats)
@@ -396,6 +421,9 @@ internal sealed class DockArea : Grid
         _users.OpenAll();
         _collapsed.OpenAll();
         Refresh();
+        // Both sides are open now, so each can take its first width.
+        Resize(Left, SideColumns.LeftStart, 0.5);
+        Resize(Right, SideColumns.RightStart, 0.5);
         Said?.Invoke("Reset the layout. Every dock is back in its place with all its tabs.");
     }
 
@@ -606,7 +634,9 @@ internal sealed class DockArea : Grid
             WindowStartupLocation = WindowStartupLocation.Manual,
             Position = spot.At,
         };
-        window.KeyDown += (_, e) => FloatKeyDown?.Invoke(e);
+        // shortcut: moving or resizing the window is saved at the next change or on close. Raise Changed on both if
+        // losing it to a crash matters.
+        window.KeyDown += (_, e) => FloatKeyDown?.Invoke(window, e);
         window.Closed += (_, _) =>
         {
             // A window that Detach closed holds nothing any more.

@@ -251,7 +251,9 @@ public sealed class PanelDragTests
             Drag("History", Middle(window.Center, window), window);
 
             // Files still sits where History came from, so there is no place to trade.
-            Press(window.Docks.GroupOf("History").MoveItems[(int)DockSlot.UpperRight]);
+            var move = window.Docks.GroupOf("History").MoveItems[(int)DockSlot.UpperRight];
+            Assert.Contains("Joins the panel there", Texts((Control)move.Header!));
+            Press(move);
             window.UpdateLayout();
 
             Assert.Equal(["Inspector", "Signals", "History"], window.InspectorDock.Titles);

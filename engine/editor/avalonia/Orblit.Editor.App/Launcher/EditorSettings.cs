@@ -72,8 +72,12 @@ internal sealed class EditorSettings(string file)
         lines.InsertRange(heading + 1, body);
 
         Directory.CreateDirectory(Path.GetDirectoryName(file)!); // a full path always has a parent folder
-        File.WriteAllText($"{file}.tmp", string.Join('\n', lines) + "\n");
-        File.Move($"{file}.tmp", file, true);
+        // A linked file, as one kept with someone's dotfiles, stays a link. The process id keeps two editors apart.
+        var link = new FileInfo(file);
+        var target = link.LinkTarget is null ? file : link.ResolveLinkTarget(true)!.FullName;
+        var temp = $"{target}.{Environment.ProcessId}.tmp";
+        File.WriteAllText(temp, string.Join('\n', lines) + "\n");
+        File.Move(temp, target, true);
     }
 
     static string Line(string key, string value) => $"{key}=\"{value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";

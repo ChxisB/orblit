@@ -11,6 +11,12 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class SideColumns : Grid
 {
+    /// <summary>The width the left side starts with.</summary>
+    internal const double LeftStart = 280;
+
+    /// <summary>The width the right side starts with.</summary>
+    internal const double RightStart = 316;
+
     const int Left = 0;
     const int Right = 4;
 
@@ -23,11 +29,11 @@ internal sealed class SideColumns : Grid
     {
         ColumnDefinitions =
         [
-            new(280, GridUnitType.Pixel) { MinWidth = 220 },
+            new(LeftStart, GridUnitType.Pixel) { MinWidth = 220 },
             new(Gaps.Item, GridUnitType.Pixel),
             new(GridLength.Star),
             new(Gaps.Item, GridUnitType.Pixel),
-            new(316, GridUnitType.Pixel) { MinWidth = 260 },
+            new(RightStart, GridUnitType.Pixel) { MinWidth = 260 },
         ];
         foreach (var side in new[] { Left, Right })
         {

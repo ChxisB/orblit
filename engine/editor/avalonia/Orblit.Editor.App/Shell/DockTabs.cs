@@ -86,8 +86,11 @@ internal sealed class DockTabs : Border
 
     internal OverflowBar Strip { get; }
 
-    /// <summary>The title of the first tab, which names the group. A group that has lost its last tab has none.</summary>
-    internal string Title => _tabs.Count > 0 ? _tabs[0].Page.Title : "";
+    /// <summary>
+    /// The title of the first tab that shows, or of the first when none does, which names the group. A group that has
+    /// lost its last tab has none.
+    /// </summary>
+    internal string Title => (_tabs.Find(tab => tab.IsVisible) ?? _tabs.FirstOrDefault())?.Page.Title ?? "";
 
     /// <summary>The page on show, whose name and mark a collapsed group's rail button takes.</summary>
     internal DockPage Chosen => _chosen!.Page;
@@ -103,14 +106,16 @@ internal sealed class DockTabs : Border
     /// </summary>
     /// <param name="taken">The places that have a group.</param>
     /// <param name="locked">Whether the layout is locked.</param>
-    internal void ShowPlaces(IReadOnlySet<DockSlot> taken, bool locked)
+    /// <param name="joins">Whether a move to a taken place makes the two groups one, instead of trading them.</param>
+    internal void ShowPlaces(IReadOnlySet<DockSlot> taken, bool locked, bool joins)
     {
+        var there = joins ? "Joins the panel there" : "Trades places with the panel there";
         foreach (var slot in Enum.GetValues<DockSlot>())
         {
             var here = slot == Slot;
             var move = _moves[(int)slot];
             move.IsEnabled = !here && !locked;
-            move.Header = Parts.Noted(slot.Label(), here ? "It is here now" : locked ? LockedNote : taken.Contains(slot) ? "Trades places with the panel there" : "Nothing is there yet");
+            move.Header = Parts.Noted(slot.Label(), here ? "It is here now" : locked ? LockedNote : taken.Contains(slot) ? there : "Nothing is there yet");
             // The design draws the other places in the tone of a lit guide.
             _map[(int)slot].Background = here ? EditorBrushes.Accent : EditorBrushes.GuideLit;
         }

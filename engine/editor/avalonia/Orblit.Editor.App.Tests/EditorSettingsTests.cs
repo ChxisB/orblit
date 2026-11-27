@@ -71,6 +71,26 @@ public sealed class EditorSettingsTests : IDisposable
     }
 
     [Fact]
+    public void A_linked_settings_file_stays_a_link()
+    {
+        // Making a link needs a privilege on Windows.
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var real = Path.Combine(_folder, "dotfiles.cfg");
+        Directory.CreateDirectory(Path.GetDirectoryName(File)!);
+        System.IO.File.WriteAllText(real, "[editor]\n\n");
+        System.IO.File.CreateSymbolicLink(File, real);
+
+        new EditorSettings(File).SetProjectsFolder("~/Linked");
+
+        Assert.Equal(real, new FileInfo(File).LinkTarget);
+        Assert.Contains("~/Linked", System.IO.File.ReadAllText(real));
+    }
+
+    [Fact]
     public void A_missing_section_reads_empty()
     {
         Assert.Empty(new EditorSettings(File).Section("layout"));

@@ -904,10 +904,18 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     }
 
     // A floating panel's window passes its keys here. A key that opens a dialog brings the editor forward to show it.
-    void FloatKey(KeyEventArgs e)
+    void FloatKey(Window floating, KeyEventArgs e)
     {
         if (Veiled)
         {
+            return;
+        }
+
+        // The close key closes this window, as in any app, and never a scene behind it.
+        if (e.Key == Key.W && e.KeyModifiers == CommandKey)
+        {
+            floating.Close();
+            e.Handled = true;
             return;
         }
 

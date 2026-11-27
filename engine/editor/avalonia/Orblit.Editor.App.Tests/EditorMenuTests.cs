@@ -677,11 +677,13 @@ public sealed class EditorMenuTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var docks = new[] { window.SceneDock, window.FileDock, window.InspectorDock };
+            // A group takes the name of its first tab that shows, so each one's name is read before a tab hides.
+            var names = docks.Select(each => each.Title).ToArray();
 
             Press(Panel(window, label));
 
-            var docks = new[] { window.SceneDock, window.FileDock, window.InspectorDock };
-            Assert.All(docks, each => Assert.Equal([each.Title != dock || tab != 0, each.Title != dock || tab != 1], each.Tabs.Select(border => border.IsVisible)));
+            Assert.All(docks.Zip(names), each => Assert.Equal([each.Second != dock || tab != 0, each.Second != dock || tab != 1], each.First.Tabs.Select(border => border.IsVisible)));
             Assert.False(Panel(window, label).IsChecked);
         });
     }
