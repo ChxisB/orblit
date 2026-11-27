@@ -117,6 +117,26 @@ TEST_CASE("[Stage][GraphScript] Renaming a function renames the calls that run o
 	memdelete(entity);
 }
 
+TEST_CASE("[GraphScript] Renaming a function renames the method every connect step joins to") {
+	Graph graph("go");
+	Graph helper(graph.script, "react");
+	helper.add(1, "entry");
+	graph.add(1, "connect");
+	graph.set(1, "signal", quoted("ready"));
+	graph.set(1, "method", quoted("react"));
+	graph.add(2, "self");
+	graph.add(3, "connect");
+	graph.set(3, "signal", quoted("ready"));
+	graph.set(3, "method", quoted("react"));
+	graph.wire(2, OUT_PORT, 3, TARGET);
+
+	CHECK(graph.script->rename_function("react", "respond") == OK);
+
+	CHECK(parameter_of(graph.script, "go", 1, "method") == Variant(quoted("respond")));
+	// The target is the emitter. The method is always the owner's, so a wired target is renamed too.
+	CHECK(parameter_of(graph.script, "go", 3, "method") == Variant(quoted("respond")));
+}
+
 TEST_CASE("[GraphScript] Renaming a signal renames the steps that name it on the owner") {
 	Graph graph("a");
 	Graph listener(graph.script, "b");

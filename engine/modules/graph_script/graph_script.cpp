@@ -84,6 +84,8 @@ constexpr int TARGET_PORT = 1;
 // The steps that name a declared function, variable or signal, and so change with a rename.
 constexpr GraphReference FUNCTION_REFERENCES[] = {
 	{ "call_function", "function", TARGET_PORT },
+	// The target of a connect is the emitter. The method is always the owner's.
+	{ "connect", "method", -1 },
 };
 constexpr GraphReference VARIABLE_REFERENCES[] = {
 	{ "get", "name", -1 },
