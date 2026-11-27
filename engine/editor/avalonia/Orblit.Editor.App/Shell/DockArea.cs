@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
@@ -57,8 +58,18 @@ internal sealed class DockArea : Grid
     /// <summary>Raised with what just happened, for the status line.</summary>
     public event Action<string>? Said;
 
-    /// <summary>Raised after the groups are laid out again.</summary>
+    /// <summary>
+    /// Raised after anything the layout keeps may have changed: a group moves, floats, collapses or locks, a tab is
+    /// picked or hidden, or a splitter is let go. A move can raise it before it is whole.
+    /// </summary>
     public event Action? Changed;
+
+    /// <summary>Raised with a key pressed in a floating panel's window.</summary>
+    public event Action<KeyEventArgs>? FloatKeyDown;
+
+    /// <summary>Every panel, with the place it starts in.</summary>
+    internal IReadOnlyList<(string Title, DockSlot Home)> Panels =>
+        [.. _homes.SelectMany(home => home.Tabs.Select(tab => (tab.Page.Title, home.Slot)))];
 
     internal DockSide Left { get; }
 
@@ -156,6 +167,70 @@ internal sealed class DockArea : Grid
         }
     }
 
+    /// <summary>The layout as it is now, to save. A workspace that folds the sides is not part of it.</summary>
+    internal SavedLayout Capture() => new()
+    {
+        Groups = [.. _groups.Select(group => new SavedGroup(group.Slot, group.Titles, SpotOf(group)))],
+        Chosen = [.. _groups.Select(group => group.Chosen.Title)],
+        Hidden = [.. _groups.SelectMany(group => group.Titles.Where(title => !group.IsShown(title)))],
+        Collapsed = [.. Enum.GetValues<DockSlot>().Where(_users.Has)],
+        Locked = Locked,
+        LeftWidth = Math.Round(_columns.Asked(Left)),
+        RightWidth = Math.Round(_columns.Asked(Right)),
+        LeftSplit = Math.Round(Left.Split, 3),
+        RightSplit = Math.Round(Right.Split, 3),
+    };
+
+    /// <summary>
+    /// Lays out a saved layout over the one the area started with. Its windows wait for <see cref="ShowFloats"/>.
+    /// </summary>
+    internal void Apply(SavedLayout layout)
+    {
+        // The sizes go first, as a side that empties on the way keeps the size it had.
+        Resize(Left, layout.LeftWidth, layout.LeftSplit);
+        Resize(Right, layout.RightWidth, layout.RightSplit);
+        var taken = new HashSet<DockTabs>();
+        foreach (var saved in layout.Groups)
+        {
+            Regroup(saved, taken);
+        }
+
+        _groups.RemoveAll(group => group.Tabs.Count == 0);
+        foreach (var tab in layout.Hidden.Select(TabOf))
+        {
+            tab.Owner.Toggle(tab);
+        }
+
+        foreach (var tab in layout.Chosen.Select(TabOf).Where(tab => tab.IsVisible))
+        {
+            tab.Owner.Select(tab);
+        }
+
+        foreach (var slot in layout.Collapsed)
+        {
+            _users.Collapse(slot);
+        }
+
+        Locked = layout.Locked;
+        Refresh();
+        foreach (var (group, window) in _floats)
+        {
+            window.Content = group;
+        }
+    }
+
+    /// <summary>Shows the windows a saved layout made, once the editor's own window is up, each on a screen.</summary>
+    internal void ShowFloats()
+    {
+        var editor = (Window)TopLevel.GetTopLevel(this)!;
+        var screens = editor.Screens.All.Select(screen => screen.WorkingArea).ToList();
+        foreach (var window in _floats.Values.Where(window => !window.IsVisible))
+        {
+            window.Position = SavedLayout.OnScreen(window.Position, screens, editor.Position);
+            window.Show(editor);
+        }
+    }
+
     internal bool IsFloating(DockTabs group) => _floats.ContainsKey(group);
 
     /// <summary>The group whose window is under this point of the screen, if any.</summary>
@@ -207,6 +282,7 @@ internal sealed class DockArea : Grid
         foreach (var side in new[] { Left, Right })
         {
             side.RailPressed += group => Open(group.Slot);
+            side.Resized += () => Changed?.Invoke();
         }
 
         foreach (var group in _groups)
@@ -221,6 +297,7 @@ internal sealed class DockArea : Grid
         group.FloatRequested += () => Float(group);
         group.ResetRequested += Reset;
         group.LockRequested += () => Locked = !Locked;
+        group.TabsChanged += () => Changed?.Invoke();
         group.CollapseRequested += () =>
         {
             _collapsed.Collapse(group.Slot);
@@ -403,12 +480,54 @@ internal sealed class DockArea : Grid
         }
 
         from.Remove(tab);
-        var group = new DockTabs { Slot = from.Slot };
+        var group = NewGroup();
+        group.Slot = from.Slot;
         group.Add(tab);
+        return group;
+    }
+
+    DockTabs NewGroup()
+    {
+        var group = new DockTabs();
         Wire(group);
         _groups.Add(group);
         return group;
     }
+
+    void Resize(DockSide side, double? width, double? split)
+    {
+        if (width is { } across)
+        {
+            _columns.Ask(side, across);
+        }
+
+        if (split is { } share)
+        {
+            side.Split = share;
+        }
+    }
+
+    // A saved group takes the group its first panel is in, unless another saved group has taken that one.
+    void Regroup(SavedGroup saved, HashSet<DockTabs> taken)
+    {
+        var tabs = saved.Titles.Select(TabOf).ToList();
+        var group = taken.Add(tabs[0].Owner) ? tabs[0].Owner : NewGroup();
+        taken.Add(group);
+        foreach (var tab in tabs)
+        {
+            tab.Owner.Remove(tab);
+            group.Add(tab);
+        }
+
+        group.Slot = saved.Slot;
+        if (saved.Window is { } spot)
+        {
+            MakeWindow(group, spot);
+        }
+    }
+
+    FloatSpot? SpotOf(DockTabs group) =>
+        _floats.TryGetValue(group, out var window) ? new FloatSpot(window.Position, new Size(window.Width, window.Height)) : null;
 
     // Every tab of one group moves into another, with the chosen one still chosen. The empty group goes.
     void Merge(DockTabs from, DockTabs into)
@@ -450,8 +569,6 @@ internal sealed class DockArea : Grid
         Open(group.Slot);
     }
 
-    // shortcut: the editor's keys do not reach the float window. Route them when floating groups are saved in the
-    // layout.
     void Float(DockTabs group)
     {
         if (_floats.TryGetValue(group, out var floating))
@@ -466,18 +583,30 @@ internal sealed class DockArea : Grid
 
     void OpenWindow(DockTabs group, Size size, PixelPoint at)
     {
-        const double Edge = Gaps.Item;
+        var edges = new Size(2 * Gaps.Item, 2 * Gaps.Item);
+        var window = MakeWindow(group, new FloatSpot(at, new Size(size.Width + edges.Width, size.Height + edges.Height)));
+        Refresh();
+        window.Content = group;
+        // The area is in the editor's window while its groups can be asked to float.
+        window.Show((Window)TopLevel.GetTopLevel(this)!);
+        Said?.Invoke($"{group.Title} is in a window of its own. Close it, or choose {DockTabs.PutBack} in its menu.");
+    }
+
+    // A window for the group, not yet shown and without the group in it, as the group may still sit in a place.
+    Window MakeWindow(DockTabs group, FloatSpot spot)
+    {
         var window = new Window
         {
             Title = group.Title,
-            Width = size.Width + 2 * Edge,
-            Height = size.Height + 2 * Edge,
-            Padding = new Thickness(Edge),
+            Width = spot.Size.Width,
+            Height = spot.Size.Height,
+            Padding = new Thickness(Gaps.Item),
             ShowInTaskbar = false,
             CanResize = !Locked,
             WindowStartupLocation = WindowStartupLocation.Manual,
-            Position = at,
+            Position = spot.At,
         };
+        window.KeyDown += (_, e) => FloatKeyDown?.Invoke(e);
         window.Closed += (_, _) =>
         {
             // A window that Detach closed holds nothing any more.
@@ -491,10 +620,6 @@ internal sealed class DockArea : Grid
         };
         _floats[group] = window;
         group.Floats = true;
-        Refresh();
-        window.Content = group;
-        // The area is in the editor's window while its groups can be asked to float.
-        window.Show((Window)TopLevel.GetTopLevel(this)!);
-        Said?.Invoke($"{group.Title} is in a window of its own. Close it, or choose {DockTabs.PutBack} in its menu.");
+        return window;
     }
 }

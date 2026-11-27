@@ -41,6 +41,23 @@ internal sealed class SideColumns : Grid
         set => ColumnDefinitions[2].MinWidth = value;
     }
 
+    /// <summary>The width a side asked for, which it takes again when the window has room.</summary>
+    public double Asked(Control side)
+    {
+        var at = GetColumn(side);
+        var column = ColumnDefinitions[at];
+        // A width that is not the one given came from a splitter and is not measured yet.
+        return column.MinWidth > 0 && column.Width.Value != _got[at] ? column.Width.Value : _asked[at];
+    }
+
+    /// <summary>Gives a side that is open a width to ask for.</summary>
+    public void Ask(Control side, double width)
+    {
+        var at = GetColumn(side);
+        _asked[at] = _got[at] = width;
+        ColumnDefinitions[at].Width = new GridLength(width);
+    }
+
     protected override Size MeasureOverride(Size constraint)
     {
         // A side with nothing open takes no width, and keeps what it asked for until something opens.

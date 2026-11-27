@@ -89,6 +89,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // more of it when a side is opened again.
     const double ViewportMiddle = 480;
     const double WorkspaceMiddle = 700;
+    const string LayoutSection = "layout";
     IEditorScene? _scene;
     // The scene once it loads, and the project's folder before that.
     IProjectFiles? _files;
@@ -108,6 +109,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // Whether the game ran at the last look, so its end gets one toast.
     bool _wasPlaying;
     bool _planar;
+    // The file that keeps the layout, while there is one to keep it in.
+    EditorSettings? _layoutFile;
+    bool _layoutSavePending;
     // The bottom panel Hide panels shut, which Show panels opens again, or -1 for none.
     int _shutPanel = -1;
     // The Entity3D the gizmo drags, or zero when the selection has none.
@@ -208,13 +212,21 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         _toolbar.KeepChildrenButton.IsCheckedChanged += (_, _) => _scene?.KeepChildren = _toolbar.KeepChildren;
         _center = new CenterArea(new CenterParts(_sceneTabs, _toolbar, _viewport, _bottomBar, CommandKey));
         _docks = new DockArea(_center, _sceneDock, _fileDock, _inspectorDock) { LeastMiddle = ViewportMiddle };
-        _docks.Said += message => Say(message);
         _sceneTabs.LockButton.Click += (_, _) => _docks.Locked = !_docks.Locked;
         _docks.Changed += () =>
         {
             _sceneTabs.ShowPanelsHidden(_docks.AllCollapsed);
             _sceneTabs.ShowLayoutLocked(_docks.Locked);
         };
+        _docks.FloatKeyDown += FloatKey;
+        // Only a file the app was given keeps the layout, so no test or tool touches the user's own by accident.
+        if (settings is not null)
+        {
+            KeepLayout(settings);
+        }
+
+        // A layout that comes back says nothing, so the words start after it.
+        _docks.Said += message => Say(message);
         _center.Output.ClearRequested += () =>
         {
             _scene?.ClearOutput();
@@ -666,6 +678,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
+        SaveLayout();
         if (HasEdits)
         {
             e.Cancel = true;
@@ -674,6 +687,54 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
                 ShowEdited(false);
                 Close();
             });
+        }
+
+        // The floating windows close next and put their groups back, which is not a layout to keep.
+        if (!e.Cancel)
+        {
+            _layoutFile = null;
+        }
+    }
+
+    void KeepLayout(EditorSettings settings)
+    {
+        if (SavedLayout.Read(settings.Section(LayoutSection), _docks.Panels) is { } saved)
+        {
+            _docks.Apply(saved);
+        }
+
+        _layoutFile = settings;
+        _docks.Changed += SaveLayoutSoon;
+        Opened += (_, _) => _docks.ShowFloats();
+    }
+
+    // The save waits until the change is whole, as a move raises more than one on its way.
+    void SaveLayoutSoon()
+    {
+        if (_layoutSavePending)
+        {
+            return;
+        }
+
+        _layoutSavePending = true;
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                _layoutSavePending = false;
+                SaveLayout();
+            },
+            DispatcherPriority.Background);
+    }
+
+    void SaveLayout()
+    {
+        try
+        {
+            _layoutFile?.SetSection(LayoutSection, _docks.Capture().Values());
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            Fail($"Could not save the layout. {error.Message}");
         }
     }
 
@@ -791,7 +852,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             actions[name] = new(() => toggle.IsChecked = toggle.IsChecked != true, Checked: toggle.GetObservable(ToggleButton.IsCheckedProperty, on => on == true));
         }
 
-        foreach (var title in new[] { _sceneDock, _fileDock, _inspectorDock }.SelectMany(dock => dock.Titles))
+        foreach (var (title, _) in _docks.Panels)
         {
             actions[title] = new(() => _docks.ToggleTab(title), Checked: _docks.Shown(title));
         }
@@ -828,6 +889,26 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             return;
         }
 
+        RunShortcut(e);
+    }
+
+    // A floating panel's window passes its keys here. A key that opens a dialog brings the editor forward to show it.
+    void FloatKey(KeyEventArgs e)
+    {
+        if (Veiled)
+        {
+            return;
+        }
+
+        RunShortcut(e);
+        if (Veiled)
+        {
+            Activate();
+        }
+    }
+
+    void RunShortcut(KeyEventArgs e)
+    {
         if (ShortcutFor(e) is { IsEnabled: true } button)
         {
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

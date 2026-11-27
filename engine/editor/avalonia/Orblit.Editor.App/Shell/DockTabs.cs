@@ -77,6 +77,9 @@ internal sealed class DockTabs : Border
     /// <summary>Raised when the user asks to lock the layout, or to unlock it.</summary>
     public event Action? LockRequested;
 
+    /// <summary>Raised when the chosen tab or the tabs that show may have changed.</summary>
+    public event Action? TabsChanged;
+
     internal Button MenuButton { get; } = new HoverCard("Panel options", "Move this panel, float it, pick its tabs or put every panel back.").On(Parts.IconButton("GuiTabMenuHl", ""));
 
     internal Button CollapseButton { get; } = Parts.Dress(new Button { Margin = new Thickness(0, 0, Gaps.Joined, 0) }, "Back", new HoverCard("Collapse to the side", "Folds this panel to a button at the window's edge."));
@@ -190,6 +193,8 @@ internal sealed class DockTabs : Border
         {
             each.Light(each == tab);
         }
+
+        TabsChanged?.Invoke();
     }
 
     /// <summary>Shows the tab if it is hidden, and hides it if it shows.</summary>

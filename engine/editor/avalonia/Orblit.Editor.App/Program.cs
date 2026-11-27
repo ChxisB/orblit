@@ -12,7 +12,7 @@ var options = new EditorOptions(
     folder,
     Argument("--scene") ?? ProjectSettings.MainSceneOf(folder),
     !args.Contains("--headless"));
-return AppBuilder.Configure(() => new EditorApp(options, projects: project is null ? ProjectList.ForUser() : null))
+return AppBuilder.Configure(() => new EditorApp(options, projects: project is null ? ProjectList.ForUser() : null, settings: ProjectList.ForUser().Settings()))
     .UsePlatformDetect()
     .StartWithClassicDesktopLifetime(args);
 

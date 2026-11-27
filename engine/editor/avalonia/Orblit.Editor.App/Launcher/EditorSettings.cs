@@ -3,41 +3,80 @@ using System.Text;
 namespace Orblit.Editor.App.Launcher;
 
 /// <summary>
-/// The editor's own settings in editor_settings.cfg. The file has a section heading and key=value lines, as
+/// The editor's own settings in editor_settings.cfg. The file has section headings and key=value lines, as
 /// projects.cfg has, with each text value quoted. A missing file or key gives the default.
 /// </summary>
 internal sealed class EditorSettings(string file)
 {
     public const string FileName = "editor_settings.cfg";
     public const string DefaultProjectsFolder = "~/Games";
-    const string ProjectsKey = "projects_folder=";
+    const string EditorSection = "editor";
+    const string ProjectsKey = "projects_folder";
 
     /// <summary>The folder New project puts each new project in, as people type it, with "~" for home.</summary>
-    public string ProjectsFolder()
+    public string ProjectsFolder() =>
+        Section(EditorSection).GetValueOrDefault(ProjectsKey) is { Length: > 0 } folder ? folder : DefaultProjectsFolder;
+
+    /// <summary>Saves the folder. It need not exist yet, since New project makes it with the project.</summary>
+    public void SetProjectsFolder(string folder) =>
+        Rewrite(EditorSection, line => line.StartsWith($"{ProjectsKey}=", StringComparison.Ordinal), [Line(ProjectsKey, folder)]);
+
+    /// <summary>The keys and values of a section. A section that cannot be read has none.</summary>
+    public IReadOnlyDictionary<string, string> Section(string name)
     {
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
         try
         {
-            var line = File.Exists(file) ? File.ReadLines(file).FirstOrDefault(line => line.StartsWith(ProjectsKey, StringComparison.Ordinal)) : null;
-            var folder = line is null ? "" : Unquote(line[ProjectsKey.Length..].Trim());
-            return folder.Length > 0 ? folder : DefaultProjectsFolder;
+            var lines = File.Exists(file) ? File.ReadAllLines(file) : [];
+            foreach (var line in lines.SkipWhile(line => line.TrimEnd() != $"[{name}]").Skip(1).TakeWhile(line => !line.StartsWith('[')))
+            {
+                if (line.IndexOf('=') is > 0 and var at)
+                {
+                    values[line[..at].Trim()] = Unquote(line[(at + 1)..].Trim());
+                }
+            }
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            // An unreadable file only moves where New project starts, so the default stands in.
-            return DefaultProjectsFolder;
+            // An unreadable file only costs what was remembered, so the defaults stand in.
         }
+
+        return values;
     }
 
-    /// <summary>
-    /// Saves the folder. It need not exist yet, since New project makes it with the project.
-    /// shortcut: the file is written whole with its one key. Keep the other lines when a second setting comes.
-    /// </summary>
-    public void SetProjectsFolder(string folder)
+    /// <summary>Saves a section whole. The other sections keep their lines.</summary>
+    public void SetSection(string name, IEnumerable<KeyValuePair<string, string>> values) =>
+        Rewrite(name, line => line.Contains('='), values.Select(each => Line(each.Key, each.Value)));
+
+    // Takes the section's lines that go, and puts the new ones where the first of them was, or after its last line. A
+    // file that cannot be read throws before anything is written, and the new file takes the old one's place whole.
+    void Rewrite(string section, Predicate<string> goes, IEnumerable<string> added)
     {
+        var lines = File.Exists(file) ? File.ReadAllLines(file).ToList() : [];
+        var heading = lines.FindIndex(line => line.TrimEnd() == $"[{section}]");
+        if (heading < 0)
+        {
+            lines.AddRange(lines.Count > 0 ? ["", $"[{section}]", ""] : [$"[{section}]", ""]);
+            heading = lines.Count - 2;
+        }
+
+        var next = lines.FindIndex(heading + 1, line => line.StartsWith('['));
+        var end = next < 0 ? lines.Count : next;
+        var body = lines.GetRange(heading + 1, end - heading - 1);
+        var at = body.FindIndex(goes);
+        body.RemoveAll(goes);
+        // A section with nothing in it starts after the blank line under its heading.
+        at = at >= 0 ? at : Math.Max(body.FindLastIndex(line => line.Length > 0) + 1, Math.Min(1, body.Count));
+        body.InsertRange(at, added);
+        lines.RemoveRange(heading + 1, end - heading - 1);
+        lines.InsertRange(heading + 1, body);
+
         Directory.CreateDirectory(Path.GetDirectoryName(file)!); // a full path always has a parent folder
-        var quoted = folder.Replace("\\", "\\\\").Replace("\"", "\\\"");
-        File.WriteAllText(file, $"[editor]\n\n{ProjectsKey}\"{quoted}\"\n");
+        File.WriteAllText($"{file}.tmp", string.Join('\n', lines) + "\n");
+        File.Move($"{file}.tmp", file, true);
     }
+
+    static string Line(string key, string value) => $"{key}=\"{value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
 
     // A backslash in a quoted value keeps the character after it, as the engine's own files write it.
     static string Unquote(string value)

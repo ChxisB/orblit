@@ -53,6 +53,30 @@ public sealed class EditorSettingsTests : IDisposable
     }
 
     [Fact]
+    public void Writing_one_section_keeps_the_other_sections_and_their_lines()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(File)!);
+        System.IO.File.WriteAllText(File, "[editor]\n\ntheme=\"dark\"\n\n[other]\n\nkept=1\n");
+        var settings = new EditorSettings(File);
+
+        settings.SetProjectsFolder("~/First");
+        settings.SetSection("layout", [new("locked", "true"), new("chosen", "a \"b\"")]);
+        settings.SetProjectsFolder("~/Second");
+
+        Assert.Equal("~/Second", settings.ProjectsFolder());
+        Assert.Equal("a \"b\"", settings.Section("layout")["chosen"]);
+        Assert.Equal(
+            "[editor]\n\ntheme=\"dark\"\nprojects_folder=\"~/Second\"\n\n[other]\n\nkept=1\n\n[layout]\n\nlocked=\"true\"\nchosen=\"a \\\"b\\\"\"\n",
+            System.IO.File.ReadAllText(File));
+    }
+
+    [Fact]
+    public void A_missing_section_reads_empty()
+    {
+        Assert.Empty(new EditorSettings(File).Section("layout"));
+    }
+
+    [Fact]
     public void The_settings_sit_beside_the_project_list()
     {
         var list = new ProjectList(Path.Combine(_folder, "data", "projects.cfg"));

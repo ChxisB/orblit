@@ -12,9 +12,9 @@ namespace Orblit.Editor.App;
 
 /// <summary>
 /// The editor app. With a project list it opens on the launcher and edits the project chosen there. Without one
-/// it edits the project the options name.
+/// it edits the project the options name. Given settings, the editor keeps its layout in them.
 /// </summary>
-internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, EditorEngine>? loaded = null, ProjectList? projects = null) : Application
+internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, EditorEngine>? loaded = null, ProjectList? projects = null, EditorSettings? settings = null) : Application
 {
     EditorEngine? _engine;
 
@@ -59,7 +59,7 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
     // once the engine is destroyed, which is after any frame.
     EditorWindow Edit(IClassicDesktopStyleApplicationLifetime desktop, EditorOptions chosen)
     {
-        var window = new EditorWindow(settings: projects?.Settings());
+        var window = new EditorWindow(settings: settings ?? projects?.Settings());
         ShowFromDisk(window, chosen);
         // The engine start holds the UI thread for about a second, so the first frame is drawn before it.
         window.Opened += async (_, _) =>
