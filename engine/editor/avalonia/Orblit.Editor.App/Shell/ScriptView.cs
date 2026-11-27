@@ -198,16 +198,12 @@ internal sealed class ScriptView : Border
         _problems.Click += async (_, _) => await ListOrCheck();
         // The count shows once a check has run.
         _problems.IsVisible = false;
-        var lists = new FoldingColumn("Scripts", "CodeFile", Dock.Left, Lists());
-        Columns = [lists];
+        var lists = Lists();
         var editor = EditorIsland();
         Grid.SetColumn(editor, 2);
         Child = new Grid { ColumnDefinitions = new ColumnDefinitions($"{ListWidth},6,*"), Children = { lists, editor } };
         ShowCaret();
     }
-
-    /// <summary>The columns that fold to a rail: the script list.</summary>
-    internal IReadOnlyList<FoldingColumn> Columns { get; }
 
     internal ListBox List => _list;
 

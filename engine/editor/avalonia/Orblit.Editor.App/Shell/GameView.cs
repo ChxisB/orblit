@@ -112,9 +112,6 @@ internal sealed class GameView : Border
         _playing.Children.Add(Buttons(_raiseBelow, _stop));
         _waits = Note("Stop the game to change these. They count from the next Play.");
         _liveMark = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, VerticalAlignment = VerticalAlignment.Center, Children = { new Ellipse { Width = 6, Height = 6, Fill = EditorBrushes.Done, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Live", FontSize = 11, Foreground = EditorBrushes.Done } } };
-        var settings = new FoldingColumn("Play settings", "Sliders", Dock.Left, Island(PlaySettings()));
-        var side = new FoldingColumn("Speed and live scene", "Pulse", Dock.Right, Side());
-        Columns = [settings, side];
         Child = new Grid
         {
             // The settings and the numbers give way together, so the game keeps room in a narrow window.
@@ -126,7 +123,7 @@ internal sealed class GameView : Border
                 new(Gaps.Item, GridUnitType.Pixel),
                 new(300, GridUnitType.Star) { MinWidth = 220, MaxWidth = 300 },
             ],
-            Children = { At(settings, 0), At(Island(TheGame()), 2), At(side, 4) },
+            Children = { At(Island(PlaySettings()), 0), At(Island(TheGame()), 2), At(Side(), 4) },
         };
         Show(false, "", TimeSpan.Zero);
         Offer(false, false);
@@ -202,9 +199,6 @@ internal sealed class GameView : Border
         var at = Array.FindIndex(s_monitors, row => row.Name == name);
         return (_values[at], _lines[at]);
     }
-
-    /// <summary>The columns that fold to a rail: Play settings, then the speed and the live scene.</summary>
-    internal IReadOnlyList<FoldingColumn> Columns { get; }
 
     /// <summary>The rows of the live scene, one for each entity of the running game.</summary>
     internal IEnumerable<Control> LiveRows => _live.Children;

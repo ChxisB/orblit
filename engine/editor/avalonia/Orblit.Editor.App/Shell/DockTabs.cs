@@ -1,17 +1,15 @@
 using Avalonia;
-using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
-using Avalonia.Media;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// A group of panels: an island with a strip of tabs over a body that shows the chosen panel. The strip ends with a
-/// menu that maps where it sits, shows and hides its tabs, and names every place. <see cref="DockArea"/> moves and
-/// floats the group, so the menu only asks, and it moves tabs from group to group.
+/// menu that maps where it sits, and shows and hides its tabs. <see cref="DockArea"/> moves and floats the group, so
+/// the menu only asks, and it moves tabs from group to group.
 /// </summary>
 internal sealed class DockTabs : Border
 {
@@ -27,11 +25,9 @@ internal sealed class DockTabs : Border
     readonly List<DockTab> _tabs = [];
     readonly Border _body = new();
     readonly Border _tool = new() { VerticalAlignment = VerticalAlignment.Center };
-    readonly MenuItem[] _moves;
-    readonly MenuItem _float = new();
+    readonly PanelMap _map = new();
     readonly MenuItem _reset;
     readonly MenuItem _lock;
-    readonly Border[] _map;
     readonly MenuFlyout _options;
     DockTab? _chosen;
 
@@ -39,14 +35,21 @@ internal sealed class DockTabs : Border
     {
         Classes.Add(EditorTheme.Island);
         Strip = new OverflowBar { Spacing = Gaps.Joined };
-        _moves = [.. Enum.GetValues<DockSlot>().Select(MoveItem)];
-        _map = [.. Enum.GetValues<DockSlot>().Select(_ => new Border { CornerRadius = new CornerRadius(3) })];
-        _float.Click += (_, _) => FloatRequested?.Invoke();
         _reset = Parts.ActionItem("Put all panels back", () => ResetRequested?.Invoke());
         _lock = Parts.ActionItem("Lock layout", () => LockRequested?.Invoke(), note: "Stops panels moving by accident");
         _lock.ToggleType = MenuItemToggleType.CheckBox;
-        Floats = false;
         MenuButton.Flyout = _options = Options();
+        // The menu shuts first, as a move takes its button along.
+        _map.Picked += slot =>
+        {
+            _options.Hide();
+            MoveRequested?.Invoke(slot);
+        };
+        _map.WindowPicked += () =>
+        {
+            _options.Hide();
+            FloatRequested?.Invoke();
+        };
         DockPanel.SetDock(MenuButton, Dock.Right);
         DockPanel.SetDock(_tool, Dock.Right);
         var strip = new DockPanel { Children = { MenuButton, _tool, Strip } };
@@ -59,10 +62,10 @@ internal sealed class DockTabs : Border
         }
     }
 
-    /// <summary>Raised with the place the user chose in the menu. The group has not moved.</summary>
+    /// <summary>Raised with the place the user chose on the menu's map. The group has not moved.</summary>
     public event Action<DockSlot>? MoveRequested;
 
-    /// <summary>Raised when the user chose to pop the group out, or to put a floating one back. It has not moved.</summary>
+    /// <summary>Raised when the user chose a window of its own for the group. It has not moved.</summary>
     public event Action? FloatRequested;
 
     /// <summary>Raised when the user asks for every group back in its first place.</summary>
@@ -84,59 +87,30 @@ internal sealed class DockTabs : Border
     /// </summary>
     internal string Title => (_tabs.Find(tab => tab.IsVisible) ?? _tabs.FirstOrDefault())?.Page.Title ?? "";
 
-    /// <summary>The page on show, whose name and mark a collapsed group's rail button takes.</summary>
+    /// <summary>The page on show.</summary>
     internal DockPage Chosen => _chosen!.Page;
 
     /// <summary>The place the group sits in, or comes back to from a window of its own.</summary>
     internal DockSlot Slot { get; set; }
 
-    const string LockedNote = "The layout is locked";
-
     /// <summary>
-    /// Marks the group's place on its map and menu, and turns off what a locked layout does not allow.
+    /// Marks the group's place on its map, and turns off what a locked layout does not allow.
     /// </summary>
     /// <param name="taken">The places that have a group.</param>
     /// <param name="locked">Whether the layout is locked.</param>
     /// <param name="joins">Whether a move to a taken place makes the two groups one, instead of trading them.</param>
     internal void ShowPlaces(IReadOnlySet<DockSlot> taken, bool locked, bool joins)
     {
-        var there = joins ? "Joins the panel there" : "Trades places with the panel there";
-        foreach (var slot in Enum.GetValues<DockSlot>())
-        {
-            var here = slot == Slot;
-            var move = _moves[(int)slot];
-            move.IsEnabled = !here && !locked;
-            move.Header = Parts.Noted(slot.Label(), here ? "It is here now" : locked ? LockedNote : taken.Contains(slot) ? there : "Nothing is there yet");
-            // The design draws the other places in the tone of a lit guide.
-            _map[(int)slot].Background = here ? EditorBrushes.Accent : EditorBrushes.GuideLit;
-        }
-
-        // Putting a window back does what closing it does, so a lock leaves it on.
-        _float.IsEnabled = !locked || Floats;
-        _float.Header = Parts.Noted(Floats ? PutBack : PopOut, !_float.IsEnabled ? LockedNote : Floats ? "Docks it where it sat" : "Float it over the editor");
+        _map.Show(Slot, Floats, locked, taken, joins);
         _reset.IsEnabled = !locked;
-        _reset.Header = Parts.Noted("Put all panels back", locked ? LockedNote : "The layout Orblit started with");
+        _reset.Header = Parts.Noted("Put all panels back", locked ? "The layout is locked" : "The layout Orblit started with");
         _lock.IsChecked = locked;
     }
 
-    /// <summary>True while the group sits in a window of its own, so the menu offers to put it back.</summary>
-    internal bool Floats
-    {
-        get => AutomationProperties.GetName(_float) == PutBack;
-        set => AutomationProperties.SetName(_float, value ? PutBack : PopOut);
-    }
+    /// <summary>True while the group sits in a window of its own.</summary>
+    internal bool Floats { get; set; }
 
-    internal const string PopOut = "Pop out into a window";
-
-    internal const string PutBack = "Put it back";
-
-    internal MenuItem FloatItem => _float;
-
-    /// <summary>The move item of each place, by place.</summary>
-    internal IReadOnlyList<MenuItem> MoveItems => _moves;
-
-    /// <summary>The cell of each place on the map in the menu, by place.</summary>
-    internal IReadOnlyList<Border> MapCells => _map;
+    internal PanelMap Map => _map;
 
     internal int SelectedIndex => _tabs.IndexOf(_chosen!);
 
@@ -233,55 +207,11 @@ internal sealed class DockTabs : Border
     {
         var flyout = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
         flyout.Items.Add(Parts.MenuHeading("Where this panel sits"));
-        flyout.Items.Add(new MenuItem { IsEnabled = false, MinHeight = 0, Header = Map() });
+        flyout.Items.Add(_map.AsItem());
         flyout.Items.Add(Parts.MenuHeading("Tabs in this panel"));
-
-        flyout.Items.Add(new Separator());
-        foreach (var move in _moves)
-        {
-            flyout.Items.Add(move);
-        }
-
-        flyout.Items.Add(_float);
         flyout.Items.Add(new Separator());
         flyout.Items.Add(_reset);
         flyout.Items.Add(_lock);
         return flyout;
-    }
-
-    // The window as four places round the viewport: each column over and under.
-    Grid Map()
-    {
-        var viewport = new Border { CornerRadius = new CornerRadius(3), Background = EditorBrushes.Lifted, Margin = new Thickness(3, 0) };
-        Grid.SetColumn(viewport, 1);
-        Grid.SetRowSpan(viewport, 2);
-        foreach (var slot in Enum.GetValues<DockSlot>())
-        {
-            var cell = _map[(int)slot];
-            var lower = slot is DockSlot.LowerLeft or DockSlot.LowerRight;
-            cell.Margin = lower ? new Thickness(0, 1.5, 0, 0) : new Thickness(0, 0, 0, 1.5);
-            Grid.SetRow(cell, lower ? 1 : 0);
-            Grid.SetColumn(cell, slot.IsLeft() ? 0 : 2);
-        }
-
-        var map = new Grid
-        {
-            Width = 118,
-            Height = 62,
-            Margin = new Thickness(0, Gaps.Joined, 0, Gaps.Item),
-            ColumnDefinitions = new ColumnDefinitions("34,*,40"),
-            RowDefinitions = new RowDefinitions("*,*"),
-            Children = { viewport },
-        };
-        map.Children.AddRange(_map);
-        return map;
-    }
-
-    MenuItem MoveItem(DockSlot slot)
-    {
-        var item = new MenuItem();
-        AutomationProperties.SetName(item, slot.Label());
-        item.Click += (_, _) => MoveRequested?.Invoke(slot);
-        return item;
     }
 }

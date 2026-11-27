@@ -432,24 +432,4 @@ public sealed class SceneFileToolsTests
             Assert.Equal("Save the scene first. Then it has a file.", Note(TabItem(window, "Show in Files")));
         });
     }
-
-    [Fact]
-    public void Hide_panels_folds_both_sides_and_a_second_press_brings_back_what_was_open()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize(new FakeScene());
-            Click(window.Docks.CollapseButtonOf(window.InspectorDock));
-
-            Click(window.SceneTabs.PanelsButton);
-
-            Assert.True(window.LeftSide.IsFolded);
-            Assert.True(window.RightSide.IsFolded);
-
-            Click(window.SceneTabs.PanelsButton);
-
-            Assert.False(window.LeftSide.IsFolded);
-            Assert.True(window.RightSide.IsFolded);
-        });
-    }
 }

@@ -50,7 +50,7 @@ public sealed class ScriptWorkspaceTests
             Assert.True(window.Script.IsVisible);
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.False(window.Viewport.IsEffectivelyVisible);
-            AssertBox(60, 46, 3320, 1179, BoxOf(window.Script, window));
+            AssertBox(8, 46, 3424, 1179, BoxOf(window.Script, window));
             Assert.Equal(["res://spin.cs", "res://enemies/slime.cs"], (IEnumerable<string>)window.Script.List.ItemsSource!);
         });
     }
@@ -240,7 +240,7 @@ public sealed class ScriptWorkspaceTests
     }
 
     [Fact]
-    public void Script_folds_both_sides_to_rails_until_a_rail_button_opens_one()
+    public void Script_hides_both_sides_and_gives_the_script_the_whole_width()
     {
         UiThread.Run(() =>
         {
@@ -250,27 +250,15 @@ public sealed class ScriptWorkspaceTests
             window.UpdateLayout();
 
             Assert.False(window.Center.Stage.IsVisible);
-            Assert.Equal(["Scene", "Files"], window.LeftSide.RailButtons.Select(button => Assert.IsType<HoverCard>(ToolTip.GetTip(button)).Title));
-            Assert.Equal(["Inspector"], window.RightSide.RailButtons.Select(button => Assert.IsType<HoverCard>(ToolTip.GetTip(button)).Title));
-            Assert.False(window.SceneDock.IsEffectivelyVisible);
-            Assert.Equal(DockSide.RailWidth, window.LeftSide.Rail.Bounds.Width);
-
-            Click(window.LeftSide.RailButtons.First());
-            window.UpdateLayout();
-
-            Assert.True(window.SceneDock.IsEffectivelyVisible);
-            Assert.True(window.RightSide.IsFolded);
+            Assert.False(window.LeftSide.IsVisible);
+            Assert.False(window.RightSide.IsVisible);
+            Assert.Equal(window.Bounds.Width - 16, BoxOf(window.Center, window).Width);
 
             ClickOn(window.Bar.Tabs.Single(tab => tab.Label == TitleBar.Spatial), window);
             window.UpdateLayout();
 
-            Assert.False(window.RightSide.IsFolded);
             Assert.True(window.InspectorDock.IsEffectivelyVisible);
             Assert.True(window.Center.Stage.IsVisible);
-
-            ShowScript(window);
-
-            Assert.True(window.LeftSide.IsFolded);
         });
     }
 }

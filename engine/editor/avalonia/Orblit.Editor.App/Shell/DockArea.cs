@@ -7,9 +7,9 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The body under the title bar: the middle, with groups of panels in four places round it and a rail at each edge.
-/// Each place has the handle that collapses its group. A group moves, floats and collapses here, and a panel moves from
-/// group to group. The groups it is made with, and their tabs and places, are the layout Reset gives back.
+/// The body under the title bar: the middle, with groups of panels in four places round it. A group moves and floats
+/// here, a panel moves from group to group, and the two sides hide together. The groups it is made with, and their
+/// tabs and places, are the layout Reset gives back.
 /// </summary>
 internal sealed class DockArea : Grid
 {
@@ -19,27 +19,19 @@ internal sealed class DockArea : Grid
     readonly (DockTabs Group, DockTab[] Tabs, DockSlot Slot)[] _homes;
     readonly Dictionary<DockTabs, Window> _floats = [];
     readonly Dictionary<DockSlot, Border> _places = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
-    // One for each place, over the group there. A floating group is in no place, so it has none.
-    readonly Dictionary<DockSlot, Button> _handles = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, slot => Parts.CollapseHandle(slot.IsLeft() ? Dock.Left : Dock.Right, "Folds this panel to a button at the window's edge."));
     readonly SideColumns _columns = new();
-    // What the user collapsed, and what is collapsed now. A workspace that folds the sides has its own for as long as
-    // it shows.
-    readonly CollapsedSlots _users = new();
-    CollapsedSlots _collapsed;
+    // Whether the user hid the sides. A workspace that starts with them hidden has its own answer while it shows.
+    bool _usersHidden;
+    bool? _workspaceHidden;
 
     public DockArea(Control center, params DockTabs[] groups)
     {
         _groups = [.. groups];
         _homes = [.. groups.Select(group => (group, group.Tabs.ToArray(), group.Slot))];
-        _collapsed = _users;
         Middle = center;
         Margin = new Thickness(Gaps.Item, 0, Gaps.Item, Gaps.Item);
-        ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto");
-        // A bare panel holds the group and its handle, so a handle can reach past the group's edge.
-        var places = _places.ToDictionary(each => each.Key, each => new Panel { Children = { each.Value, _handles[each.Key] } });
-        // The sides draw over what is beside them, where the handles reach.
-        Left = new DockSide(places[DockSlot.UpperLeft], places[DockSlot.LowerLeft]) { ZIndex = 1 };
-        Right = new DockSide(places[DockSlot.UpperRight], places[DockSlot.LowerRight]) { ZIndex = 1 };
+        Left = new DockSide(_places[DockSlot.UpperLeft], _places[DockSlot.LowerLeft]);
+        Right = new DockSide(_places[DockSlot.UpperRight], _places[DockSlot.LowerRight]);
         Control[] columns = [Left, Left.Splitter, center, Right.Splitter, Right];
         for (var i = 0; i < columns.Length; i++)
         {
@@ -47,11 +39,7 @@ internal sealed class DockArea : Grid
             _columns.Children.Add(columns[i]);
         }
 
-        Left.Rail.Margin = new Thickness(0, 0, Gaps.Item, 0);
-        Right.Rail.Margin = new Thickness(Gaps.Item, 0, 0, 0);
-        SetColumn(_columns, 1);
-        SetColumn(Right.Rail, 2);
-        Children.AddRange([Left.Rail, _columns, Right.Rail]);
+        Children.Add(_columns);
         foreach (var tab in groups.SelectMany(group => group.Tabs))
         {
             TabDrag.Follow(tab, this);
@@ -65,8 +53,8 @@ internal sealed class DockArea : Grid
     public event Action<string>? Said;
 
     /// <summary>
-    /// Raised after anything the layout keeps may have changed: a group moves, floats, collapses or locks, a tab is
-    /// picked or hidden, or a splitter is let go. A move can raise it before it is whole.
+    /// Raised after anything the layout keeps may have changed: a group moves, floats or locks, a tab is picked or
+    /// hidden, the sides hide or show, or a splitter is let go. A move can raise it before it is whole.
     /// </summary>
     public event Action? Changed;
 
@@ -83,7 +71,7 @@ internal sealed class DockArea : Grid
 
     internal Control Middle { get; }
 
-    /// <summary>While true, no panel drags, moves or resizes. Collapsing, closing a window and hiding a tab still work.</summary>
+    /// <summary>While true, no panel drags, moves or resizes. Closing a window and hiding panels or tabs still work.</summary>
     internal bool Locked
     {
         get => GetValue(LockedProperty);
@@ -99,32 +87,29 @@ internal sealed class DockArea : Grid
         set => _columns.LeastMiddle = value;
     }
 
-    /// <summary>True while no group shows in either side, so the next thing to do is to show them.</summary>
-    internal bool AllCollapsed
+    /// <summary>While true, neither side shows. Floating panels stay.</summary>
+    internal bool PanelsHidden
     {
-        get
+        get => _workspaceHidden ?? _usersHidden;
+        set
         {
-            var shown = Taken().ToArray();
-            return (shown.Length > 0 ? shown : Enum.GetValues<DockSlot>()).All(_collapsed.Has);
+            if (_workspaceHidden is null)
+            {
+                _usersHidden = value;
+            }
+            else
+            {
+                _workspaceHidden = value;
+            }
+
+            Refresh();
         }
     }
 
-    internal void HidePanels()
+    /// <summary>Starts a workspace with the sides hidden, or gives back what the user had.</summary>
+    internal void UseWorkspaceHides(bool hides)
     {
-        _collapsed.CollapseAll();
-        Refresh();
-    }
-
-    internal void ShowPanels()
-    {
-        _collapsed.BringBack(Taken());
-        Refresh();
-    }
-
-    /// <summary>Starts a workspace with every group collapsed, or gives back what the user had.</summary>
-    internal void UseWorkspaceFolds(bool folds)
-    {
-        _collapsed = folds ? new CollapsedSlots(Enum.GetValues<DockSlot>()) : _users;
+        _workspaceHidden = hides ? true : null;
         Refresh();
     }
 
@@ -178,13 +163,12 @@ internal sealed class DockArea : Grid
         }
     }
 
-    /// <summary>The layout as it is now, to save. A workspace that folds the sides is not part of it.</summary>
+    /// <summary>The layout as it is now, to save. Hidden sides are not part of it.</summary>
     internal SavedLayout Capture() => new()
     {
         Groups = [.. _groups.Select(group => new SavedGroup(group.Slot, group.Titles, SpotOf(group)))],
         Chosen = [.. _groups.Select(group => group.Chosen.Title)],
         Hidden = [.. _groups.SelectMany(group => group.Titles.Where(title => !group.IsShown(title)))],
-        Collapsed = [.. Enum.GetValues<DockSlot>().Where(_users.Has)],
         Locked = Locked,
         LeftWidth = Math.Round(_columns.Asked(Left)),
         RightWidth = Math.Round(_columns.Asked(Right)),
@@ -217,11 +201,6 @@ internal sealed class DockArea : Grid
             tab.Owner.Select(tab);
         }
 
-        foreach (var slot in layout.Collapsed)
-        {
-            _users.Collapse(slot);
-        }
-
         Locked = layout.Locked;
         Refresh();
         foreach (var (group, window) in _floats)
@@ -244,16 +223,9 @@ internal sealed class DockArea : Grid
 
     internal bool IsFloating(DockTabs group) => _floats.ContainsKey(group);
 
-    /// <summary>The handle at the place the group sits in.</summary>
-    internal Button CollapseButtonOf(DockTabs group) => _handles[group.Slot];
-
     /// <summary>The group whose window is under this point of the screen, if any.</summary>
     internal DockTabs? FloatingAt(PixelPoint screen) =>
         _floats.FirstOrDefault(each => new Rect(each.Value.ClientSize).Contains(each.Value.PointToClient(screen))).Key;
-
-    /// <summary>The rail button under this point of the area, if any.</summary>
-    internal Button? RailButtonAt(Point at) =>
-        Left.RailButtons.Concat(Right.RailButtons).FirstOrDefault(button => button.IsEffectivelyVisible && Box(button).Contains(at));
 
     /// <summary>The docked group shown under this point of the area, if any.</summary>
     internal DockTabs? ShownGroupAt(Point at) =>
@@ -295,18 +267,12 @@ internal sealed class DockArea : Grid
     {
         foreach (var side in new[] { Left, Right })
         {
-            side.RailPressed += group => Open(group.Slot);
             side.Resized += () => Changed?.Invoke();
         }
 
         foreach (var group in _groups)
         {
             Wire(group);
-        }
-
-        foreach (var (slot, handle) in _handles)
-        {
-            handle.Click += (_, _) => Collapse(slot);
         }
     }
 
@@ -331,14 +297,14 @@ internal sealed class DockArea : Grid
         };
     }
 
-    // A rail button and a window take their names from the group's tabs, and a window with none to show closes.
+    // A window takes its name from the group's tabs, and one with none to show closes.
     void Settle(DockTabs group)
     {
         if (!group.IsVisible && _floats.TryGetValue(group, out var window))
         {
             window.Close();
         }
-        else if (_collapsed.Has(group.Slot) || IsFloating(group))
+        else if (IsFloating(group))
         {
             Refresh();
         }
@@ -373,30 +339,16 @@ internal sealed class DockArea : Grid
             window.Title = group.Title;
         }
 
-        Left.Show(ShownAt(DockSlot.UpperLeft), ShownAt(DockSlot.LowerLeft), group => _collapsed.Has(group.Slot));
-        Right.Show(ShownAt(DockSlot.UpperRight), ShownAt(DockSlot.LowerRight), group => _collapsed.Has(group.Slot));
+        Left.Show(Showing(DockSlot.UpperLeft), Showing(DockSlot.LowerLeft));
+        Right.Show(Showing(DockSlot.UpperRight), Showing(DockSlot.LowerRight));
         Changed?.Invoke();
     }
 
     DockTabs? Docked(DockSlot slot, DockTabs? except = null) =>
         _groups.FirstOrDefault(group => group.Slot == slot && group != except && !IsFloating(group));
 
-    // A group with every tab hidden takes no room.
-    DockTabs? ShownAt(DockSlot slot) => Docked(slot) is { IsVisible: true } group ? group : null;
-
-    IEnumerable<DockSlot> Taken() => Enum.GetValues<DockSlot>().Where(slot => ShownAt(slot) is not null);
-
-    void Collapse(DockSlot slot)
-    {
-        _collapsed.Collapse(slot);
-        Refresh();
-    }
-
-    void Open(DockSlot slot)
-    {
-        _collapsed.Open(slot);
-        Refresh();
-    }
+    // A group with every tab hidden takes no room, and no group does while the sides hide.
+    DockTabs? Showing(DockSlot slot) => !PanelsHidden && Docked(slot) is { IsVisible: true } group ? group : null;
 
     void Uncover(DockTabs group)
     {
@@ -406,7 +358,7 @@ internal sealed class DockArea : Grid
         }
         else
         {
-            Open(group.Slot);
+            PanelsHidden = false;
         }
     }
 
@@ -432,9 +384,8 @@ internal sealed class DockArea : Grid
 
         _groups.Clear();
         _groups.AddRange(_homes.Select(home => home.Group));
-        _users.OpenAll();
-        _collapsed.OpenAll();
-        Refresh();
+        _usersHidden = false;
+        PanelsHidden = false;
         // Both sides are open now, so each can take its first width.
         Resize(Left, SideColumns.LeftStart, 0.5);
         Resize(Right, SideColumns.RightStart, 0.5);
@@ -453,7 +404,7 @@ internal sealed class DockArea : Grid
             {
                 var moved = group.Chosen.Title;
                 Merge(group, there);
-                Open(to);
+                PanelsHidden = false;
                 Said?.Invoke($"Moved {moved} in with {there.Title}.");
                 return;
             }
@@ -467,8 +418,7 @@ internal sealed class DockArea : Grid
         }
 
         group.Slot = to;
-        _collapsed.Open(from);
-        Open(to);
+        PanelsHidden = false;
         Said?.Invoke($"Moved {group.Title} to the {to.Label().ToLowerInvariant()}.");
     }
 
@@ -497,12 +447,11 @@ internal sealed class DockArea : Grid
         if (Docked(slot, group) is { } there)
         {
             there.Slot = slot.Sibling();
-            _collapsed.Open(there.Slot);
         }
 
         group.Slot = slot;
         group.Select(tab);
-        Open(slot);
+        PanelsHidden = false;
         Said?.Invoke($"Moved {tab.Page.Title} to the {slot.Label().ToLowerInvariant()}.");
     }
 
@@ -608,17 +557,11 @@ internal sealed class DockArea : Grid
             Merge(group, there);
         }
 
-        Open(group.Slot);
+        PanelsHidden = false;
     }
 
     void Float(DockTabs group)
     {
-        if (_floats.TryGetValue(group, out var floating))
-        {
-            floating.Close();
-            return;
-        }
-
         // The window is larger than the group by its edge, and starts that far up and left, so the group stays put.
         OpenWindow(group, group.Bounds.Size, group.PointToScreen(new Point(-Gaps.Item, -Gaps.Item)));
     }
@@ -631,7 +574,7 @@ internal sealed class DockArea : Grid
         window.Content = group;
         // The area is in the editor's window while its groups can be asked to float.
         window.Show((Window)TopLevel.GetTopLevel(this)!);
-        Said?.Invoke($"{group.Title} is in a window of its own. Close it, or choose {DockTabs.PutBack} in its menu.");
+        Said?.Invoke($"{group.Title} is in a window of its own. Close it to put it back.");
     }
 
     // A window for the group, not yet shown and without the group in it, as the group may still sit in a place.

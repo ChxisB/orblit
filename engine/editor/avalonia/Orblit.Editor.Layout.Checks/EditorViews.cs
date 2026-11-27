@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Orblit.Editor.App;
 using Orblit.Editor.App.Shell;
@@ -21,10 +20,9 @@ internal static class EditorViews
         ("3D", (window, _) => Select(window)),
         ("3D, sides narrow", (window, _) => Then(window, Select, w => Sides(w, wide: false))),
         ("3D, sides wide", (window, _) => Then(window, Select, w => Sides(w, wide: true))),
-        ("3D, sides folded", (window, _) => Fold(window)),
-        ("3D, one panel collapsed", (window, _) => Then(window, Select, w => Click(w.Docks.CollapseButtonOf(w.SceneDock)))),
-        ("3D, a panel on each rail", (window, _) => Then(window, Select, CollapseOneEachSide)),
-        ("3D, a panel moved under the Inspector", (window, _) => Then(window, Select, w => w.SceneDock.MoveItems[(int)DockSlot.LowerRight].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)))),
+        ("3D, panels hidden", (window, _) => Then(window, Select, w => Click(w.SceneTabs.PanelsButton))),
+        ("3D, panel menu", (window, _) => Then(window, Select, w => w.SceneDock.MenuButton.Flyout!.ShowAt(w.SceneDock.MenuButton))),
+        ("3D, a panel moved under the Inspector", (window, _) => Then(window, Select, w => Click(w.SceneDock.Map.Boxes[(int)DockSlot.LowerRight]))),
         ("2D", (window, _) => Tab(window, "2D")),
         ("Script", (window, _) => Tab(window, "Script")),
         ("Script open", (window, _) => OpenScript(window)),
@@ -32,9 +30,6 @@ internal static class EditorViews
         ("Graph open", (window, _) => OpenGraph(window)),
         ("Game", (window, _) => Tab(window, "Game")),
         ("Game running", RunGame),
-        ("Script open, list folded", (window, _) => Then(window, OpenScript, w => FoldColumns(w.Script.Columns))),
-        ("Graph open, columns folded", (window, _) => Then(window, OpenGraph, w => FoldColumns(w.Graph.Columns))),
-        ("Game, columns folded", (window, _) => Then(window, w => Tab(w, "Game"), w => FoldColumns(w.Game.Columns))),
         ("Output", (window, _) => BarOf(window).Open(0)),
         ("Debugger", (window, _) => BarOf(window).Open(1)),
         ("2D, middle narrow", Narrow((window, _) => Tab(window, "2D"))),
@@ -192,14 +187,6 @@ internal static class EditorViews
 
     static void Tab(EditorWindow window, string workspace) => ClickOn(window.Bar.Tabs.Single(tab => tab.Label == workspace), window);
 
-    static void FoldColumns(IEnumerable<FoldingColumn> columns)
-    {
-        foreach (var column in columns)
-        {
-            Click(column.CollapseButton);
-        }
-    }
-
     static BottomBar BarOf(EditorWindow window) => (BottomBar)window.Center.BottomBar.Child!;
 
     static void OpenScript(EditorWindow window)
@@ -252,9 +239,9 @@ internal static class EditorViews
     // Both sides at the least width a splitter allows, or both as wide as they go with the middle at its least.
     static void Sides(EditorWindow window, bool wide)
     {
-        foreach (var button in window.LeftSide.RailButtons.Concat(window.RightSide.RailButtons).ToList())
+        if (window.Docks.PanelsHidden)
         {
-            Click(button);
+            Click(window.SceneTabs.PanelsButton);
         }
 
         window.UpdateLayout();
@@ -263,20 +250,6 @@ internal static class EditorViews
         var spare = body.Bounds.Width - body.ColumnDefinitions[1].ActualWidth - body.ColumnDefinitions[3].ActualWidth - middle.MinWidth;
         left.Width = new GridLength(wide ? Math.Min(left.MaxWidth, spare / 2) : left.MinWidth);
         right.Width = new GridLength(wide ? Math.Min(right.MaxWidth, spare / 2) : right.MinWidth);
-    }
-
-    static void Fold(EditorWindow window)
-    {
-        foreach (var group in new[] { window.SceneDock, window.FileDock, window.InspectorDock })
-        {
-            Click(window.Docks.CollapseButtonOf(group));
-        }
-    }
-
-    static void CollapseOneEachSide(EditorWindow window)
-    {
-        Click(window.Docks.CollapseButtonOf(window.SceneDock));
-        Click(window.Docks.CollapseButtonOf(window.InspectorDock));
     }
 
     static Button ConnectButton(EditorWindow window) =>

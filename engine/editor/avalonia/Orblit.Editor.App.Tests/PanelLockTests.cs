@@ -62,7 +62,7 @@ public sealed class PanelLockTests
     }
 
     [Fact]
-    public void A_locked_layout_turns_off_each_panel_menu_move_and_says_why()
+    public void A_locked_layout_turns_off_the_panel_menu_s_reset_and_ticks_its_lock()
     {
         UiThread.Run(() =>
         {
@@ -71,16 +71,14 @@ public sealed class PanelLockTests
 
             Lock(window);
 
-            Assert.All(dock.MoveItems, item => Assert.False(item.IsEnabled));
-            Assert.False(dock.FloatItem.IsEnabled);
+            Assert.All(dock.Map.Boxes, box => Assert.False(box.IsEnabled));
             Assert.False(ItemOf(dock, "Put all panels back").IsEnabled);
-            Assert.Contains("The layout is locked", Words(dock.FloatItem));
-            Assert.Contains("The layout is locked", Words(dock.MoveItems[(int)DockSlot.UpperLeft]));
+            Assert.Contains("The layout is locked", Words(ItemOf(dock, "Put all panels back")));
             Assert.True(ItemOf(dock, "Lock layout").IsChecked);
 
             Press(ItemOf(dock, "Lock layout"));
             Assert.False(window.Docks.Locked);
-            Assert.True(dock.FloatItem.IsEnabled);
+            Assert.True(dock.Map.Boxes[^1].IsEnabled);
             Assert.True(ItemOf(dock, "Put all panels back").IsEnabled);
             Assert.False(ItemOf(dock, "Lock layout").IsChecked);
         });
@@ -138,13 +136,13 @@ public sealed class PanelLockTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            Press(window.FileDock.FloatItem);
+            Click(window.FileDock.Map.Boxes[^1]);
             var floating = Assert.IsType<Window>(TopLevel.GetTopLevel(window.FileDock));
 
             Lock(window);
             Assert.False(floating.CanResize);
-            // Put it back does what closing the window does.
-            Assert.True(window.FileDock.FloatItem.IsEnabled);
+            // Going back does what closing the window does.
+            Assert.True(window.FileDock.Map.Boxes[(int)DockSlot.LowerLeft].IsEnabled);
 
             Lock(window);
             Assert.True(floating.CanResize);
@@ -157,20 +155,20 @@ public sealed class PanelLockTests
     }
 
     [Fact]
-    public void A_locked_layout_still_collapses_and_opens_panels()
+    public void A_locked_layout_still_hides_and_shows_panels()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             Lock(window);
 
-            Click(window.Docks.CollapseButtonOf(window.FileDock));
+            Click(window.SceneTabs.PanelsButton);
             window.UpdateLayout();
-            Assert.True(window.LeftSide.Rail.IsVisible);
+            Assert.False(window.LeftSide.IsVisible);
 
-            Click(window.LeftSide.RailButtons.Single());
+            Click(window.SceneTabs.PanelsButton);
             window.UpdateLayout();
-            Assert.False(window.LeftSide.Rail.IsVisible);
+            Assert.True(window.LeftSide.IsVisible);
         });
     }
 

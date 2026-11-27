@@ -202,23 +202,6 @@ public sealed class PanelDragTests
     }
 
     [Fact]
-    public void A_drop_on_a_rail_button_joins_that_group_and_opens_it()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            Click(window.Docks.CollapseButtonOf(window.FileDock));
-            window.UpdateLayout();
-
-            Drag("Signals", Middle(window.LeftSide.RailButtons.Single(), window), window);
-
-            Assert.Same(window.FileDock, GroupOf("Signals", window));
-            Assert.True(window.FileDock.IsEffectivelyVisible);
-            Assert.False(window.LeftSide.Rail.IsVisible);
-        });
-    }
-
-    [Fact]
     public void A_drop_in_the_middle_floats_the_tab_and_closing_the_window_puts_it_back()
     {
         UiThread.Run(() =>
@@ -232,7 +215,7 @@ public sealed class PanelDragTests
             Assert.NotSame(window, floating);
             Assert.Equal("History", floating.Title);
             Assert.Equal(["Files"], window.FileDock.Titles);
-            Assert.Equal("History is in a window of its own. Close it, or choose Put it back in its menu.", window.Status);
+            Assert.Equal("History is in a window of its own. Close it to put it back.", window.Status);
 
             floating.Close();
             window.UpdateLayout();
@@ -251,9 +234,9 @@ public sealed class PanelDragTests
             Drag("History", Middle(window.Center, window), window);
 
             // Files still sits where History came from, so there is no place to trade.
-            var move = window.Docks.GroupOf("History").MoveItems[(int)DockSlot.UpperRight];
-            Assert.Contains("Joins the panel there", Texts((Control)move.Header!));
-            Press(move);
+            var move = window.Docks.GroupOf("History").Map.Boxes[(int)DockSlot.UpperRight];
+            Assert.Equal("Joins the panel there", AutomationProperties.GetHelpText(move));
+            Click(move);
             window.UpdateLayout();
 
             Assert.Equal(["Inspector", "Signals", "History"], window.InspectorDock.Titles);
@@ -269,7 +252,7 @@ public sealed class PanelDragTests
         {
             var window = OpenAtReferenceSize();
             var spot = Middle(window.SceneDock, window);
-            Press(window.SceneDock.FloatItem);
+            Click(window.SceneDock.Map.Boxes[^1]);
             window.UpdateLayout();
 
             Drag("Signals", spot, window);

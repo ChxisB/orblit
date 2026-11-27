@@ -29,7 +29,7 @@ public sealed class HidePanelsTests
     }
 
     [Fact]
-    public void A_press_folds_both_sides_and_the_button_then_says_show_panels()
+    public void A_press_hides_both_sides_and_the_button_then_says_show_panels()
     {
         UiThread.Run(() =>
         {
@@ -37,8 +37,8 @@ public sealed class HidePanelsTests
 
             Click(window.SceneTabs.PanelsButton);
 
-            Assert.True(window.LeftSide.IsFolded);
-            Assert.True(window.RightSide.IsFolded);
+            Assert.False(window.LeftSide.IsVisible);
+            Assert.False(window.RightSide.IsVisible);
             Assert.Equal(SceneTabStrip.ShowPanels, AutomationProperties.GetName(window.SceneTabs.PanelsButton));
             Assert.Equal("Brings the panels back as they were.", CardOf(window.SceneTabs.PanelsButton).Line);
 
@@ -66,7 +66,7 @@ public sealed class HidePanelsTests
     }
 
     [Fact]
-    public void A_workspace_that_folds_both_sides_turns_the_button_to_show_panels()
+    public void A_workspace_that_starts_with_the_sides_hidden_turns_the_button_to_show_panels()
     {
         UiThread.Run(() =>
         {

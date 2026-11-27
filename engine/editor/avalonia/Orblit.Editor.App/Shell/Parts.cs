@@ -21,7 +21,6 @@ internal static class Parts
     internal const double IconInset = (IconButtonSize - EditorIcon.DefaultSize) / 2;
 
     // The smallest a button should be to hit with ease.
-    const double HandleSize = 24;
 
     // A glow and a deep tone for each banner, taken in turn so an item keeps its colour as a search narrows the list.
     static readonly (Color Glow, Color Deep)[] s_banners =
@@ -399,34 +398,6 @@ internal static class Parts
         button.BorderThickness = new Thickness(0);
         AutomationProperties.SetName(button, card.Title);
         return card.On(button);
-    }
-
-    /// <summary>
-    /// The button that folds a side panel or column. It sits half over the edge that faces the middle, level with the
-    /// line under the header, so it is in the same place on every one. Its parent must not clip it.
-    /// </summary>
-    /// <param name="side">The window's edge the panel is on.</param>
-    /// <param name="line">The card's line, which says what folds.</param>
-    public static Button CollapseHandle(Dock side, string line)
-    {
-        var card = new HoverCard("Collapse to the side", line);
-        var left = side == Dock.Left;
-        const double Out = -HandleSize / 2;
-        var handle = new Button
-        {
-            Classes = { EditorTheme.TextButton },
-            Content = new EditorIcon("Chevrons"),
-            Width = HandleSize,
-            Height = HandleSize,
-            MinWidth = 0,
-            MinHeight = 0,
-            Padding = default,
-            HorizontalAlignment = left ? HorizontalAlignment.Right : HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(left ? 0 : Out, DockTabs.StripHeight + Out, left ? Out : 0, 0),
-        };
-        AutomationProperties.SetName(handle, card.Title);
-        return card.On(handle);
     }
 
     // The key on a shade of the button's fill, so it reads on a plain button and on the orange one.

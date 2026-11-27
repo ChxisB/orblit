@@ -83,10 +83,10 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     readonly GraphView _graph;
     readonly GameView _game;
 
-    // The workspaces that start with every panel group collapsed. A workspace not listed shows what the user left open.
-    static readonly string[] s_folding = [TitleBar.Script, TitleBar.Graph, TitleBar.Game];
-    // The middle's least width. A workspace that folds the sides lays its own columns out in the middle, so it needs
-    // more of it when a side is opened again.
+    // The workspaces that start with the side panels hidden. A workspace not listed shows them as the user left them.
+    static readonly string[] s_ownColumns = [TitleBar.Script, TitleBar.Graph, TitleBar.Game];
+    // The middle's least width. A workspace with the sides hidden lays its own columns out in the middle, so it needs
+    // more of it when the sides are shown again.
     const double ViewportMiddle = 480;
     const double WorkspaceMiddle = 700;
     const string LayoutSection = "layout";
@@ -215,7 +215,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         _sceneTabs.LockButton.Click += (_, _) => _docks.Locked = !_docks.Locked;
         _docks.Changed += () =>
         {
-            _sceneTabs.ShowPanelsHidden(_docks.AllCollapsed);
+            _sceneTabs.ShowPanelsHidden(_docks.PanelsHidden);
             _sceneTabs.ShowLayoutLocked(_docks.Locked);
         };
         _docks.FloatKeyDown += FloatKey;
@@ -503,9 +503,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // The 2D view is on for the 2D workspace alone, so any other workspace gives the viewport back to 3D.
     void ChooseWorkspace(string name)
     {
-        var folds = s_folding.Contains(name);
-        _docks.LeastMiddle = folds ? WorkspaceMiddle : ViewportMiddle;
-        _docks.UseWorkspaceFolds(folds);
+        var ownColumns = s_ownColumns.Contains(name);
+        _docks.LeastMiddle = ownColumns ? WorkspaceMiddle : ViewportMiddle;
+        _docks.UseWorkspaceHides(ownColumns);
         _center.ShowWorkspace(name);
         _planar = name == TitleBar.Planar;
         _center.Overlay.Planar = _planar;
@@ -701,23 +701,12 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         if (SavedLayout.Read(settings.Section(LayoutSection), _docks.Panels) is { } saved)
         {
             _docks.Apply(saved);
-            foreach (var column in Columns)
-            {
-                column.Folded = saved.Folded.Contains(column.Title);
-            }
         }
 
         _layoutFile = settings;
         _docks.Changed += SaveLayoutSoon;
-        foreach (var column in Columns)
-        {
-            column.Changed += SaveLayoutSoon;
-        }
-
         Opened += (_, _) => _docks.ShowFloats();
     }
-
-    IEnumerable<FoldingColumn> Columns => [.. _script.Columns, .. _graph.Columns, .. _game.Columns];
 
     // The save waits until the change is whole, as a move raises more than one on its way.
     void SaveLayoutSoon()
@@ -741,7 +730,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     {
         try
         {
-            _layoutFile?.SetSection(LayoutSection, (_docks.Capture() with { Folded = [.. Columns.Where(column => column.Folded).Select(column => column.Title)] }).Values());
+            _layoutFile?.SetSection(LayoutSection, _docks.Capture().Values());
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -1242,19 +1231,18 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         return $"{where}{error.Text.TrimEnd('.')}. ";
     }
 
-    // Collapses every panel group while any shows, so a second press brings back what was open. The bottom panel
-    // shuts with them and the one that was open comes back with them.
+    // The bottom panel shuts with the side panels, and the one that was open comes back with them.
     void TogglePanels()
     {
-        if (!_docks.AllCollapsed)
+        if (!_docks.PanelsHidden)
         {
-            _docks.HidePanels();
+            _docks.PanelsHidden = true;
             _shutPanel = _bottomBar.OpenPanel;
             _bottomBar.Open(-1);
             return;
         }
 
-        _docks.ShowPanels();
+        _docks.PanelsHidden = false;
         if (_shutPanel >= 0)
         {
             _bottomBar.Open(_shutPanel);

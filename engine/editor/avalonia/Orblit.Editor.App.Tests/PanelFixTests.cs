@@ -18,7 +18,7 @@ public sealed class PanelFixTests
 
     static Window Float(DockTabs group, EditorWindow window)
     {
-        Press(group.FloatItem);
+        Click(group.Map.Boxes[^1]);
         window.UpdateLayout();
         return Assert.IsType<Window>(TopLevel.GetTopLevel(group));
     }
@@ -28,8 +28,6 @@ public sealed class PanelFixTests
         Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
     }
-
-    static string[] Rail(DockSide side) => [.. side.RailButtons.Select(button => Assert.IsType<HoverCard>(ToolTip.GetTip(button)).Title)];
 
     [Fact]
     public void Showing_a_hidden_panel_turns_its_tab_on_and_loses_no_other()
@@ -96,21 +94,6 @@ public sealed class PanelFixTests
 
             Assert.Equal("Import", window.SceneDock.Title);
             Assert.Equal("Import", floating.Title);
-        });
-    }
-
-    [Fact]
-    public void A_rail_button_follows_the_tabs_of_its_collapsed_group()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            Click(window.Docks.CollapseButtonOf(window.SceneDock));
-
-            window.Docks.ToggleTab("Scene");
-            Settle(window);
-
-            Assert.Equal(["Import"], Rail(window.LeftSide));
         });
     }
 

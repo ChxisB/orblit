@@ -26,11 +26,6 @@ internal abstract record DropTarget(Control On, Rect Mark, string Words)
         }
 
         var at = area.PointToClient(screen);
-        if (area.RailButtonAt(at) is { } button)
-        {
-            return Whole((DockTabs)button.Tag!, button);
-        }
-
         if (area.ShownGroupAt(at) is { } group)
         {
             return OnGroup(area, tab, group, at);

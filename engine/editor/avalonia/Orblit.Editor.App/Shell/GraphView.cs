@@ -147,15 +147,9 @@ internal sealed class GraphView : Border
                 ShowList();
             }
         };
-        var graphs = new FoldingColumn("Graphs", "GraphFile", Dock.Left, GraphList());
-        var step = new FoldingColumn("Step", "NodeInfo", Dock.Right, StepColumn());
-        Columns = [graphs, step];
-        Child = Layout(graphs, step);
+        Child = Layout();
         ShowState();
     }
-
-    /// <summary>The columns that fold to a rail: the graph list and the step.</summary>
-    internal IReadOnlyList<FoldingColumn> Columns { get; }
 
     internal ListBox List => _list;
 
@@ -308,7 +302,7 @@ internal sealed class GraphView : Border
         return Island(list, 0);
     }
 
-    Grid Layout(FoldingColumn graphs, FoldingColumn step)
+    Grid Layout()
     {
         var canvas = new DockPanel();
         // The save button and the status are measured first, so the tabs get what is left.
@@ -331,7 +325,7 @@ internal sealed class GraphView : Border
                 new(Gaps.Item, GridUnitType.Pixel),
                 new(292, GridUnitType.Star) { MinWidth = 170, MaxWidth = 292 },
             ],
-            Children = { Place(graphs, 0), Place(middle, 2), Place(step, 4) },
+            Children = { Place(GraphList(), 0), Place(middle, 2), Place(StepColumn(), 4) },
         };
     }
 

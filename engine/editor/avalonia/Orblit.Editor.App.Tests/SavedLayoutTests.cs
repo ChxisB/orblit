@@ -55,9 +55,7 @@ public sealed class SavedLayoutTests : IDisposable
             ["float_1"] = "Import|LowerRight|120 80 320 400",
             ["chosen"] = "Signals,History,Inspector,Import",
             ["hidden"] = "Files",
-            ["collapsed"] = "LowerLeft",
             ["locked"] = "true",
-            ["folded"] = "Scripts,Step",
             ["left_width"] = "300",
             ["right_width"] = "420",
             ["left_split"] = "0.3",
@@ -95,10 +93,9 @@ public sealed class SavedLayoutTests : IDisposable
     [Fact]
     public void Bad_values_give_the_default_and_sizes_are_held_within_bounds()
     {
-        var layout = Read(("locked", "maybe"), ("collapsed", "Middle,7"), ("left_width", "wide"), ("right_width", "999999"), ("left_split", "NaN"), ("right_split", "7"));
+        var layout = Read(("locked", "maybe"), ("left_width", "wide"), ("right_width", "999999"), ("left_split", "NaN"), ("right_split", "7"));
 
         Assert.False(layout.Locked);
-        Assert.Empty(layout.Collapsed);
         Assert.Null(layout.LeftWidth);
         Assert.Equal(4000, layout.RightWidth);
         Assert.Null(layout.LeftSplit);
@@ -141,10 +138,9 @@ public sealed class SavedLayoutTests : IDisposable
         UiThread.Run(() =>
         {
             var first = Open();
-            // Signals goes in with Files, Import floats, the right column collapses, and the layout locks.
+            // Signals goes in with Files, Import floats, and the layout locks.
             first.Docks.Drop(first.InspectorDock.Tabs[1], new DropTarget.Join(first.FileDock, first.FileDock, default), default);
             first.Docks.Drop(first.SceneDock.Tabs[1], new DropTarget.Float(first, default), new PixelPoint(100, 90));
-            Click(first.Docks.CollapseButtonOf(first.InspectorDock));
             first.FileDock.Select(1);
             Click(first.SceneTabs.LockButton);
             Dispatcher.UIThread.RunJobs();
@@ -158,7 +154,6 @@ public sealed class SavedLayoutTests : IDisposable
 
             Assert.Equal(groups, Groups(next));
             Assert.Equal("History", next.Docks.GroupOf("History").Chosen.Title);
-            Assert.True(next.RightSide.IsFolded);
             Assert.True(next.Docks.Locked);
             var floating = Assert.IsType<Window>(TopLevel.GetTopLevel(next.Docks.GroupOf("Import")));
             Assert.NotSame(next, floating);
@@ -198,10 +193,10 @@ public sealed class SavedLayoutTests : IDisposable
         {
             var window = Open();
 
-            Click(window.Docks.CollapseButtonOf(window.FileDock));
+            window.FileDock.Select(1);
             Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal("LowerLeft", Settings.Section("layout")["collapsed"]);
+            Assert.Contains("History", Settings.Section("layout")["chosen"].Split(','));
         });
     }
 
@@ -211,13 +206,13 @@ public sealed class SavedLayoutTests : IDisposable
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            Press(window.FileDock.FloatItem);
+            Click(window.FileDock.Map.Boxes[^1]);
             var floating = Assert.IsType<Window>(TopLevel.GetTopLevel(window.FileDock));
 
             floating.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.OemPipe, KeyModifiers = window.CommandKey });
             window.UpdateLayout();
 
-            Assert.True(window.Docks.AllCollapsed);
+            Assert.True(window.Docks.PanelsHidden);
         });
     }
 }

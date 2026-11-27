@@ -391,9 +391,9 @@ public sealed class ShellLayoutTests
             window.UpdateLayout();
             Assert.True(WidthAt(1280) < 900);
 
-            Click(window.Docks.CollapseButtonOf(window.InspectorDock));
+            Click(window.SceneTabs.PanelsButton);
             window.UpdateLayout();
-            Click(window.RightSide.RailButtons.Single());
+            Click(window.SceneTabs.PanelsButton);
             window.UpdateLayout();
 
             Assert.Equal(900, WidthAt(3440));

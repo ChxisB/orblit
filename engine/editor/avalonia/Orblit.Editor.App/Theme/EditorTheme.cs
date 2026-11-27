@@ -5,10 +5,12 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
+using Orblit.Editor.App.Shell;
 
 namespace Orblit.Editor.App.Theme;
 
@@ -49,6 +51,12 @@ internal sealed class EditorTheme : Styles
 
     /// <summary>The corners of a menu or a flyout, a step rounder than an island.</summary>
     internal static readonly CornerRadius PopoverCorners = new(11);
+
+    /// <summary>The class of a box of a panel menu's map: one place a panel can go.</summary>
+    internal const string MapBox = "mapBox";
+
+    /// <summary>The class of the menu item that holds the map, which takes no highlight of its own.</summary>
+    internal const string MapItem = "mapItem";
 
     /// <summary>The class of a worded button: a raised fill with an edge. The classes after it change its kind or size.</summary>
     internal const string TextButton = "text";
@@ -276,6 +284,7 @@ internal sealed class EditorTheme : Styles
             },
         });
         AddRange(PopoverStyles());
+        AddRange(MapStyles());
         AddRange(ButtonStyles());
         AddRange(FieldStyles());
     }
@@ -337,6 +346,40 @@ internal sealed class EditorTheme : Styles
             },
         },
     ];
+
+    // The theme repaints a button's presenter when it is hovered, pressed or off, so each state paints it here. The
+    // lit box is off and keeps its light, so its row comes last.
+    static IEnumerable<Style> MapStyles()
+    {
+        static Selector Box(Selector? x) => x.OfType<Button>().Class(MapBox);
+        static Selector Face(Selector x) => x.Template().OfType<ContentPresenter>().Name("PART_ContentPresenter");
+        static Style Paint(Func<Selector?, Selector> state, IBrush fill, IBrush edge) => new(x => Face(state(x)))
+        {
+            Setters = { new Setter(ContentPresenter.BackgroundProperty, fill), new Setter(ContentPresenter.BorderBrushProperty, edge) },
+        };
+
+        yield return new Style(x => Box(x))
+        {
+            Setters =
+            {
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(0)),
+                new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
+                new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(4)),
+                new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch),
+                new Setter(ContentControl.VerticalContentAlignmentProperty, VerticalAlignment.Stretch),
+                new Setter(InputElement.CursorProperty, new Cursor(StandardCursorType.Hand)),
+            },
+        };
+        yield return Paint(x => Box(x), EditorBrushes.GuideLit, EditorBrushes.LineStrong);
+        yield return Paint(x => Box(x).Class(":pointerover"), EditorBrushes.AccentSoft, EditorBrushes.Accent);
+        yield return Paint(x => Box(x).Class(":focus-visible"), EditorBrushes.AccentSoft, EditorBrushes.Accent);
+        yield return Paint(x => Box(x).Class(":disabled"), EditorBrushes.Lifted, EditorBrushes.Line);
+        yield return Paint(x => Box(x).Class(PanelMap.Here), EditorBrushes.Accent, EditorBrushes.Accent);
+        yield return new Style(x => x.OfType<MenuItem>().Class(MapItem).Template().OfType<Border>().Name("PART_LayoutRoot"))
+        {
+            Setters = { new Setter(Border.BackgroundProperty, Brushes.Transparent) },
+        };
+    }
 
     // The fill, hovered fill, edge and text of each kind of worded button. A list of cases, so it is data. Later
     // rows win over the first, which every kind also carries.

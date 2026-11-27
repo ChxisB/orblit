@@ -119,18 +119,18 @@ public sealed class GraphWorkspaceTests
     }
 
     [Fact]
-    public void Show_in_Files_unfolds_the_Files_panel_and_picks_the_graph()
+    public void Show_in_Files_shows_the_Files_panel_and_picks_the_graph()
     {
         UiThread.Run(() =>
         {
             var (window, _, _) = Open();
             ShowGraph(window);
             window.Graph.List.SelectedItem = Logic;
-            Assert.True(window.LeftSide.IsFolded);
+            Assert.False(window.LeftSide.IsVisible);
 
             Click(window.Graph.ShowInFilesButton);
 
-            Assert.False(window.LeftSide.IsFolded);
+            Assert.True(window.LeftSide.IsVisible);
             Assert.Equal(0, window.FileDock.SelectedIndex);
             Assert.Equal(Logic, ((FileNode)window.Scenes.Tree.SelectedItem!).Path);
         });

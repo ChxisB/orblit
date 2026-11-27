@@ -484,7 +484,7 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
-    public void Hide_panels_folds_both_sides_and_brings_them_back()
+    public void Hide_panels_hides_both_sides_and_brings_them_back()
     {
         UiThread.Run(() =>
         {
@@ -492,10 +492,10 @@ public sealed class EditorMenuTests
             var item = Find(NativeMenu.GetMenu(window)!, "Hide panels");
 
             Press(item);
-            Assert.True(window.LeftSide.IsFolded && window.RightSide.IsFolded);
+            Assert.False(window.LeftSide.IsVisible || window.RightSide.IsVisible);
 
             Press(item);
-            Assert.False(window.LeftSide.IsFolded || window.RightSide.IsFolded);
+            Assert.True(window.LeftSide.IsVisible && window.RightSide.IsVisible);
         });
     }
 
@@ -729,12 +729,12 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
-    public void A_Panels_check_turned_on_opens_its_collapsed_group()
+    public void A_Panels_check_turned_on_shows_the_hidden_panels()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            Click(window.Docks.CollapseButtonOf(window.SceneDock));
+            Click(window.SceneTabs.PanelsButton);
 
             Press(Panel(window, "Import"));
             Assert.False(window.SceneDock.IsEffectivelyVisible);
