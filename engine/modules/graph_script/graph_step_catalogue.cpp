@@ -69,6 +69,10 @@ constexpr OperatorLabel OPERATOR_LABELS[] = {
 	{ Variant::OP_IN, "Is in" },
 };
 
+// The Set steps the palette also offers with a symbol, as "Set +=".
+constexpr const char *COMBINING_KINDS[] = { "set", "set_local" };
+constexpr const char *COMBINING_SYMBOLS[] = { "+", "-", "*", "/" };
+
 // "count_loop" reads "Count loop".
 String title(const String &p_text) {
 	const String spaced = p_text.replace("_", " ");
@@ -325,10 +329,7 @@ Vector<GraphTyped> override_arguments(const MethodInfo &p_info) {
 }
 
 // An Operator step with no symbol does not compile, so the kind is offered once per symbol.
-Vector<GraphStepEntry> kind_entries(const GraphStepKind &p_kind) {
-	if (p_kind.name != StringName("operator")) {
-		return { { p_kind.name, p_kind.category, title(p_kind.name), Dictionary() } };
-	}
+Vector<GraphStepEntry> operator_entries(const GraphStepKind &p_kind) {
 	Vector<GraphStepEntry> entries;
 	for (const OperatorLabel &row : OPERATOR_LABELS) {
 		Dictionary parameters;
@@ -336,6 +337,43 @@ Vector<GraphStepEntry> kind_entries(const GraphStepKind &p_kind) {
 		entries.push_back({ p_kind.name, p_kind.category, row.label, parameters });
 	}
 	return entries;
+}
+
+bool is_combining(const GraphStepKind &p_kind) {
+	for (const char *name : COMBINING_KINDS) {
+		if (StringName(p_kind.name) == StringName(name)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// The inspector shows only the parameters a step holds, so a variable step starts with an empty
+// name to fill.
+Vector<GraphStepEntry> variable_entries(const GraphStepKind &p_kind) {
+	Dictionary named;
+	named["name"] = String();
+	Vector<GraphStepEntry> entries = { { p_kind.name, p_kind.category, title(p_kind.name), named } };
+	if (!is_combining(p_kind)) {
+		return entries;
+	}
+	for (const char *symbol : COMBINING_SYMBOLS) {
+		Dictionary parameters = named.duplicate();
+		parameters["operator"] = symbol;
+		entries.push_back({ p_kind.name, p_kind.category, vformat("%s %s=", title(p_kind.name), symbol), parameters });
+	}
+	return entries;
+}
+
+Vector<GraphStepEntry> kind_entries(const GraphStepKind &p_kind) {
+	if (StringName(p_kind.name) == StringName("operator")) {
+		return operator_entries(p_kind);
+	}
+	// Every step of this category names a variable or a local.
+	if (String(p_kind.category) == "Variables") {
+		return variable_entries(p_kind);
+	}
+	return { { p_kind.name, p_kind.category, title(p_kind.name), Dictionary() } };
 }
 
 Vector<GraphStepEntry> table_entries(const Matcher &p_matcher) {

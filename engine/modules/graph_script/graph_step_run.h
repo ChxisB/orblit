@@ -24,6 +24,8 @@ int run_set_local(GraphCall &p_call, const GraphCompiledStep &p_step);
 
 String resolve_variable(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
 String resolve_local(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
+String resolve_set_variable(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
+String resolve_set_local(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
 String resolve_operator(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
 
 } // namespace GraphStepRun

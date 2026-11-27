@@ -585,6 +585,23 @@ TEST_CASE("[Stage][GraphScript] The catalog offers an Operator step for each sym
 	CHECK(offered == 21);
 }
 
+TEST_CASE("[GraphScript] The catalog offers a Set that combines, and every variable step holds a name to fill") {
+	const Vector<GraphStepEntry> found = GraphStepCatalogue::find("+=", GraphWireFilter());
+	CHECK(has_entry(found, "set", "Variables", "operator", "+"));
+	CHECK(has_entry(found, "set_local", "Variables", "operator", "+"));
+
+	int named = 0;
+	for (const GraphStepEntry &entry : GraphStepCatalogue::find("", GraphWireFilter())) {
+		if (entry.group == "Variables") {
+			CAPTURE(entry.label);
+			CHECK(entry.parameters.has("name"));
+			named++;
+		}
+	}
+	// Get, Local, and Set and Set local each plain and with four symbols.
+	CHECK(named == 12);
+}
+
 TEST_CASE("[Stage][GraphScript] Call parent runs the engine's method and skips the function of the script") {
 	// The function is named like the method it calls. A plain call would run itself again.
 	Graph graph("set_name");

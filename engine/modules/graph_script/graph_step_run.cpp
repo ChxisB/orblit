@@ -80,6 +80,30 @@ bool is_binary(int p_operator) {
 	return p_operator != Variant::OP_NEGATE && p_operator != Variant::OP_POSITIVE && p_operator != Variant::OP_BIT_NEGATE && p_operator != Variant::OP_NOT;
 }
 
+// The operation of a Set step that stores its value as it is.
+constexpr int PLAIN_SET = -1;
+
+// Puts the step's operator to the two values and keeps the result in r_value. When the operator
+// does not take them, it fails the call and gives false.
+bool apply_operator(GraphCall &p_call, const GraphCompiledStep &p_step, const Variant &p_a, Variant &r_value) {
+	const Variant b = r_value;
+	bool valid = true;
+	Variant::evaluate(Variant::Operator(p_step.operation), p_a, b, r_value, valid);
+	if (!valid) {
+		p_call.fail(p_step, vformat("cannot apply '%s' to a %s and a %s.", Variant::get_operator_name(Variant::Operator(p_step.operation)), Variant::get_type_name(p_a.get_type()), Variant::get_type_name(b.get_type())));
+	}
+	return valid;
+}
+
+// A Set with no operator, or an empty one, stores the new value as it is.
+String resolve_set_operator(GraphCompiledStep &p_step) {
+	if (String(p_step.parameters.get("operator", String())).is_empty()) {
+		p_step.operation = PLAIN_SET;
+		return String();
+	}
+	return GraphStepRun::resolve_operator(p_step, Vector<StringName>());
+}
+
 String missing_name(const GraphCompiledStep &p_step) {
 	const Variant name = p_step.parameters.get("name", Variant());
 	return name.get_type() == Variant::NIL || String(name).is_empty() ? String("the step needs a 'name' parameter.") : String();
@@ -99,15 +123,8 @@ Variant eval_local(GraphCall &p_call, const GraphCompiledStep &p_step) {
 
 Variant eval_operator(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	const Variant a = p_call.input(p_step, OPERAND_A);
-	const Variant b = p_call.input(p_step, OPERAND_B);
-	Variant result;
-	bool valid = true;
-	Variant::evaluate(Variant::Operator(p_step.operation), a, b, result, valid);
-	if (!valid) {
-		p_call.fail(p_step, vformat("cannot apply '%s' to a %s and a %s.", Variant::get_operator_name(Variant::Operator(p_step.operation)), Variant::get_type_name(a.get_type()), Variant::get_type_name(b.get_type())));
-		return Variant();
-	}
-	return result;
+	Variant result = p_call.input(p_step, OPERAND_B);
+	return apply_operator(p_call, p_step, a, result) ? result : Variant();
 }
 
 int run_return(GraphCall &p_call, const GraphCompiledStep &p_step) {
@@ -164,13 +181,23 @@ int run_break(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	return GraphFlow::END;
 }
 
+// A Set with an operator puts it between the held value and the new one, as "+=" does. A failed
+// operator leaves the held value as it was.
 int run_set_variable(GraphCall &p_call, const GraphCompiledStep &p_step) {
-	p_call.write_variable(p_step, p_call.input(p_step, VALUE));
+	Variant value = p_call.input(p_step, VALUE);
+	if (p_step.operation != PLAIN_SET && !apply_operator(p_call, p_step, p_call.read_variable(p_step), value)) {
+		return GraphFlow::END;
+	}
+	p_call.write_variable(p_step, value);
 	return THEN;
 }
 
 int run_set_local(GraphCall &p_call, const GraphCompiledStep &p_step) {
-	p_call.write_local(p_step, p_call.input(p_step, VALUE));
+	Variant value = p_call.input(p_step, VALUE);
+	if (p_step.operation != PLAIN_SET && !apply_operator(p_call, p_step, p_call.read_local(p_step), value)) {
+		return GraphFlow::END;
+	}
+	p_call.write_local(p_step, value);
 	return THEN;
 }
 
@@ -185,6 +212,16 @@ String resolve_variable(GraphCompiledStep &p_step, const Vector<StringName> &p_v
 
 String resolve_local(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {
 	return missing_name(p_step);
+}
+
+String resolve_set_variable(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {
+	const String problem = resolve_variable(p_step, p_variables);
+	return problem.is_empty() ? resolve_set_operator(p_step) : problem;
+}
+
+String resolve_set_local(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {
+	const String problem = resolve_local(p_step, p_variables);
+	return problem.is_empty() ? resolve_set_operator(p_step) : problem;
 }
 
 String resolve_operator(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {
