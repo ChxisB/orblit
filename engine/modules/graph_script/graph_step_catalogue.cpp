@@ -39,6 +39,36 @@ constexpr BuiltinLabel BUILTIN_LABELS[] = {
 	{ "Dictionary", "has", "Dictionary has key" },
 };
 
+struct OperatorLabel {
+	Variant::Operator op;
+	const char *label;
+};
+
+// A label holds its symbol, so typing "*" finds Multiply.
+constexpr OperatorLabel OPERATOR_LABELS[] = {
+	{ Variant::OP_EQUAL, "Equal ==" },
+	{ Variant::OP_NOT_EQUAL, "Not equal !=" },
+	{ Variant::OP_LESS, "Less <" },
+	{ Variant::OP_LESS_EQUAL, "Less or equal <=" },
+	{ Variant::OP_GREATER, "Greater >" },
+	{ Variant::OP_GREATER_EQUAL, "Greater or equal >=" },
+	{ Variant::OP_ADD, "Add +" },
+	{ Variant::OP_SUBTRACT, "Subtract -" },
+	{ Variant::OP_MULTIPLY, "Multiply *" },
+	{ Variant::OP_DIVIDE, "Divide /" },
+	{ Variant::OP_MODULE, "Remainder %" },
+	{ Variant::OP_POWER, "Power **" },
+	{ Variant::OP_SHIFT_LEFT, "Shift left <<" },
+	{ Variant::OP_SHIFT_RIGHT, "Shift right >>" },
+	{ Variant::OP_BIT_AND, "Bit and &" },
+	{ Variant::OP_BIT_OR, "Bit or |" },
+	{ Variant::OP_BIT_XOR, "Bit xor ^" },
+	{ Variant::OP_AND, "And" },
+	{ Variant::OP_OR, "Or" },
+	{ Variant::OP_XOR, "Xor" },
+	{ Variant::OP_IN, "Is in" },
+};
+
 // "count_loop" reads "Count loop".
 String title(const String &p_text) {
 	const String spaced = p_text.replace("_", " ");
@@ -294,6 +324,20 @@ Vector<GraphTyped> override_arguments(const MethodInfo &p_info) {
 	return arguments;
 }
 
+// An Operator step with no symbol does not compile, so the kind is offered once per symbol.
+Vector<GraphStepEntry> kind_entries(const GraphStepKind &p_kind) {
+	if (p_kind.name != StringName("operator")) {
+		return { { p_kind.name, p_kind.category, title(p_kind.name), Dictionary() } };
+	}
+	Vector<GraphStepEntry> entries;
+	for (const OperatorLabel &row : OPERATOR_LABELS) {
+		Dictionary parameters;
+		parameters["operator"] = Variant::get_operator_name(row.op);
+		entries.push_back({ p_kind.name, p_kind.category, row.label, parameters });
+	}
+	return entries;
+}
+
 Vector<GraphStepEntry> table_entries(const Matcher &p_matcher) {
 	Vector<GraphStepEntry> found;
 	for (int i = 0; i < GraphStepKinds::get_kind_count(); i++) {
@@ -303,9 +347,10 @@ Vector<GraphStepEntry> table_entries(const Matcher &p_matcher) {
 		if (kind.is_start() || !GraphStepKinds::get_ports_problem(kind, Dictionary()).is_empty()) {
 			continue;
 		}
-		const GraphStepEntry entry = { kind.name, kind.category, title(kind.name), Dictionary() };
-		if (p_matcher.get_rank(entry.group, entry.label) >= 0 && p_matcher.fits(entry)) {
-			found.push_back(entry);
+		for (const GraphStepEntry &entry : kind_entries(kind)) {
+			if (p_matcher.get_rank(entry.group, entry.label) >= 0 && p_matcher.fits(entry)) {
+				found.push_back(entry);
+			}
 		}
 	}
 	return found;
