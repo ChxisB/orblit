@@ -32,6 +32,9 @@ internal static class EditorViews
         ("Graph open", (window, _) => OpenGraph(window)),
         ("Game", (window, _) => Tab(window, "Game")),
         ("Game running", RunGame),
+        ("Script open, list folded", (window, _) => Then(window, OpenScript, w => FoldColumns(w.Script.Columns))),
+        ("Graph open, columns folded", (window, _) => Then(window, OpenGraph, w => FoldColumns(w.Graph.Columns))),
+        ("Game, columns folded", (window, _) => Then(window, w => Tab(w, "Game"), w => FoldColumns(w.Game.Columns))),
         ("Output", (window, _) => BarOf(window).Open(0)),
         ("Debugger", (window, _) => BarOf(window).Open(1)),
         ("2D, middle narrow", Narrow((window, _) => Tab(window, "2D"))),
@@ -188,6 +191,14 @@ internal static class EditorViews
     static void Pick(EditorWindow window, string path) => window.Scenes.Tree.SelectedItem = FileNodes(window).Single(node => node.Path == path);
 
     static void Tab(EditorWindow window, string workspace) => ClickOn(window.Bar.Tabs.Single(tab => tab.Label == workspace), window);
+
+    static void FoldColumns(IEnumerable<FoldingColumn> columns)
+    {
+        foreach (var column in columns)
+        {
+            Click(column.CollapseButton);
+        }
+    }
 
     static BottomBar BarOf(EditorWindow window) => (BottomBar)window.Center.BottomBar.Child!;
 

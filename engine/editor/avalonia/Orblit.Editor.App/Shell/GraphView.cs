@@ -147,9 +147,15 @@ internal sealed class GraphView : Border
                 ShowList();
             }
         };
-        Child = Layout();
+        var graphs = new FoldingColumn("Graphs", "GraphFile", Dock.Left, GraphList);
+        var step = new FoldingColumn("Step", "NodeInfo", Dock.Right, StepColumn);
+        Columns = [graphs, step];
+        Child = Layout(graphs, step);
         ShowState();
     }
+
+    /// <summary>The columns that fold to a rail: the graph list and the step.</summary>
+    internal IReadOnlyList<FoldingColumn> Columns { get; }
 
     internal ListBox List => _list;
 
@@ -290,16 +296,20 @@ internal sealed class GraphView : Border
         return control;
     }
 
-    Grid Layout()
+    Border GraphList(Button collapse)
     {
         var list = new DockPanel();
-        foreach (var top in new Control[] { Parts.Bar(_fileButton, _gotoButton, _helpButton, Parts.Right(_findButton)), _filter, new ScrollViewer { MaxHeight = 220, Content = _list } })
+        foreach (var top in new Control[] { Parts.Bar(_fileButton, _gotoButton, _helpButton, Parts.Right(collapse), Parts.Right(_findButton)), _filter, new ScrollViewer { MaxHeight = 220, Content = _list } })
         {
             DockPanel.SetDock(top, Dock.Top);
             list.Children.Add(top);
         }
         list.Children.Add(_panelsSlot);
+        return Island(list, 0);
+    }
 
+    Grid Layout(FoldingColumn graphs, FoldingColumn step)
+    {
         var canvas = new DockPanel();
         // The save button and the status are measured first, so the tabs get what is left.
         var open = new DockPanel { Children = { Parts.Right(_extends), _tabs } };
@@ -311,20 +321,6 @@ internal sealed class GraphView : Border
         middle.Children.Add(Island(canvas, 0));
         middle.Children.Add(Place(new Border { Classes = { EditorTheme.Island }, Child = _debugHost }, 0, 2));
 
-        var tab = new Border
-        {
-            Height = 26,
-            Padding = new Thickness(Gaps.Item, 0),
-            CornerRadius = EditorTheme.Corners,
-            Background = EditorBrushes.Line,
-            Child = new TextBlock { Text = "Step", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
-        };
-        var inspector = new DockPanel();
-        var inspectorBar = Parts.Bar(tab, Parts.Right(_breakpointButton), Parts.Right(_bookmarkButton));
-        DockPanel.SetDock(inspectorBar, Dock.Top);
-        inspector.Children.Add(inspectorBar);
-        inspector.Children.Add(new Grid { Children = { _noStep, _inspectorSlot } });
-
         return new Grid
         {
             ColumnDefinitions =
@@ -335,8 +331,26 @@ internal sealed class GraphView : Border
                 new(Gaps.Item, GridUnitType.Pixel),
                 new(292, GridUnitType.Star) { MinWidth = 170, MaxWidth = 292 },
             ],
-            Children = { Island(list, 0), Place(middle, 2), Island(inspector, 4) },
+            Children = { Place(graphs, 0), Place(middle, 2), Place(step, 4) },
         };
+    }
+
+    Border StepColumn(Button collapse)
+    {
+        var tab = new Border
+        {
+            Height = 26,
+            Padding = new Thickness(Gaps.Item, 0),
+            CornerRadius = EditorTheme.Corners,
+            Background = EditorBrushes.Line,
+            Child = new TextBlock { Text = "Step", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
+        };
+        var inspector = new DockPanel();
+        var inspectorBar = Parts.Bar(tab, Parts.Right(collapse), Parts.Right(_breakpointButton), Parts.Right(_bookmarkButton));
+        DockPanel.SetDock(inspectorBar, Dock.Top);
+        inspector.Children.Add(inspectorBar);
+        inspector.Children.Add(new Grid { Children = { _noStep, _inspectorSlot } });
+        return Island(inspector, 0);
     }
 
     // The project keeps the breakpoints, so a person's stops are still there when the editor opens again. A file that

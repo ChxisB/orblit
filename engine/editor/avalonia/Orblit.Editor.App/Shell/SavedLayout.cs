@@ -10,7 +10,7 @@ internal readonly record struct FloatSpot(PixelPoint At, Size Size);
 internal sealed record SavedGroup(DockSlot Slot, IReadOnlyList<string> Titles, FloatSpot? Window = null);
 
 /// <summary>
-/// The layout of the panels as the settings file keeps it. Reading drops what it does not know and places what it
+/// The layout of the panels and columns as the settings file keeps it. Reading drops what it does not know and places what it
 /// does not find, so every panel ends up exactly once.
 /// </summary>
 internal sealed record SavedLayout
@@ -28,6 +28,9 @@ internal sealed record SavedLayout
     public IReadOnlyList<DockSlot> Collapsed { get; init; } = [];
 
     public bool Locked { get; init; }
+
+    /// <summary>The titles of the workspaces' columns that are folded to a rail.</summary>
+    public IReadOnlyList<string> Folded { get; init; } = [];
 
     public double? LeftWidth { get; init; }
 
@@ -58,6 +61,7 @@ internal sealed record SavedLayout
             Hidden = Names("hidden"),
             Collapsed = [.. Enum.GetValues<DockSlot>().Where(slot => (section.GetValueOrDefault("collapsed") ?? "").Split(',').Contains(slot.ToString()))],
             Locked = section.GetValueOrDefault("locked") == "true",
+            Folded = [.. (section.GetValueOrDefault("folded") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct()],
             LeftWidth = Number(section, "left_width", (220, 4000)),
             RightWidth = Number(section, "right_width", (260, 4000)),
             LeftSplit = Number(section, "left_split", (0.1, 0.9)),
@@ -83,6 +87,7 @@ internal sealed record SavedLayout
         yield return new("hidden", string.Join(',', Hidden));
         yield return new("collapsed", string.Join(',', Collapsed));
         yield return new("locked", Locked ? "true" : "false");
+        yield return new("folded", string.Join(',', Folded));
         (string Key, double? Value)[] numbers = [("left_width", LeftWidth), ("right_width", RightWidth), ("left_split", LeftSplit), ("right_split", RightSplit)];
         foreach (var (key, value) in numbers.Where(number => number.Value is not null))
         {

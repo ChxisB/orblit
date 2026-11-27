@@ -701,12 +701,23 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         if (SavedLayout.Read(settings.Section(LayoutSection), _docks.Panels) is { } saved)
         {
             _docks.Apply(saved);
+            foreach (var column in Columns)
+            {
+                column.Folded = saved.Folded.Contains(column.Title);
+            }
         }
 
         _layoutFile = settings;
         _docks.Changed += SaveLayoutSoon;
+        foreach (var column in Columns)
+        {
+            column.Changed += SaveLayoutSoon;
+        }
+
         Opened += (_, _) => _docks.ShowFloats();
     }
+
+    IEnumerable<FoldingColumn> Columns => [.. _script.Columns, .. _graph.Columns, .. _game.Columns];
 
     // The save waits until the change is whole, as a move raises more than one on its way.
     void SaveLayoutSoon()
@@ -730,7 +741,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     {
         try
         {
-            _layoutFile?.SetSection(LayoutSection, _docks.Capture().Values());
+            _layoutFile?.SetSection(LayoutSection, (_docks.Capture() with { Folded = [.. Columns.Where(column => column.Folded).Select(column => column.Title)] }).Values());
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {

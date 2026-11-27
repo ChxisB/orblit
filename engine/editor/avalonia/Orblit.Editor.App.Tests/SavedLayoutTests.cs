@@ -57,6 +57,7 @@ public sealed class SavedLayoutTests : IDisposable
             ["hidden"] = "Files",
             ["collapsed"] = "LowerLeft",
             ["locked"] = "true",
+            ["folded"] = "Scripts,Step",
             ["left_width"] = "300",
             ["right_width"] = "420",
             ["left_split"] = "0.3",

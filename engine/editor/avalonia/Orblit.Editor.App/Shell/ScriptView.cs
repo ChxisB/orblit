@@ -198,12 +198,16 @@ internal sealed class ScriptView : Border
         _problems.Click += async (_, _) => await ListOrCheck();
         // The count shows once a check has run.
         _problems.IsVisible = false;
-        var lists = Lists();
+        var lists = new FoldingColumn("Scripts", "CodeFile", Dock.Left, Lists);
+        Columns = [lists];
         var editor = EditorIsland();
         Grid.SetColumn(editor, 2);
         Child = new Grid { ColumnDefinitions = new ColumnDefinitions($"{ListWidth},6,*"), Children = { lists, editor } };
         ShowCaret();
     }
+
+    /// <summary>The columns that fold to a rail: the script list.</summary>
+    internal IReadOnlyList<FoldingColumn> Columns { get; }
 
     internal ListBox List => _list;
 
@@ -467,7 +471,7 @@ internal sealed class ScriptView : Border
         return new DockPanel { Children = { detail, icon, name } };
     }
 
-    Border Lists()
+    Border Lists(Button collapse)
     {
         var tab = new Border
         {
@@ -488,7 +492,7 @@ internal sealed class ScriptView : Border
             Child = new TextBlock { Text = "In this script", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim },
         };
         var grid = new Grid { RowDefinitions = new RowDefinitions($"{DockTabs.StripHeight},Auto,*,Auto,*") };
-        Place(grid, Bar(tab, tools), 0);
+        Place(grid, Bar(tab, Row(tools, collapse)), 0);
         Place(grid, _filter, 1);
         Place(grid, _list, 2);
         Place(grid, heading, 3);
