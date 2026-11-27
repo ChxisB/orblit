@@ -15,6 +15,7 @@ constexpr const char *UNUSED_LOCAL = "unused_local";
 constexpr const char *UNREACHABLE_STEP = "unreachable_step";
 constexpr const char *SHADOWED_NAME = "shadowed_name";
 constexpr const char *SHADOWED_MEMBER = "shadowed_member";
+constexpr const char *UNWAITED_CALL = "unwaited_call";
 
 // A name that starts with an underscore says it is meant to go unused.
 bool is_quiet(const StringName &p_name) {
@@ -131,6 +132,58 @@ void find_shadowed_members(const GraphScript &p_script, Vector<GraphWarning> &r_
 	}
 }
 
+// A Call function step with no target runs a function of the owner, which is this script's.
+// Any other step gives an empty name.
+StringName get_own_callee(const GraphCompiledStep &p_step) {
+	if (StringName(p_step.kind->name) != SNAME("call_function") || p_step.inputs[p_step.operation - 1].step >= 0) {
+		return StringName();
+	}
+	return StringName(String(p_step.parameters.get("function", String())));
+}
+
+bool is_waited(const GraphCompiledStep &p_step) {
+	return p_step.parameters.get("wait", false);
+}
+
+bool may_wait(const GraphCompiledFunction &p_function, const HashSet<StringName> &p_waiting) {
+	for (const GraphCompiledStep &step : p_function.steps) {
+		if (step.kind->waits || (is_waited(step) && p_waiting.has(get_own_callee(step)))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// A function may wait through a step of its own or through a call it waits on, so each pass
+// adds the callers of the functions found so far.
+HashSet<StringName> find_waiting_functions(const GraphScript &p_script) {
+	HashSet<StringName> waiting;
+	bool grew = true;
+	while (grew) {
+		grew = false;
+		for (const GraphCompiledFunction &function : p_script.get_compiled_functions()) {
+			if (function.error.is_empty() && !waiting.has(function.name) && may_wait(function, waiting)) {
+				waiting.insert(function.name);
+				grew = true;
+			}
+		}
+	}
+	return waiting;
+}
+
+// A call that does not wait runs the steps after it before the function it called has ended.
+void find_unwaited_calls(const GraphCompiledFunction &p_function, const HashSet<StringName> &p_waiting, Vector<GraphWarning> &r_found) {
+	if (is_ignored(p_function, UNWAITED_CALL)) {
+		return;
+	}
+	for (const GraphCompiledStep &step : p_function.steps) {
+		const StringName callee = get_own_callee(step);
+		if (!is_waited(step) && p_waiting.has(callee)) {
+			r_found.push_back({ UNWAITED_CALL, p_function.name, step.id, callee, vformat("Step %d of '%s' runs on before '%s' ends. Set its wait to true to carry on after it.", step.id, p_function.name, callee) });
+		}
+	}
+}
+
 void find_unused_variables(const GraphScript &p_script, const HashSet<StringName> &p_used, Vector<GraphWarning> &r_found) {
 	for (const GraphVariable &variable : p_script.get_declared_variables()) {
 		// An exported variable is read by the inspector and the scene file.
@@ -150,6 +203,7 @@ Vector<GraphWarning> GraphWarnings::find(const GraphScript &p_script) {
 	HashSet<StringName> used_variables;
 	bool variables_ignored = false;
 	bool members_ignored = false;
+	const HashSet<StringName> waiting = find_waiting_functions(p_script);
 	for (const GraphCompiledFunction &function : p_script.get_compiled_functions()) {
 		const GraphFunction *source = p_script.get_function(function.name);
 		ERR_CONTINUE(!source);
@@ -161,6 +215,7 @@ Vector<GraphWarning> GraphWarnings::find(const GraphScript &p_script) {
 			find_unused_locals(function, *source, found);
 			find_unreachable_steps(function, found);
 			find_shadowed_names(p_script, function, found);
+			find_unwaited_calls(function, waiting, found);
 		}
 	}
 	if (!variables_ignored) {
