@@ -121,7 +121,7 @@
 			<return type="Array" />
 			<description>
 				Returns an array of dictionaries, one per warning. A warning does not stop a function from running. Each dictionary has these keys: [code]kind[/code], [code]function[/code], [code]step[/code], [code]name[/code] and [code]text[/code].
-			[code]kind[/code] is [code]"unused_variable"[/code], [code]"unused_local"[/code], [code]"unreachable_step"[/code] or [code]"shadowed_name"[/code]. [code]function[/code] is empty and [code]step[/code] is [code]-1[/code] when the warning does not belong to one function or step. A name that starts with an underscore is never reported as unused.
+			[code]kind[/code] is [code]"unused_variable"[/code], [code]"unused_local"[/code], [code]"unreachable_step"[/code], [code]"shadowed_name"[/code] or [code]"shadowed_member"[/code]. A [code]"shadowed_member"[/code] warning is for a variable, signal or function named like a member of the base type. [code]function[/code] is empty and [code]step[/code] is [code]-1[/code] when the warning does not belong to one function or step. A name that starts with an underscore is never reported as unused.
 			</description>
 		</method>
 		<method name="move_step">

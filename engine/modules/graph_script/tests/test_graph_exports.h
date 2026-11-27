@@ -339,6 +339,32 @@ TEST_CASE("[GraphScript] An argument or local named like a variable is reported,
 	CHECK_FALSE(has_warning(graph.script->get_warnings(), "shadowed_name", "speed"));
 }
 
+TEST_CASE("[GraphScript] A member named like one of the base class is reported, unless it overrides a virtual") {
+	Graph graph("get_parent");
+	graph.script->set_base_type("Entity");
+	graph.add(1, "entry");
+	Graph frame(graph.script, "_frame");
+	frame.add(1, "entry");
+	graph.variable("name", Variant::STRING_NAME);
+	CHECK(graph.script->add_signal("started") == OK);
+
+	const Array warnings = graph.script->get_warnings();
+	CHECK(has_warning(warnings, "shadowed_member", "name"));
+	CHECK(has_warning(warnings, "shadowed_member", "started"));
+	CHECK(has_warning(warnings, "shadowed_member", "get_parent"));
+	CHECK_FALSE(has_warning(warnings, "shadowed_member", "_frame"));
+
+	graph.set(1, "ignored_warnings", "[\"shadowed_member\"]");
+	CHECK_FALSE(has_warning(graph.script->get_warnings(), "shadowed_member", "name"));
+}
+
+TEST_CASE("[GraphScript] A member of a script with no base type is checked against Object") {
+	Graph graph("get_class");
+	graph.add(1, "entry");
+
+	CHECK(has_warning(graph.script->get_warnings(), "shadowed_member", "get_class"));
+}
+
 TEST_CASE("[GraphScript] A function that does not compile gives no warnings of its own") {
 	Graph graph("main");
 	graph.add(1, "entry");
