@@ -87,7 +87,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
         _search.InnerRightContent = new Border { Margin = new Thickness(0, 0, Gaps.Item, 0), Child = Parts.Kbd(Parts.KeyText(new KeyGesture(Key.F, CommandKey))) };
         _sorts = [.. s_sorts.Select((sort, at) => Parts.ActionItem(sort.Name, () => SortBy(at), note: sort.Note))];
         _sort = SortMenu(_sortWord, _sorts);
-        Title = "Orblit";
+        Title = "Orblit Engine";
         Icon = EditorIcon.ToWindowIcon("Orblit", 64);
         Width = 1120;
         Height = 740;

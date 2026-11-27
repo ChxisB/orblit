@@ -378,7 +378,7 @@ cpp.hint
 # macOS
 .DS_Store
 __MACOSX
-Orblit.app
+Orblit Engine.app
 
 # Windows
 # https://github.com/github/gitignore/blob/main/Global/Windows.gitignore

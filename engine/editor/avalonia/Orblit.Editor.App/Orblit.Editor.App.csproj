@@ -8,6 +8,18 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
+  <!-- macOS names a program with no bundle after its file in the Dock. So a build copies the launcher under the
+       editor's name, and dotnet run starts that copy. A publish has a runtime and goes into a named bundle. -->
+  <Target Name="NameLauncher" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX')) and '$(RuntimeIdentifier)' == ''">
+    <Copy SourceFiles="$(OutDir)$(AssemblyName)" DestinationFiles="$(OutDir)Orblit Engine" />
+  </Target>
+
+  <Target Name="RunNamedLauncher" AfterTargets="ComputeRunArguments" Condition="$([MSBuild]::IsOSPlatform('OSX')) and '$(RuntimeIdentifier)' == ''">
+    <PropertyGroup>
+      <RunCommand>$(TargetDir)Orblit Engine</RunCommand>
+    </PropertyGroup>
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />

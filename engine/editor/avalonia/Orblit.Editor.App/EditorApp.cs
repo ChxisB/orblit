@@ -18,7 +18,12 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
 {
     EditorEngine? _engine;
 
-    public override void Initialize() => EditorTheme.Apply(this);
+    // macOS titles the app menu with Name, and says Avalonia Application when there is none.
+    public override void Initialize()
+    {
+        Name = "Orblit Engine";
+        EditorTheme.Apply(this);
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -37,7 +42,7 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
     // About Avalonia item the system menu shows when the app sets none.
     void ShowAppMenu(IClassicDesktopStyleApplicationLifetime desktop) => NativeMenu.SetMenu(this, EditorMenu.AppMenu(new Dictionary<string, MenuAction>
     {
-        ["About Orblit"] = new(() => (desktop.MainWindow as IAppMenuTarget)?.CopyVersion()),
+        ["About Orblit Engine"] = new(() => (desktop.MainWindow as IAppMenuTarget)?.CopyVersion()),
         ["Editor Settings…"] = new(() => (desktop.MainWindow as IAppMenuTarget)?.OpenSettings()),
     }));
 

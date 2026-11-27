@@ -172,7 +172,7 @@ starts. One process holds one engine.
 
 A release zip holds the published app, named `Orblit`, beside the engine
 library, the engine program and `OrblitSharp`. The app finds the library in
-its own folder. On macOS that folder is `Orblit.app/Contents/MacOS`, and
+its own folder. On macOS that folder is `Orblit Engine.app/Contents/MacOS`, and
 `OrblitSharp` stays in `Contents/Resources`, where the engine looks next.
 `.github/workflows/release.yml` builds it.
 

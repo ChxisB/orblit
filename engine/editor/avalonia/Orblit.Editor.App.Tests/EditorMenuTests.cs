@@ -14,7 +14,7 @@ public sealed class EditorMenuTests
     // The built items of each menu. A submenu's items are indented and "-" is a separator.
     static readonly Dictionary<string, string[]> Items = new()
     {
-        ["Orblit"] = ["About Orblit", "-", "Settings…", "-", "Quit Orblit"],
+        ["Orblit"] = ["About Orblit Engine", "-", "Settings…", "-", "Quit Orblit Engine"],
         ["File"] =
         [
             "New scene…", "Find a scene…", "Open recent", "  Scenes you open show here",
@@ -119,9 +119,9 @@ public sealed class EditorMenuTests
 
             Assert.Equal(
                 [
-                    $"About Orblit: Version {BottomBar.Version}. Click to copy it for a bug report",
+                    $"About Orblit Engine: Version {BottomBar.Version}. Click to copy it for a bug report",
                     "Settings…: Where new projects go, and every key",
-                    "Quit Orblit: Asks first if anything is unsaved",
+                    "Quit Orblit Engine: Asks first if anything is unsaved",
                     "New scene…: Pick what it is for and where it goes",
                     "Find a scene…: Type part of a name to open it",
                     "Open recent: ",
@@ -213,7 +213,7 @@ public sealed class EditorMenuTests
             Assert.Equal(
                 [
                     "Settings…=⌘,",
-                    "Quit Orblit=⌘Q",
+                    "Quit Orblit Engine=⌘Q",
                     "New scene…=⌘N",
                     "Find a scene…=⇧⌘O",
                     "Save=⌘S",
@@ -250,7 +250,7 @@ public sealed class EditorMenuTests
         {
             var keys = EditorMenu.Keys(global: true, KeyModifiers.Meta).ToList();
 
-            Assert.Equal([("Orblit", "Settings…", "⌘,"), ("Orblit", "Quit Orblit", "⌘Q"), ("File", "New scene…", "⌘N")], keys[..3]);
+            Assert.Equal([("Orblit", "Settings…", "⌘,"), ("Orblit", "Quit Orblit Engine", "⌘Q"), ("File", "New scene…", "⌘N")], keys[..3]);
             Assert.Contains(("Play", "Play the game", "⌘B"), keys);
             Assert.DoesNotContain(keys, key => key.Name == "All keys");
             Assert.Contains(("Help", "All keys", "?"), EditorMenu.Keys(global: false, KeyModifiers.Meta));
@@ -536,7 +536,7 @@ public sealed class EditorMenuTests
             var window = new EditorWindow(globalMenu: false);
             window.Show();
 
-            Press(Find(NativeMenu.GetMenu(window)!, "About Orblit"));
+            Press(Find(NativeMenu.GetMenu(window)!, "About Orblit Engine"));
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal(BottomBar.Version, await window.Clipboard!.TryGetTextAsync());
@@ -551,14 +551,14 @@ public sealed class EditorMenuTests
             var asked = new List<string>();
             var menu = EditorMenu.AppMenu(new Dictionary<string, MenuAction>
             {
-                ["About Orblit"] = new(() => asked.Add("About")),
+                ["About Orblit Engine"] = new(() => asked.Add("About")),
                 ["Editor Settings…"] = new(() => asked.Add("Settings")),
             });
             var settings = Find(menu, "Settings…");
 
-            Assert.Equal(["About Orblit", "-", "Settings…"], Lines(menu, ""));
+            Assert.Equal(["About Orblit Engine", "-", "Settings…"], Lines(menu, ""));
             Assert.Equal(("⌘,", "Where new projects go, and every key", "Editor Settings…"), (Parts.KeyText(settings.Gesture!), EditorMenu.NoteOf(settings), EditorMenu.EngineOf(settings)));
-            Press(Find(menu, "About Orblit"));
+            Press(Find(menu, "About Orblit Engine"));
             Press(settings);
             Assert.Equal(["About", "Settings"], asked);
         });
@@ -601,7 +601,7 @@ public sealed class EditorMenuTests
             var closed = false;
             window.Closed += (_, _) => closed = true;
 
-            Press(Find(NativeMenu.GetMenu(window)!, "Quit Orblit"));
+            Press(Find(NativeMenu.GetMenu(window)!, "Quit Orblit Engine"));
 
             Assert.True(closed);
         });

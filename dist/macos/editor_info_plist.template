@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>Orblit</string>
 	<key>CFBundleName</key>
-	<string>Orblit</string>
+	<string>Orblit Engine</string>
 	<key>CFBundleIconFile</key>
 	<string>OrblitLG.icns</string>
 	<key>CFBundleIconName</key>

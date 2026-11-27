@@ -199,11 +199,11 @@ internal static class EditorMenu
         new("Help", Items: Help(global)),
     ];
 
-    static Entry[] Orblit() => [.. AppItems(), Separator, new("Quit Orblit", Key.Q, Cmd) { Note = "Asks first if anything is unsaved" }];
+    static Entry[] Orblit() => [.. AppItems(), Separator, new("Quit Orblit Engine", Key.Q, Cmd) { Note = "Asks first if anything is unsaved" }];
 
     static Entry[] AppItems() =>
     [
-        new("About Orblit") { Note = $"Version {BottomBar.Version}. Click to copy it for a bug report" },
+        new("About Orblit Engine") { Note = $"Version {BottomBar.Version}. Click to copy it for a bug report" },
         Separator,
         new("Settings…", Key.OemComma, Cmd) { Note = "Where new projects go, and every key", Engine = "Editor Settings…" },
     ];

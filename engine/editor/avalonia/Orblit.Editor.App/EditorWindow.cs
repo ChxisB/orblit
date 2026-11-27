@@ -828,9 +828,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
 
         var actions = new Dictionary<string, MenuAction>
         {
-            ["About Orblit"] = new(CopyVersion),
+            ["About Orblit Engine"] = new(CopyVersion),
             ["Editor Settings…"] = Pressing(_settingsButton),
-            ["Quit Orblit"] = new(Close),
+            ["Quit Orblit Engine"] = new(Close),
             ["New scene…"] = new(() => OpenNewScene(FileTree.Root)),
             ["Quick Open Scene…"] = new(() => OpenSearch(SearchScope.Scenes)),
             ["Save"] = Pressing(_save),
@@ -859,7 +859,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
 
         // The menu bar stays in reach above a dialog's veil, so its items wait for the dialog as the keys do. Quit
         // still closes, as the window's close button does.
-        foreach (var (name, action) in actions.Where(pair => pair.Key != "Quit Orblit").ToList())
+        foreach (var (name, action) in actions.Where(pair => pair.Key != "Quit Orblit Engine").ToList())
         {
             actions[name] = action with { Run = () => RunUnveiled(action.Run) };
         }
