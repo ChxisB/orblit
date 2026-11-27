@@ -67,7 +67,9 @@ has started it.
   line shows C# build problems, and Roslyn's errors after a pause in typing.
 - 2D has Rotate, Scale, Pan, Snap and a grid. The 3D viewport has a
   ruler, Select from a list and the preview lights.
-- A dock floats in its own window from the dock menu.
+- A panel moves by its tab. The dock menu places it, or floats it in its own
+  window. Lock layout stops moves. The layout is saved in
+  `editor_settings.cfg`.
 - Project > Export exports the game with one of its presets, once export
   templates are installed. Download Templates takes them from the first
   https mirror in the release's list on orblitengine.com, or they install
@@ -95,8 +97,6 @@ says why on hover.
   hard to hit away from its pivot.
 - Picking several entities in the viewport. Move, Remove and Duplicate act
   on the selected entity alone, and only it is outlined.
-- Saved layouts. Docking changes, moves and floated docks are kept in memory
-  only.
 - The Audio, Animation and Shader Editor bottom panels.
 - Save as, Save all, Reopen closed scene and Find in files.
 - New C# script, New folder, Rename, Duplicate, Move to and Delete in the
