@@ -224,6 +224,25 @@ TEST_CASE("[Stage][GraphScript] A payload declares a signal and a function the t
 	CHECK(target.script->get_function("helper") != nullptr);
 }
 
+TEST_CASE("[GraphScript] A payload declares the functions a connect joins to, but not a native method") {
+	Graph source("main");
+	CHECK(source.script->add_function("react") == OK);
+	source.add(1, "connect");
+	source.set(1, "signal", "\"ready\"");
+	source.set(1, "method", "\"react\"");
+	source.add(2, "connect");
+	source.set(2, "signal", "\"ready\"");
+	source.set(2, "method", "\"get_class\"");
+	const String payload = source.script->get_payload("main", "[1, 2]");
+	Graph target("go");
+
+	CHECK(int(pasted(target.script, "go", payload)["error"]) == OK);
+
+	CHECK(target.script->get_function("react") != nullptr);
+	// An empty function of that name would hide the native method for every caller.
+	CHECK(target.script->get_function("get_class") == nullptr);
+}
+
 TEST_CASE("[Stage][GraphScript] A return does not paste into a function that has no entry") {
 	Graph source("main");
 	source.add(1, "entry");

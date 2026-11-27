@@ -925,7 +925,10 @@ String GraphScript::get_payload(const String &p_function, const String &p_ids_te
 	}
 	Array used_functions;
 	for (const StringName &function_name : referenced(copy, FUNCTION_REFERENCES)) {
-		used_functions.push_back(String(function_name));
+		// A connect may join to a native method, and an empty function of that name would hide it.
+		if (get_function(function_name)) {
+			used_functions.push_back(String(function_name));
+		}
 	}
 	Dictionary payload;
 	payload["steps"] = copy.to_dictionary();
