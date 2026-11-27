@@ -40,7 +40,13 @@ internal sealed record GraphDrop(GraphDropKind Kind, string Value)
     {
         var (step, parameter) = s_steps[Kind];
         // A string parameter is Variant text, so the value is quoted.
-        return new GraphStepEntry(step, "", Value, new Dictionary<string, string> { [parameter] = Quote(Value) });
+        var parameters = new Dictionary<string, string> { [parameter] = Quote(Value) };
+        // The inspector shows only the parameters a step holds, so a call holds wait to give it a row.
+        if (Kind == GraphDropKind.Function)
+        {
+            parameters["wait"] = "false";
+        }
+        return new GraphStepEntry(step, "", Value, parameters);
     }
 
     public string ToText() => $"{Kind}:{Value}";

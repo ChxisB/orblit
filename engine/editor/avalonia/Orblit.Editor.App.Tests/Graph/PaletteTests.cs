@@ -463,7 +463,6 @@ public sealed class PaletteTests
     [InlineData("Entity", "Player/Arm", "entity_at_path", "path", "\"Player/Arm\"")]
     [InlineData("Variable", "speed", "get", "name", "\"speed\"")]
     [InlineData("Local", "i", "local", "name", "\"i\"")]
-    [InlineData("Function", "main", "call_function", "function", "\"main\"")]
     [InlineData("Signal", "hit", "emit", "signal", "\"hit\"")]
     public void A_drop_becomes_the_step_that_reads_it(string kind, string value, string step, string parameter, string text)
     {
@@ -474,6 +473,19 @@ public sealed class PaletteTests
             canvas.Edits.AddStep(new GraphDrop(Enum.Parse<GraphDropKind>(kind), value).ToEntry(), new Point(10, 20), null);
 
             Assert.Equal([$"AddStep 4 {step}", $"SetStepParameter 4 {parameter} {text}", "MoveStep 4 10 20"], source.Calls);
+        });
+    }
+
+    [Fact]
+    public void A_dropped_function_becomes_a_call_that_holds_its_wait_setting()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, canvas) = Open();
+
+            canvas.Edits.AddStep(new GraphDrop(GraphDropKind.Function, "main").ToEntry(), new Point(10, 20), null);
+
+            Assert.Equal(["AddStep 4 call_function", "SetStepParameter 4 function \"main\"", "SetStepParameter 4 wait false", "MoveStep 4 10 20"], source.Calls);
         });
     }
 
