@@ -22,7 +22,7 @@ internal static class EditorViews
         ("3D, sides narrow", (window, _) => Then(window, Select, w => Sides(w, wide: false))),
         ("3D, sides wide", (window, _) => Then(window, Select, w => Sides(w, wide: true))),
         ("3D, sides folded", (window, _) => Fold(window)),
-        ("3D, one panel collapsed", (window, _) => Then(window, Select, w => Click(w.SceneDock.CollapseButton))),
+        ("3D, one panel collapsed", (window, _) => Then(window, Select, w => Click(w.Docks.CollapseButtonOf(w.SceneDock)))),
         ("3D, a panel on each rail", (window, _) => Then(window, Select, CollapseOneEachSide)),
         ("3D, a panel moved under the Inspector", (window, _) => Then(window, Select, w => w.SceneDock.MoveItems[(int)DockSlot.LowerRight].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)))),
         ("2D", (window, _) => Tab(window, "2D")),
@@ -269,14 +269,14 @@ internal static class EditorViews
     {
         foreach (var group in new[] { window.SceneDock, window.FileDock, window.InspectorDock })
         {
-            Click(group.CollapseButton);
+            Click(window.Docks.CollapseButtonOf(group));
         }
     }
 
     static void CollapseOneEachSide(EditorWindow window)
     {
-        Click(window.SceneDock.CollapseButton);
-        Click(window.InspectorDock.CollapseButton);
+        Click(window.Docks.CollapseButtonOf(window.SceneDock));
+        Click(window.Docks.CollapseButtonOf(window.InspectorDock));
     }
 
     static Button ConnectButton(EditorWindow window) =>

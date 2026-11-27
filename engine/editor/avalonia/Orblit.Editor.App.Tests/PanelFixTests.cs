@@ -105,7 +105,7 @@ public sealed class PanelFixTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            Click(window.SceneDock.CollapseButton);
+            Click(window.Docks.CollapseButtonOf(window.SceneDock));
 
             window.Docks.ToggleTab("Scene");
             Settle(window);

@@ -33,6 +33,8 @@ internal static partial class EditorIcons
         s_icons["Bin"] = Line("M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13");
         s_icons["StepArrow"] = Line("M5 12h14M13 6l6 6-6 6");
         s_icons["Sliders"] = Line("M4 7h9M17 7h3M15 5v4M4 17h3M11 17h9M9 15v4");
+        // The handle that folds a panel draws the same two chevrons as a script file.
+        s_icons["Chevrons"] = s_icons["CodeFile"];
     }
 
     static IconDrawing Line(string path) =>

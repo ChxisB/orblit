@@ -207,7 +207,7 @@ public sealed class PanelDragTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            Click(window.FileDock.CollapseButton);
+            Click(window.Docks.CollapseButtonOf(window.FileDock));
             window.UpdateLayout();
 
             Drag("Signals", Middle(window.LeftSide.RailButtons.Single(), window), window);

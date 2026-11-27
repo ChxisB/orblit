@@ -1,4 +1,8 @@
+using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
@@ -14,7 +18,7 @@ public sealed class PanelCollapseTests
 
     static void Collapse(DockTabs group, EditorWindow window)
     {
-        Click(group.CollapseButton);
+        Click(window.Docks.CollapseButtonOf(group));
         window.UpdateLayout();
     }
 
@@ -78,16 +82,60 @@ public sealed class PanelCollapseTests
     }
 
     [Fact]
-    public void The_collapse_button_points_at_its_edge_and_says_what_it_does()
+    public void Every_panel_has_the_same_handle_half_over_its_inner_edge()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal("Back", Assert.IsType<EditorIcon>(window.SceneDock.CollapseButton.Content).IconName);
-            Assert.Equal("Forward", Assert.IsType<EditorIcon>(window.InspectorDock.CollapseButton.Content).IconName);
-            Assert.Equal("Collapse to the side", CardOf(window.SceneDock.CollapseButton).Title);
-            Assert.Equal("Folds this panel to a button at the window's edge.", CardOf(window.SceneDock.CollapseButton).Line);
+            foreach (var group in new[] { window.SceneDock, window.FileDock, window.InspectorDock })
+            {
+                var button = window.Docks.CollapseButtonOf(group);
+                var panel = BoxOf(group, window);
+                var edge = group.Slot.IsLeft() ? panel.Right : panel.X;
+                AssertBox(edge - 12, panel.Y + DockTabs.StripHeight - 12, 24, 24, BoxOf(button, window));
+                Assert.Equal("Chevrons", Assert.IsType<EditorIcon>(button.Content).IconName);
+                Assert.Equal("Collapse to the side", CardOf(button).Title);
+                Assert.Equal("Folds this panel to a button at the window's edge.", CardOf(button).Line);
+                Assert.Equal("Collapse to the side", AutomationProperties.GetName(button));
+            }
+        });
+    }
+
+    // A real pointer, past the panel's edge, so the half outside is on top of what is beside the panel.
+    [Fact]
+    public void The_half_of_a_handle_outside_its_panel_collapses_it()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var left = BoxOf(window.SceneDock, window);
+            var right = BoxOf(window.InspectorDock, window);
+
+            foreach (var at in new[] { new Point(left.Right + 10, left.Y + DockTabs.StripHeight), new Point(right.X - 10, right.Y + DockTabs.StripHeight) })
+            {
+                window.MouseDown(at, MouseButton.Left);
+                window.MouseUp(at, MouseButton.Left);
+                window.UpdateLayout();
+            }
+
+            Assert.Equal(["Scene"], Rail(window.LeftSide));
+            Assert.Equal(["Inspector"], Rail(window.RightSide));
+        });
+    }
+
+    [Fact]
+    public void A_floating_panel_has_no_handle()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var button = window.Docks.CollapseButtonOf(window.FileDock);
+
+            window.FileDock.FloatItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            window.UpdateLayout();
+
+            Assert.False(button.IsEffectivelyVisible);
         });
     }
 
@@ -166,7 +214,7 @@ public sealed class PanelCollapseTests
         {
             var window = OpenAtReferenceSize();
 
-            Click(window.SceneDock.CollapseButton);
+            Click(window.Docks.CollapseButtonOf(window.SceneDock));
             window.SceneDock.MoveItems[(int)DockSlot.LowerRight].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             window.UpdateLayout();
 

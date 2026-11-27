@@ -439,7 +439,7 @@ public sealed class SceneFileToolsTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize(new FakeScene());
-            Click(window.InspectorDock.CollapseButton);
+            Click(window.Docks.CollapseButtonOf(window.InspectorDock));
 
             Click(window.SceneTabs.PanelsButton);
 

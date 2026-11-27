@@ -147,8 +147,8 @@ internal sealed class GraphView : Border
                 ShowList();
             }
         };
-        var graphs = new FoldingColumn("Graphs", "GraphFile", Dock.Left, GraphList);
-        var step = new FoldingColumn("Step", "NodeInfo", Dock.Right, StepColumn);
+        var graphs = new FoldingColumn("Graphs", "GraphFile", Dock.Left, GraphList());
+        var step = new FoldingColumn("Step", "NodeInfo", Dock.Right, StepColumn());
         Columns = [graphs, step];
         Child = Layout(graphs, step);
         ShowState();
@@ -296,10 +296,10 @@ internal sealed class GraphView : Border
         return control;
     }
 
-    Border GraphList(Button collapse)
+    Border GraphList()
     {
         var list = new DockPanel();
-        foreach (var top in new Control[] { Parts.Bar(_fileButton, _gotoButton, _helpButton, Parts.Right(collapse), Parts.Right(_findButton)), _filter, new ScrollViewer { MaxHeight = 220, Content = _list } })
+        foreach (var top in new Control[] { Parts.Bar(_fileButton, _gotoButton, _helpButton, Parts.Right(_findButton)), _filter, new ScrollViewer { MaxHeight = 220, Content = _list } })
         {
             DockPanel.SetDock(top, Dock.Top);
             list.Children.Add(top);
@@ -335,7 +335,7 @@ internal sealed class GraphView : Border
         };
     }
 
-    Border StepColumn(Button collapse)
+    Border StepColumn()
     {
         var tab = new Border
         {
@@ -346,7 +346,7 @@ internal sealed class GraphView : Border
             Child = new TextBlock { Text = "Step", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
         };
         var inspector = new DockPanel();
-        var inspectorBar = Parts.Bar(tab, Parts.Right(collapse), Parts.Right(_breakpointButton), Parts.Right(_bookmarkButton));
+        var inspectorBar = Parts.Bar(tab, Parts.Right(_breakpointButton), Parts.Right(_bookmarkButton));
         DockPanel.SetDock(inspectorBar, Dock.Top);
         inspector.Children.Add(inspectorBar);
         inspector.Children.Add(new Grid { Children = { _noStep, _inspectorSlot } });

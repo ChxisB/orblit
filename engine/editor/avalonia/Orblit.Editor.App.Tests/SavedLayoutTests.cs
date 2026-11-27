@@ -144,7 +144,7 @@ public sealed class SavedLayoutTests : IDisposable
             // Signals goes in with Files, Import floats, the right column collapses, and the layout locks.
             first.Docks.Drop(first.InspectorDock.Tabs[1], new DropTarget.Join(first.FileDock, first.FileDock, default), default);
             first.Docks.Drop(first.SceneDock.Tabs[1], new DropTarget.Float(first, default), new PixelPoint(100, 90));
-            Click(first.InspectorDock.CollapseButton);
+            Click(first.Docks.CollapseButtonOf(first.InspectorDock));
             first.FileDock.Select(1);
             Click(first.SceneTabs.LockButton);
             Dispatcher.UIThread.RunJobs();
@@ -198,7 +198,7 @@ public sealed class SavedLayoutTests : IDisposable
         {
             var window = Open();
 
-            Click(window.FileDock.CollapseButton);
+            Click(window.Docks.CollapseButtonOf(window.FileDock));
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal("LowerLeft", Settings.Section("layout")["collapsed"]);

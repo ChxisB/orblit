@@ -164,7 +164,7 @@ public sealed class PanelLockTests
             var window = OpenAtReferenceSize();
             Lock(window);
 
-            Click(window.FileDock.CollapseButton);
+            Click(window.Docks.CollapseButtonOf(window.FileDock));
             window.UpdateLayout();
             Assert.True(window.LeftSide.Rail.IsVisible);
 

@@ -734,7 +734,7 @@ public sealed class EditorMenuTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            Click(window.SceneDock.CollapseButton);
+            Click(window.Docks.CollapseButtonOf(window.SceneDock));
 
             Press(Panel(window, "Import"));
             Assert.False(window.SceneDock.IsEffectivelyVisible);

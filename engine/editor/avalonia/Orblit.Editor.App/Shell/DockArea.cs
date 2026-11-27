@@ -8,8 +8,8 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The body under the title bar: the middle, with groups of panels in four places round it and a rail at each edge.
-/// A group moves, floats and collapses here, and a panel moves from group to group. The groups it is made with, and
-/// their tabs and places, are the layout Reset gives back.
+/// Each place has the handle that collapses its group. A group moves, floats and collapses here, and a panel moves from
+/// group to group. The groups it is made with, and their tabs and places, are the layout Reset gives back.
 /// </summary>
 internal sealed class DockArea : Grid
 {
@@ -19,6 +19,8 @@ internal sealed class DockArea : Grid
     readonly (DockTabs Group, DockTab[] Tabs, DockSlot Slot)[] _homes;
     readonly Dictionary<DockTabs, Window> _floats = [];
     readonly Dictionary<DockSlot, Border> _places = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
+    // One for each place, over the group there. A floating group is in no place, so it has none.
+    readonly Dictionary<DockSlot, Button> _handles = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, slot => Parts.CollapseHandle(slot.IsLeft() ? Dock.Left : Dock.Right, "Folds this panel to a button at the window's edge."));
     readonly SideColumns _columns = new();
     // What the user collapsed, and what is collapsed now. A workspace that folds the sides has its own for as long as
     // it shows.
@@ -33,8 +35,11 @@ internal sealed class DockArea : Grid
         Middle = center;
         Margin = new Thickness(Gaps.Item, 0, Gaps.Item, Gaps.Item);
         ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto");
-        Left = new DockSide(_places[DockSlot.UpperLeft], _places[DockSlot.LowerLeft]);
-        Right = new DockSide(_places[DockSlot.UpperRight], _places[DockSlot.LowerRight]);
+        // A bare panel holds the group and its handle, so a handle can reach past the group's edge.
+        var places = _places.ToDictionary(each => each.Key, each => new Panel { Children = { each.Value, _handles[each.Key] } });
+        // The sides draw over what is beside them, where the handles reach.
+        Left = new DockSide(places[DockSlot.UpperLeft], places[DockSlot.LowerLeft]) { ZIndex = 1 };
+        Right = new DockSide(places[DockSlot.UpperRight], places[DockSlot.LowerRight]) { ZIndex = 1 };
         Control[] columns = [Left, Left.Splitter, center, Right.Splitter, Right];
         for (var i = 0; i < columns.Length; i++)
         {
@@ -239,6 +244,9 @@ internal sealed class DockArea : Grid
 
     internal bool IsFloating(DockTabs group) => _floats.ContainsKey(group);
 
+    /// <summary>The handle at the place the group sits in.</summary>
+    internal Button CollapseButtonOf(DockTabs group) => _handles[group.Slot];
+
     /// <summary>The group whose window is under this point of the screen, if any.</summary>
     internal DockTabs? FloatingAt(PixelPoint screen) =>
         _floats.FirstOrDefault(each => new Rect(each.Value.ClientSize).Contains(each.Value.PointToClient(screen))).Key;
@@ -295,6 +303,11 @@ internal sealed class DockArea : Grid
         {
             Wire(group);
         }
+
+        foreach (var (slot, handle) in _handles)
+        {
+            handle.Click += (_, _) => Collapse(slot);
+        }
     }
 
     void Wire(DockTabs group)
@@ -308,11 +321,6 @@ internal sealed class DockArea : Grid
             Changed?.Invoke();
             // Settled once the move or menu that changed the tabs has ended.
             Dispatcher.UIThread.Post(() => Settle(group));
-        };
-        group.CollapseRequested += () =>
-        {
-            _collapsed.Collapse(group.Slot);
-            Refresh();
         };
         group.PropertyChanged += (_, e) =>
         {
@@ -377,6 +385,12 @@ internal sealed class DockArea : Grid
     DockTabs? ShownAt(DockSlot slot) => Docked(slot) is { IsVisible: true } group ? group : null;
 
     IEnumerable<DockSlot> Taken() => Enum.GetValues<DockSlot>().Where(slot => ShownAt(slot) is not null);
+
+    void Collapse(DockSlot slot)
+    {
+        _collapsed.Collapse(slot);
+        Refresh();
+    }
 
     void Open(DockSlot slot)
     {

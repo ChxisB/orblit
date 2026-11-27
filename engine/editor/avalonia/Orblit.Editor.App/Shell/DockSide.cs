@@ -17,7 +17,7 @@ internal sealed class DockSide : Grid
 
     const double LeastRow = 120;
 
-    readonly Border[] _places;
+    readonly Control[] _places;
     readonly GridSplitter _between = new() { Background = Brushes.Transparent, ResizeDirection = GridResizeDirection.Rows };
     readonly StackPanel _buttons = new() { Spacing = Gaps.Tight, HorizontalAlignment = HorizontalAlignment.Center };
     // The height of each row and the width of the column while they are hidden.
@@ -25,7 +25,7 @@ internal sealed class DockSide : Grid
     GridLength _width;
     double? _least;
 
-    public DockSide(Border upper, Border lower)
+    public DockSide(Control upper, Control lower)
     {
         _places = [upper, lower];
         RowDefinitions = [new(GridLength.Star) { MinHeight = LeastRow }, new(Gaps.Item, GridUnitType.Pixel), new(GridLength.Star) { MinHeight = LeastRow }];

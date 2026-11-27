@@ -112,8 +112,8 @@ internal sealed class GameView : Border
         _playing.Children.Add(Buttons(_raiseBelow, _stop));
         _waits = Note("Stop the game to change these. They count from the next Play.");
         _liveMark = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, VerticalAlignment = VerticalAlignment.Center, Children = { new Ellipse { Width = 6, Height = 6, Fill = EditorBrushes.Done, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Live", FontSize = 11, Foreground = EditorBrushes.Done } } };
-        var settings = new FoldingColumn("Play settings", "Sliders", Dock.Left, collapse => Island(PlaySettings(collapse)));
-        var side = new FoldingColumn("Speed and live scene", "Pulse", Dock.Right, Side);
+        var settings = new FoldingColumn("Play settings", "Sliders", Dock.Left, Island(PlaySettings()));
+        var side = new FoldingColumn("Speed and live scene", "Pulse", Dock.Right, Side());
         Columns = [settings, side];
         Child = new Grid
         {
@@ -293,14 +293,14 @@ internal sealed class GameView : Border
 
     static bool SlowFrame(DebugMonitors game) => game.Fps > 0 && 1 / game.Fps > FrameBudget;
 
-    DockPanel PlaySettings(Button collapse)
+    DockPanel PlaySettings()
     {
         _settings.Children.Add(Heading("What Play runs"));
         new HoverCard("Copies", "Opens this many game windows at once. Each one is a player.", engine: "Run instances").On(_copies);
         var copies = new TextBlock { Text = "More than one opens extra windows, for testing online play.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(Gaps.Joined, Gaps.Tight, 0, 0) };
         _settings.Children.AddRange([_main, _thisScene, Heading("Copies"), _copies, copies, Heading("Show while playing"), .. _shown]);
         var body = new StackPanel { Children = { _waits, _settings } };
-        return Stack(Parts.Bar(Title("Play settings"), Parts.Right(collapse)), new ScrollViewer { Content = body });
+        return Stack(Parts.Bar(Title("Play settings")), new ScrollViewer { Content = body });
     }
 
     DockPanel TheGame()
@@ -325,21 +325,21 @@ internal sealed class GameView : Border
     }
 
     // The speed numbers over the live scene.
-    Grid Side(Button collapse)
+    Grid Side()
     {
-        var speed = Island(Speed(collapse));
+        var speed = Island(Speed());
         var side = new Grid { RowDefinitions = new RowDefinitions($"Auto,{Gaps.Item},*"), Children = { speed, At(Island(LiveScene()), 0, 2) } };
         // The numbers scroll in a short window, so the live scene keeps room under them.
         side.SizeChanged += (_, e) => speed.MaxHeight = Math.Max(0, e.NewSize.Height - Gaps.Item - LeastLiveScene);
         return side;
     }
 
-    DockPanel Speed(Button collapse)
+    DockPanel Speed()
     {
         var rows = new StackPanel { Margin = new Thickness(0, Gaps.Tight, 0, Gaps.Item), Children = { _speedHint } };
         rows.Children.AddRange(s_monitors.Select((_, at) => Reading(at)));
         new HoverCard("Frames a second", "How many pictures the game draws each second. Under 30 feels slow. 60 or more feels smooth.", engine: "FPS monitor").On(rows.Children[1]);
-        return Stack(Parts.Bar(Title("Speed"), Parts.Right(collapse)), new ScrollViewer { Content = rows });
+        return Stack(Parts.Bar(Title("Speed")), new ScrollViewer { Content = rows });
     }
 
     DockPanel LiveScene() => Stack(Parts.Bar(Title("Live scene"), Parts.Right(_liveMark)), new ScrollViewer { Content = new StackPanel { Children = { _live, _noScene } } });

@@ -10,9 +10,8 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// A group of panels: an island with a strip of tabs over a body that shows the chosen panel. The strip ends with a
-/// button that collapses the group and a menu that maps where it sits, shows and hides its tabs, and names every
-/// place. <see cref="DockArea"/> moves, floats and collapses the group, so the buttons only ask, and it moves tabs
-/// from group to group.
+/// menu that maps where it sits, shows and hides its tabs, and names every place. <see cref="DockArea"/> moves and
+/// floats the group, so the menu only asks, and it moves tabs from group to group.
 /// </summary>
 internal sealed class DockTabs : Border
 {
@@ -48,11 +47,9 @@ internal sealed class DockTabs : Border
         _lock.ToggleType = MenuItemToggleType.CheckBox;
         Floats = false;
         MenuButton.Flyout = _options = Options();
-        CollapseButton.Click += (_, _) => CollapseRequested?.Invoke();
         DockPanel.SetDock(MenuButton, Dock.Right);
-        DockPanel.SetDock(CollapseButton, Dock.Right);
         DockPanel.SetDock(_tool, Dock.Right);
-        var strip = new DockPanel { Children = { MenuButton, CollapseButton, _tool, Strip } };
+        var strip = new DockPanel { Children = { MenuButton, _tool, Strip } };
         var bar = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(Gaps.Item, StripInset), Child = strip };
         Grid.SetRow(_body, 1);
         Child = new Grid { RowDefinitions = new RowDefinitions($"{StripHeight},*"), Children = { bar, _body } };
@@ -68,9 +65,6 @@ internal sealed class DockTabs : Border
     /// <summary>Raised when the user chose to pop the group out, or to put a floating one back. It has not moved.</summary>
     public event Action? FloatRequested;
 
-    /// <summary>Raised when the user asks to collapse the group. It still shows.</summary>
-    public event Action? CollapseRequested;
-
     /// <summary>Raised when the user asks for every group back in its first place.</summary>
     public event Action? ResetRequested;
 
@@ -81,8 +75,6 @@ internal sealed class DockTabs : Border
     public event Action? TabsChanged;
 
     internal Button MenuButton { get; } = new HoverCard("Panel options", "Move this panel, float it, pick its tabs or put every panel back.").On(Parts.IconButton("GuiTabMenuHl", ""));
-
-    internal Button CollapseButton { get; } = Parts.Dress(new Button { Margin = new Thickness(0, 0, Gaps.Joined, 0) }, "Back", new HoverCard("Collapse to the side", "Folds this panel to a button at the window's edge."));
 
     internal OverflowBar Strip { get; }
 
@@ -101,8 +93,7 @@ internal sealed class DockTabs : Border
     const string LockedNote = "The layout is locked";
 
     /// <summary>
-    /// Marks the group's place on its map and menu, points its collapse button at the near edge, and turns off what a
-    /// locked layout does not allow.
+    /// Marks the group's place on its map and menu, and turns off what a locked layout does not allow.
     /// </summary>
     /// <param name="taken">The places that have a group.</param>
     /// <param name="locked">Whether the layout is locked.</param>
@@ -126,19 +117,13 @@ internal sealed class DockTabs : Border
         _reset.IsEnabled = !locked;
         _reset.Header = Parts.Noted("Put all panels back", locked ? LockedNote : "The layout Orblit started with");
         _lock.IsChecked = locked;
-
-        CollapseButton.Content = new EditorIcon(Slot.IsLeft() ? "Back" : "Forward");
     }
 
     /// <summary>True while the group sits in a window of its own, so the menu offers to put it back.</summary>
     internal bool Floats
     {
         get => AutomationProperties.GetName(_float) == PutBack;
-        set
-        {
-            AutomationProperties.SetName(_float, value ? PutBack : PopOut);
-            CollapseButton.IsVisible = !value;
-        }
+        set => AutomationProperties.SetName(_float, value ? PutBack : PopOut);
     }
 
     internal const string PopOut = "Pop out into a window";

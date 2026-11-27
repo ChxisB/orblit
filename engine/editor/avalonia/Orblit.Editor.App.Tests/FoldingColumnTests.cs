@@ -1,6 +1,11 @@
+using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Orblit.Editor.App.Launcher;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -46,8 +51,16 @@ public sealed class FoldingColumnTests : IDisposable
             Choose(workspace, window);
             var column = ColumnsOf(workspace, window)[at];
             var width = column.Bounds.Width;
+            var box = BoxOf(column, window);
+            // The handle is half over the edge that faces the middle, as on a docked panel.
+            var left = Grid.GetColumn(column) == 0;
+            var edge = left ? box.Right : box.X;
+            AssertBox(edge - 12, box.Y + DockTabs.StripHeight - 12, 24, 24, BoxOf(column.CollapseButton, window));
+            Assert.Equal("Chevrons", Assert.IsType<EditorIcon>(column.CollapseButton.Content).IconName);
 
-            Click(column.CollapseButton);
+            var outside = new Point(edge + (left ? 10 : -10), box.Y + DockTabs.StripHeight);
+            window.MouseDown(outside, MouseButton.Left);
+            window.MouseUp(outside, MouseButton.Left);
             window.UpdateLayout();
 
             Assert.Equal(DockSide.RailWidth, column.Bounds.Width);
