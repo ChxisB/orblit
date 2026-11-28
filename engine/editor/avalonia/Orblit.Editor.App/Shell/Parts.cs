@@ -26,7 +26,7 @@ internal static class Parts
     static readonly (Color Glow, Color Deep)[] s_banners =
     [
         (Color.Parse("#AAFF9A4D"), Color.Parse("#C2410C")),
-        (Color.Parse("#AA5AA2FF"), Color.Parse("#1E3A8A")),
+        (Color.Parse("#AAFFC81E"), Color.Parse("#841800")),
         (Color.Parse("#AA8BD450"), Color.Parse("#166534")),
     ];
 

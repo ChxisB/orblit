@@ -33,7 +33,7 @@ internal sealed class CodeBox : Border
     const double Inset = Gaps.Group;
 
     // The graph's breakpoint and current-step colors, so a stop looks the same in both workspaces.
-    static readonly IBrush s_mark = new ImmutableSolidColorBrush(Color.Parse("#FF5C6C"));
+    static readonly IBrush s_mark = EditorBrushes.Fault;
     static readonly IBrush s_paused = new ImmutableSolidColorBrush(Color.Parse("#F2D34F"));
 
     // The colour of each kind, in the order of CodeKind. Plain text keeps the layer's colour.

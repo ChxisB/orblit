@@ -28,9 +28,9 @@ internal sealed class FrameView
     const double ButtonSize = 18;
     const double GripSize = 14;
 
-    static readonly IBrush s_fill = new ImmutableSolidColorBrush(Color.Parse("#30505a6a"));
-    static readonly IBrush s_bar = new ImmutableSolidColorBrush(Color.Parse("#70505a6a"));
-    static readonly IPen s_border = new Pen(new ImmutableSolidColorBrush(Color.Parse("#6a7686")), 1).ToImmutable();
+    static readonly IBrush s_fill = new ImmutableSolidColorBrush(Color.Parse("#306a5a50"));
+    static readonly IBrush s_bar = new ImmutableSolidColorBrush(Color.Parse("#706a5a50"));
+    static readonly IPen s_border = new Pen(new ImmutableSolidColorBrush(Color.Parse("#86766a")), 1).ToImmutable();
     static readonly IPen s_selected = new Pen(EditorBrushes.Accent, 2).ToImmutable();
     static readonly Typeface s_face = new(EditorTheme.Font, FontStyle.Normal, FontWeight.SemiBold);
 

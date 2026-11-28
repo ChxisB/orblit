@@ -120,7 +120,7 @@ public sealed class BottomBarTests
 
             AssertBox(BoxOf(status, window).Right + 8, 1243, 1, 18, separator);
             Assert.Equal(separator.Right + 8, BoxOf(bar.VersionButton, window).X);
-            Assert.Equal(Color.Parse("#262C37"), ((ISolidColorBrush)bar.Separator.Background!).Color);
+            Assert.Equal(Color.Parse("#32271F"), ((ISolidColorBrush)bar.Separator.Background!).Color);
         });
     }
 
