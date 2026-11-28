@@ -84,7 +84,8 @@ bool is_binary(int p_operator) {
 constexpr int PLAIN_SET = -1;
 
 // Puts the step's operator to the two values and keeps the result in r_value. When the operator
-// does not take them, it fails the call and gives false.
+// does not take them, it fails the call and gives false. It fails the call itself, as the run
+// functions here do, so its three callers do not each copy the message.
 bool apply_operator(GraphCall &p_call, const GraphCompiledStep &p_step, const Variant &p_a, Variant &r_value) {
 	const Variant b = r_value;
 	bool valid = true;
@@ -101,7 +102,12 @@ String resolve_set_operator(GraphCompiledStep &p_step) {
 		p_step.operation = PLAIN_SET;
 		return String();
 	}
-	return GraphStepRun::resolve_operator(p_step, Vector<StringName>());
+	const String error = GraphStepRun::resolve_operator(p_step, Vector<StringName>());
+	// A Set combines the way += does. A comparison or a logic operator would swap the held value for a bool.
+	if (error.is_empty() && (p_step.operation < Variant::OP_ADD || p_step.operation > Variant::OP_BIT_XOR)) {
+		return vformat("the operator '%s' cannot combine in a Set.", String(p_step.parameters.get("operator", String())));
+	}
+	return error;
 }
 
 String missing_name(const GraphCompiledStep &p_step) {

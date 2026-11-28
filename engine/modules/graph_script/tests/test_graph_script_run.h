@@ -327,6 +327,11 @@ TEST_CASE("[Stage][GraphScript] A Set with an operator combines what it holds wi
 	graph.set(2, "operator", "\"?\"");
 	CHECK(graph.script->reload() == ERR_COMPILATION_FAILED);
 	CHECK(graph.script->get_error().contains("operator"));
+
+	// A comparison would swap the held number for true or false.
+	graph.set(2, "operator", "\"<\"");
+	CHECK(graph.script->reload() == ERR_COMPILATION_FAILED);
+	CHECK(graph.script->get_error().contains("cannot combine"));
 }
 
 TEST_CASE("[Stage][GraphScript] A While that never ends stops at the step budget") {
