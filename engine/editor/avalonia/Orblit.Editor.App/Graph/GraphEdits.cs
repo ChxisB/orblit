@@ -180,21 +180,24 @@ internal sealed class GraphEdits
         {
             return;
         }
-        if (!Takes(step, wire))
+        if (PortsFor(step, wire) is not { } ports)
         {
             Refused?.Invoke(NotOnWire);
             return;
         }
-        Splice(id, wire);
+        Splice(id, wire, ports);
     });
 
-    /// <summary>Moves one step and puts it between the two steps a wire joined when it can take the wire, as one undo.</summary>
+    /// <summary>
+    /// Moves a step that has no wires and puts it between the two steps a wire joined when it can take the wire, as
+    /// one undo.
+    /// </summary>
     public void DropOnWire(int id, Vector delta, GraphWire wire) => Batch(() =>
     {
         MoveSteps([id], delta);
-        if (StepOf(id) is { } step && Takes(step, wire))
+        if (StepOf(id) is { } step && PortsFor(step, wire) is { } ports)
         {
-            Splice(id, wire);
+            Splice(id, wire, ports);
         }
     });
 
@@ -278,26 +281,30 @@ internal sealed class GraphEdits
     // The source and not the scene, because a step added in this batch is not in the scene until it settles.
     GraphStep? StepOf(int id) => _source.Function?.Steps.FirstOrDefault(step => step.Id == id);
 
-    // The engine joins a value of the wrong type and reports it later. So the first port of the wire's sort on each
-    // side must take the value, and a step let go over a wire it does not fit never cuts it.
-    bool Takes(GraphStep step, GraphWire wire)
+    // The first input and the first output of the wire's sort that take its value. The engine joins a value of the
+    // wrong type and reports it later, so the types are checked here. A step let go over a wire it does not fit
+    // then never cuts it.
+    (int Input, int Output)? PortsFor(GraphStep step, GraphWire wire)
     {
-        var from = _scene.PortOf(new PinRef(wire.FromStep, wire.FromPort, false));
-        var to = _scene.PortOf(new PinRef(wire.ToStep, wire.ToPort, true));
-        var input = step.Inputs.FirstOrDefault(port => port.Sort == from?.Sort);
-        var output = step.Outputs.FirstOrDefault(port => port.Sort == from?.Sort);
-        return from is not null && to is not null && input is not null && output is not null
-            && VariantTypes.Fits(from.Type, input.Type) && VariantTypes.Fits(output.Type, to.Type);
+        if (_scene.PortOf(new PinRef(wire.FromStep, wire.FromPort, false)) is not { } from || _scene.PortOf(new PinRef(wire.ToStep, wire.ToPort, true)) is not { } to)
+        {
+            return null;
+        }
+        var input = step.Inputs.ToList().FindIndex(port => port.Sort == from.Sort && VariantTypes.Fits(from.Type, port.Type));
+        var output = step.Outputs.ToList().FindIndex(port => port.Sort == from.Sort && VariantTypes.Fits(port.Type, to.Type));
+        return input < 0 || output < 0 ? null : (input, output);
     }
 
-    void Splice(int id, GraphWire wire)
+    // The engine refuses a join only for a missing port, a port of the other sort or a second wire into a data
+    // input. The ports were checked and the step has no wires, so once the old wire is gone both joins are taken.
+    void Splice(int id, GraphWire wire, (int Input, int Output) ports)
     {
         if (!Report(_source.Disconnect(wire)))
         {
             return;
         }
-        JoinAdded(id, new PinRef(wire.FromStep, wire.FromPort, false));
-        JoinAdded(id, new PinRef(wire.ToStep, wire.ToPort, true));
+        Report(_source.Connect(new GraphWire(wire.FromStep, wire.FromPort, id, ports.Input)));
+        Report(_source.Connect(new GraphWire(id, ports.Output, wire.ToStep, wire.ToPort)));
     }
 
     // A wire that carries the order of steps takes a flow reroute, and any other wire takes a data reroute.

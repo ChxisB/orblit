@@ -697,6 +697,23 @@ public sealed class GraphCanvasTests
     }
 
     [Fact]
+    public void A_step_goes_on_a_data_wire_by_the_first_ports_that_take_its_value()
+    {
+        UiThread.Run(() =>
+        {
+            var source = FakeGraphSource.Sample();
+            source.Put(FakeGraphSource.MakeStep(4, "constant", 0, 200, [], [FakeGraphSource.Data("value", 4)]));
+            source.Put(FakeGraphSource.MakeStep(5, "call", 0, 400, [FakeGraphSource.Data("target", 24), FakeGraphSource.Data("text", 4)], [FakeGraphSource.Data("result", 4)]));
+            source.Put(new GraphWire(4, 0, 3, 1));
+            var (_, canvas) = Open(source);
+
+            canvas.Edits.DropOnWire(5, default, new GraphWire(4, 0, 3, 1));
+
+            Assert.Equal(["Disconnect 4.0 3.1", "Connect 4.0 5.1", "Connect 5.0 3.1"], source.Calls.Skip(1));
+        });
+    }
+
+    [Fact]
     public void A_step_that_cannot_take_a_wire_or_has_wires_of_its_own_only_moves_when_dropped_on_one()
     {
         UiThread.Run(() =>
