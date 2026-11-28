@@ -10,9 +10,9 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class TreeGuidesTests
 {
-    static readonly Color Vertical = Color.Parse("#1E232C");
-    static readonly Color Stub = Color.Parse("#262C37");
-    static readonly Color Lit = Color.Parse("#3A414C");
+    static readonly Color Vertical = Color.Parse("#261E19");
+    static readonly Color Stub = Color.Parse("#32271F");
+    static readonly Color Lit = Color.Parse("#4A3C33");
 
     static TreeViewItem[] Items(TreeView tree) => [.. tree.GetVisualDescendants().OfType<TreeViewItem>()];
 

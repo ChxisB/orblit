@@ -563,6 +563,45 @@ TEST_CASE("[GraphScript] A label row gives a builtin method a plain name") {
 	CHECK(String(found[0].parameters["method"]) == "append");
 }
 
+TEST_CASE("[Stage][GraphScript] The catalog offers an Operator step for each symbol, and each compiles") {
+	CHECK(has_entry(GraphStepCatalogue::find("*", GraphWireFilter()), "operator", "Operators", "operator", "*"));
+	CHECK(has_entry(GraphStepCatalogue::find("+", GraphWireFilter()), "operator", "Operators", "operator", "+"));
+	CHECK(has_entry(GraphStepCatalogue::find("multiply", GraphWireFilter()), "operator", "Operators", "operator", "*"));
+
+	int offered = 0;
+	for (const GraphStepEntry &entry : GraphStepCatalogue::find("", GraphWireFilter())) {
+		if (entry.kind != StringName("operator")) {
+			continue;
+		}
+		CAPTURE(entry.label);
+		offered++;
+		Graph graph("go");
+		graph.add(1, "entry");
+		graph.add_operator(2, entry.parameters["operator"]);
+		graph.set(2, "a", "1");
+		graph.set(2, "b", "1");
+		CHECK(graph.script->reload() == OK);
+	}
+	CHECK(offered == 21);
+}
+
+TEST_CASE("[GraphScript] The catalog offers a Set that combines, and every variable step holds a name to fill") {
+	const Vector<GraphStepEntry> found = GraphStepCatalogue::find("+=", GraphWireFilter());
+	CHECK(has_entry(found, "set", "Variables", "operator", "+"));
+	CHECK(has_entry(found, "set_local", "Variables", "operator", "+"));
+
+	int named = 0;
+	for (const GraphStepEntry &entry : GraphStepCatalogue::find("", GraphWireFilter())) {
+		if (entry.group == "Variables") {
+			CAPTURE(entry.label);
+			CHECK(entry.parameters.has("name"));
+			named++;
+		}
+	}
+	// Get, Local, and Set and Set local each plain and with four symbols.
+	CHECK(named == 12);
+}
+
 TEST_CASE("[Stage][GraphScript] Call parent runs the engine's method and skips the function of the script") {
 	// The function is named like the method it calls. A plain call would run itself again.
 	Graph graph("set_name");

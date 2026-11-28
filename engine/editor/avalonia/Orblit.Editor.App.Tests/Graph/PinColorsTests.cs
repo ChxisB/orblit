@@ -9,7 +9,7 @@ public sealed class PinColorsTests
     static Color Of(GraphPortSort sort, int type) => ((ISolidColorBrush)PinColors.Of(new GraphPort("pin", sort, type, "", false))).Color;
 
     [Theory]
-    [InlineData(GraphPortSort.Flow, 0, "#E8EBF0")]
+    [InlineData(GraphPortSort.Flow, 0, "#F3EEEA")]
     [InlineData(GraphPortSort.Data, 3, "#7FD4C1")]
     [InlineData(GraphPortSort.Data, 4, "#F0A365")]
     [InlineData(GraphPortSort.Data, 24, "#8DB8FF")]

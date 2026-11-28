@@ -297,6 +297,43 @@ TEST_CASE("[Stage][GraphScript] A local lives for one call") {
 	memdelete(entity);
 }
 
+TEST_CASE("[Stage][GraphScript] A Set with an operator combines what it holds with the new value") {
+	Graph graph("go");
+	graph.variable("score", Variant::INT, "10");
+	graph.add(1, "entry");
+	graph.add_named(2, "set", "score");
+	graph.set(2, "operator", "\"+\"");
+	graph.set(2, "value", "5");
+	graph.add_named(3, "set_local", "x");
+	graph.set(3, "value", "4");
+	graph.add_named(4, "set_local", "x");
+	graph.set(4, "operator", "\"*\"");
+	graph.set(4, "value", "3");
+	graph.add_named(5, "set", "score");
+	graph.set(5, "operator", "\"-\"");
+	graph.add_named(6, "local", "x");
+	graph.wire(1, THEN, 2, RUN);
+	graph.wire(2, THEN, 3, RUN);
+	graph.wire(3, THEN, 4, RUN);
+	graph.wire(4, THEN, 5, RUN);
+	graph.wire(6, OUT_PORT, 5, VALUE);
+
+	// 10 + 5 is 15, the local is 4 * 3 = 12, and 15 - 12 leaves 3.
+	Entity *entity = attach(graph.script);
+	entity->call("go");
+	CHECK(entity->get("score") == Variant(3));
+	memdelete(entity);
+
+	graph.set(2, "operator", "\"?\"");
+	CHECK(graph.script->reload() == ERR_COMPILATION_FAILED);
+	CHECK(graph.script->get_error().contains("operator"));
+
+	// A comparison would swap the held number for true or false.
+	graph.set(2, "operator", "\"<\"");
+	CHECK(graph.script->reload() == ERR_COMPILATION_FAILED);
+	CHECK(graph.script->get_error().contains("cannot combine"));
+}
+
 TEST_CASE("[Stage][GraphScript] A While that never ends stops at the step budget") {
 	Graph graph("go");
 	graph.add(1, "entry");

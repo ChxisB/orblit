@@ -112,6 +112,8 @@ struct GraphStepKind {
 	// A kind with this column mirrors something the engine registers, and the catalog lists it
 	// once per method, property or signal.
 	GraphDeriveFn derive = nullptr;
+	// A run of this kind can set its call aside until something happens, as a Wait does.
+	bool waits = false;
 
 	bool is_pure() const { return eval != nullptr; }
 	// Starts a function. It has no input to run from and nothing to run itself.

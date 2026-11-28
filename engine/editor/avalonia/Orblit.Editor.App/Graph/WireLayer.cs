@@ -77,11 +77,28 @@ internal static class WireLayer
             (weights.Item1 * a.Y) + (weights.Item2 * b.Y) + (weights.Item3 * c.Y) + (weights.Item4 * d.Y));
     }
 
-    static double DistanceToSegment(Point p, Point a, Point b)
+    /// <summary>The point on the wire nearest to the given one.</summary>
+    public static Point Nearest(Point from, Point to, WireStyle style, Point point)
+    {
+        var points = Path(from, to, style);
+        var best = points[0];
+        for (var i = 1; i < points.Count; i++)
+        {
+            var candidate = NearestOnSegment(point, points[i - 1], points[i]);
+            if (Point.Distance(point, candidate) < Point.Distance(point, best))
+            {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    static double DistanceToSegment(Point p, Point a, Point b) => Point.Distance(p, NearestOnSegment(p, a, b));
+
+    static Point NearestOnSegment(Point p, Point a, Point b)
     {
         var length = ((b.X - a.X) * (b.X - a.X)) + ((b.Y - a.Y) * (b.Y - a.Y));
         var along = length == 0 ? 0 : Math.Clamp((((p.X - a.X) * (b.X - a.X)) + ((p.Y - a.Y) * (b.Y - a.Y))) / length, 0, 1);
-        var nearest = new Point(a.X + (along * (b.X - a.X)), a.Y + (along * (b.Y - a.Y)));
-        return Math.Sqrt(((p.X - nearest.X) * (p.X - nearest.X)) + ((p.Y - nearest.Y) * (p.Y - nearest.Y)));
+        return new Point(a.X + (along * (b.X - a.X)), a.Y + (along * (b.Y - a.Y)));
     }
 }

@@ -339,6 +339,65 @@ TEST_CASE("[GraphScript] An argument or local named like a variable is reported,
 	CHECK_FALSE(has_warning(graph.script->get_warnings(), "shadowed_name", "speed"));
 }
 
+TEST_CASE("[GraphScript] A member named like one of the base class is reported, unless it overrides a virtual") {
+	Graph graph("get_parent");
+	graph.script->set_base_type("Entity");
+	graph.add(1, "entry");
+	Graph frame(graph.script, "_frame");
+	frame.add(1, "entry");
+	graph.variable("name", Variant::STRING_NAME);
+	CHECK(graph.script->add_signal("started") == OK);
+
+	const Array warnings = graph.script->get_warnings();
+	CHECK(has_warning(warnings, "shadowed_member", "name"));
+	CHECK(has_warning(warnings, "shadowed_member", "started"));
+	CHECK(has_warning(warnings, "shadowed_member", "get_parent"));
+	CHECK_FALSE(has_warning(warnings, "shadowed_member", "_frame"));
+
+	graph.set(1, "ignored_warnings", "[\"shadowed_member\"]");
+	CHECK_FALSE(has_warning(graph.script->get_warnings(), "shadowed_member", "name"));
+}
+
+TEST_CASE("[GraphScript] A member of a script with no base type is checked against Object") {
+	Graph graph("get_class");
+	graph.add(1, "entry");
+
+	CHECK(has_warning(graph.script->get_warnings(), "shadowed_member", "get_class"));
+}
+
+// A function that runs one Call function step to the named function.
+void add_call(Graph &p_graph, const String &p_callee) {
+	p_graph.add(1, "entry");
+	p_graph.add(2, "call_function");
+	p_graph.set(2, "function", "\"" + p_callee + "\"");
+	p_graph.wire(1, 0, 2, RUN);
+}
+
+TEST_CASE("[GraphScript] A call that runs on past a function that waits is reported, and the function flag turns it off") {
+	Graph pause("pause");
+	pause.add(1, "entry");
+	pause.add(2, "wait");
+	pause.set(2, "seconds", "1.0");
+	pause.wire(1, 0, 2, RUN);
+	Graph relay(pause.script, "relay");
+	add_call(relay, "pause");
+	relay.set(2, "wait", "true");
+	Graph main(pause.script, "main");
+	add_call(main, "relay");
+
+	// "relay" waits only through its call, so the call to it is reported.
+	CHECK(has_warning(pause.script->get_warnings(), "unwaited_call", "relay"));
+	CHECK_FALSE(has_warning(pause.script->get_warnings(), "unwaited_call", "pause"));
+
+	// A call that does not wait ends its function at once, so a call to that function is not reported.
+	relay.set(2, "wait", "false");
+	CHECK(has_warning(pause.script->get_warnings(), "unwaited_call", "pause"));
+	CHECK_FALSE(has_warning(pause.script->get_warnings(), "unwaited_call", "relay"));
+
+	relay.set(1, "ignored_warnings", "[\"unwaited_call\"]");
+	CHECK_FALSE(has_warning(pause.script->get_warnings(), "unwaited_call", "pause"));
+}
+
 TEST_CASE("[GraphScript] A function that does not compile gives no warnings of its own") {
 	Graph graph("main");
 	graph.add(1, "entry");

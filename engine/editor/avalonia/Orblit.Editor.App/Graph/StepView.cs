@@ -77,7 +77,7 @@ internal sealed class StepView
     static readonly IBrush s_field = EditorBrushes.Field;
     static readonly IBrush s_dim = new ImmutableSolidColorBrush(EditorColors.TextDim);
     static readonly IBrush s_problem = Fill("#e0605a");
-    static readonly IBrush s_breakpoint = Fill("#FF5C6C");
+    static readonly IBrush s_breakpoint = EditorBrushes.Fault;
     static readonly IBrush s_warning = EditorBrushes.Warn;
     static readonly IPen s_current = new Pen(Fill("#f2d34f"), 3).ToImmutable();
     static readonly IPen s_border = new Pen(EditorBrushes.LineStrong, 1).ToImmutable();

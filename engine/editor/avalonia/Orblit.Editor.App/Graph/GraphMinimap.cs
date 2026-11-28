@@ -18,10 +18,10 @@ internal sealed class GraphMinimap : Control
     const double Corner = 9;
 
     // The field fill at 90 percent, so the graph shows faintly through.
-    static readonly IBrush s_back = new ImmutableSolidColorBrush(Color.Parse("#E60D1015"));
+    static readonly IBrush s_back = new ImmutableSolidColorBrush(Color.FromArgb(0xE6, EditorColors.Field.R, EditorColors.Field.G, EditorColors.Field.B));
     static readonly IPen s_edge = new Pen(EditorBrushes.LineStrong, 1).ToImmutable();
-    static readonly IBrush s_step = new ImmutableSolidColorBrush(Color.Parse("#3A414C"));
-    static readonly IPen s_view = new Pen(new ImmutableSolidColorBrush(Color.Parse("#66AAB2BF")), 1.5).ToImmutable();
+    static readonly IBrush s_step = EditorBrushes.GuideLit;
+    static readonly IPen s_view = new Pen(new ImmutableSolidColorBrush(Color.FromArgb(0x66, EditorColors.TextSoft.R, EditorColors.TextSoft.G, EditorColors.TextSoft.B)), 1.5).ToImmutable();
 
     readonly GraphScene _scene;
     readonly GraphViewport _viewport;

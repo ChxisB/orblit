@@ -84,6 +84,8 @@ constexpr int TARGET_PORT = 1;
 // The steps that name a declared function, variable or signal, and so change with a rename.
 constexpr GraphReference FUNCTION_REFERENCES[] = {
 	{ "call_function", "function", TARGET_PORT },
+	// The target of a connect is the emitter. The method is always the owner's.
+	{ "connect", "method", -1 },
 };
 constexpr GraphReference VARIABLE_REFERENCES[] = {
 	{ "get", "name", -1 },
@@ -923,7 +925,10 @@ String GraphScript::get_payload(const String &p_function, const String &p_ids_te
 	}
 	Array used_functions;
 	for (const StringName &function_name : referenced(copy, FUNCTION_REFERENCES)) {
-		used_functions.push_back(String(function_name));
+		// A connect may join to a native method, and an empty function of that name would hide it.
+		if (get_function(function_name)) {
+			used_functions.push_back(String(function_name));
+		}
 	}
 	Dictionary payload;
 	payload["steps"] = copy.to_dictionary();

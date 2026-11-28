@@ -424,6 +424,27 @@ public sealed class GraphCanvasTests
     }
 
     [Fact]
+    public void A_touchpad_pinch_zooms_around_the_pointer()
+    {
+        UiThread.Run(() =>
+        {
+            // A surface outside a window has no root to take the pointer position from.
+            var canvas = Shown();
+            var point = new Point(100, 50);
+            var under = canvas.Viewport.ToGraph(point);
+            var zoom = canvas.Viewport.Zoom;
+            var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true);
+
+            canvas.Surface.RaiseEvent(new PointerDeltaEventArgs(
+                InputElement.PointerTouchPadGestureMagnifyEvent, canvas.Surface, pointer, canvas.Surface, point, 0, new PointerPointProperties(), KeyModifiers.None, new Vector(0.5, 0)));
+
+            Assert.Equal(zoom * 1.5, canvas.Viewport.Zoom, 6);
+            Assert.Equal(under.X, canvas.Viewport.ToGraph(point).X, 6);
+            Assert.Equal(under.Y, canvas.Viewport.ToGraph(point).Y, 6);
+        });
+    }
+
+    [Fact]
     public void A_drag_while_zoomed_moves_the_step_by_graph_distance()
     {
         UiThread.Run(() =>
@@ -598,6 +619,23 @@ public sealed class GraphCanvasTests
     }
 
     [Fact]
+    public void A_reroute_put_beside_a_straight_wire_sits_on_it()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            var shape = canvas.Scene.VisibleWires().First();
+            var beside = new Point((shape.From.X + shape.To.X) / 2, shape.From.Y - 4);
+
+            Click(canvas, beside, clicks: 2);
+
+            var reroute = canvas.Scene.Find(4)!;
+            Assert.Equal(shape.From.Y, reroute.PinCenter(true, 0).Y);
+            Assert.Equal(shape.From.Y, reroute.PinCenter(false, 0).Y);
+        });
+    }
+
+    [Fact]
     public void A_reroute_on_a_data_wire_is_a_data_reroute()
     {
         UiThread.Run(() =>
@@ -610,6 +648,85 @@ public sealed class GraphCanvasTests
             canvas.Edits.InsertReroute(new GraphWire(4, 0, 3, 1), new Point(300, 220));
 
             Assert.Equal("AddStep 5 reroute", source.Calls[0]);
+        });
+    }
+
+    static Point MiddleOf(GraphCanvas canvas, GraphWire wire)
+    {
+        var shape = canvas.Scene.VisibleWires().First(found => found.Wire == wire);
+        return new Point((shape.From.X + shape.To.X) / 2, (shape.From.Y + shape.To.Y) / 2);
+    }
+
+    [Fact]
+    public void A_step_picked_after_a_right_click_on_a_wire_goes_between_its_steps_as_one_undo()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, canvas) = Open();
+            _ = source.History;
+            var at = MiddleOf(canvas, new GraphWire(1, 0, 2, 0));
+
+            canvas.Gestures.Press(at, MouseButton.Right, KeyModifiers.None, 1);
+            canvas.Gestures.Release(at);
+            canvas.Palette.SearchBox.Text = "print";
+            canvas.Palette.Pick();
+
+            Assert.Equal(["Disconnect 1.0 2.0", "Connect 1.0 4.0", "Connect 4.0 2.0"], source.Calls.Skip(3));
+            Assert.DoesNotContain(new GraphWire(1, 0, 2, 0), canvas.Scene.Wires);
+            Assert.True(source.History.Undo().Ok);
+            Assert.False(source.History.CanUndo);
+            Assert.Contains(new GraphWire(1, 0, 2, 0), source.Function!.Wires);
+        });
+    }
+
+    [Fact]
+    public void A_lone_step_dropped_on_a_wire_goes_between_its_steps_as_one_undo()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, canvas) = Open(WithFreeStep());
+            _ = source.History;
+
+            Drag(canvas, HeaderOf(canvas, 4), MiddleOf(canvas, new GraphWire(2, 0, 3, 0)));
+
+            Assert.Equal(["Disconnect 2.0 3.0", "Connect 2.0 4.0", "Connect 4.0 3.0"], source.Calls.Skip(1));
+            Assert.True(source.History.Undo().Ok);
+            Assert.False(source.History.CanUndo);
+            Assert.Contains(new GraphWire(2, 0, 3, 0), source.Function!.Wires);
+        });
+    }
+
+    [Fact]
+    public void A_step_goes_on_a_data_wire_by_the_first_ports_that_take_its_value()
+    {
+        UiThread.Run(() =>
+        {
+            var source = FakeGraphSource.Sample();
+            source.Put(FakeGraphSource.MakeStep(4, "constant", 0, 200, [], [FakeGraphSource.Data("value", 4)]));
+            source.Put(FakeGraphSource.MakeStep(5, "call", 0, 400, [FakeGraphSource.Data("target", 24), FakeGraphSource.Data("text", 4)], [FakeGraphSource.Data("result", 4)]));
+            source.Put(new GraphWire(4, 0, 3, 1));
+            var (_, canvas) = Open(source);
+
+            canvas.Edits.DropOnWire(5, default, new GraphWire(4, 0, 3, 1));
+
+            Assert.Equal(["Disconnect 4.0 3.1", "Connect 4.0 5.1", "Connect 5.0 3.1"], source.Calls.Skip(1));
+        });
+    }
+
+    [Fact]
+    public void A_step_that_cannot_take_a_wire_or_has_wires_of_its_own_only_moves_when_dropped_on_one()
+    {
+        UiThread.Run(() =>
+        {
+            var source = FakeGraphSource.Sample();
+            source.Put(FakeGraphSource.MakeStep(4, "constant", 0, 200, [], [FakeGraphSource.Data("value", 4)]));
+            var (_, canvas) = Open(source);
+
+            Drag(canvas, HeaderOf(canvas, 4), MiddleOf(canvas, new GraphWire(2, 0, 3, 0)));
+            Drag(canvas, HeaderOf(canvas, 3), MiddleOf(canvas, new GraphWire(1, 0, 2, 0)));
+
+            Assert.All(source.Calls, call => Assert.StartsWith("MoveStep", call));
+            Assert.Equal(2, canvas.Scene.Wires.Count);
         });
     }
 

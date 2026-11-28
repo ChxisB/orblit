@@ -29,7 +29,7 @@ internal static class PinColors
     // Flow, decimals, text and objects take the canvas tints. Whole numbers and names move to lime and sand,
     // away from the teal and blue those took, so every type still reads apart.
     static readonly IBrush s_flow = new ImmutableSolidColorBrush(EditorColors.Text);
-    static readonly IBrush s_any = Brush("#9a9a9a");
+    static readonly IBrush s_any = Brush("#a89a90");
     static readonly IBrush s_bool = Brush("#d9534f");
     static readonly IBrush s_int = Brush("#A6D86B");
     static readonly IBrush s_float = Brush("#7FD4C1");

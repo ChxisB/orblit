@@ -6,6 +6,7 @@
 #include "graph_script.h"
 
 #include "core/containers/hash_set.h"
+#include "core/object/class_registry.h"
 
 namespace {
 
@@ -13,6 +14,8 @@ constexpr const char *UNUSED_VARIABLE = "unused_variable";
 constexpr const char *UNUSED_LOCAL = "unused_local";
 constexpr const char *UNREACHABLE_STEP = "unreachable_step";
 constexpr const char *SHADOWED_NAME = "shadowed_name";
+constexpr const char *SHADOWED_MEMBER = "shadowed_member";
+constexpr const char *UNWAITED_CALL = "unwaited_call";
 
 // A name that starts with an underscore says it is meant to go unused.
 bool is_quiet(const StringName &p_name) {
@@ -104,6 +107,83 @@ void find_shadowed_names(const GraphScript &p_script, const GraphCompiledFunctio
 	}
 }
 
+void add_shadowed_member(const char *p_what, const StringName &p_name, const StringName &p_base, Vector<GraphWarning> &r_found) {
+	r_found.push_back({ SHADOWED_MEMBER, String(), -1, p_name, vformat("The %s '%s' hides the member of the same name in '%s'.", p_what, p_name, p_base) });
+}
+
+// The engine finds the script's own members first, so one named like a member of the base class
+// replaces it for every caller. A virtual is not a bound method, so an override is not reported.
+void find_shadowed_members(const GraphScript &p_script, Vector<GraphWarning> &r_found) {
+	const StringName base = p_script.get_base_type() == StringName() ? Object::get_static_class_name() : p_script.get_base_type();
+	for (const GraphVariable &variable : p_script.get_declared_variables()) {
+		if (ClassRegistry::has_property(base, variable.name)) {
+			add_shadowed_member("variable", variable.name, base, r_found);
+		}
+	}
+	for (const GraphSignal &signal : p_script.get_declared_signals()) {
+		if (ClassRegistry::has_signal(base, signal.name)) {
+			add_shadowed_member("signal", signal.name, base, r_found);
+		}
+	}
+	for (const GraphFunction &function : p_script.get_declared_functions()) {
+		if (ClassRegistry::has_method(base, function.get_name())) {
+			add_shadowed_member("function", function.get_name(), base, r_found);
+		}
+	}
+}
+
+// A Call function step with no target runs a function of the owner, which is this script's.
+// Any other step gives an empty name.
+StringName get_own_callee(const GraphCompiledStep &p_step) {
+	if (StringName(p_step.kind->name) != SNAME("call_function") || p_step.inputs[p_step.operation - 1].step >= 0) {
+		return StringName();
+	}
+	return StringName(String(p_step.parameters.get("function", String())));
+}
+
+bool is_waited(const GraphCompiledStep &p_step) {
+	return p_step.parameters.get("wait", false);
+}
+
+bool may_wait(const GraphCompiledFunction &p_function, const HashSet<StringName> &p_waiting) {
+	for (const GraphCompiledStep &step : p_function.steps) {
+		if (step.kind->waits || (is_waited(step) && p_waiting.has(get_own_callee(step)))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// A function may wait through a step of its own or through a call it waits on, so each pass
+// adds the callers of the functions found so far.
+HashSet<StringName> find_waiting_functions(const GraphScript &p_script) {
+	HashSet<StringName> waiting;
+	bool grew = true;
+	while (grew) {
+		grew = false;
+		for (const GraphCompiledFunction &function : p_script.get_compiled_functions()) {
+			if (function.error.is_empty() && !waiting.has(function.name) && may_wait(function, waiting)) {
+				waiting.insert(function.name);
+				grew = true;
+			}
+		}
+	}
+	return waiting;
+}
+
+// A call that does not wait runs the steps after it before the function it called has ended.
+void find_unwaited_calls(const GraphCompiledFunction &p_function, const HashSet<StringName> &p_waiting, Vector<GraphWarning> &r_found) {
+	if (is_ignored(p_function, UNWAITED_CALL)) {
+		return;
+	}
+	for (const GraphCompiledStep &step : p_function.steps) {
+		const StringName callee = get_own_callee(step);
+		if (!is_waited(step) && p_waiting.has(callee)) {
+			r_found.push_back({ UNWAITED_CALL, p_function.name, step.id, callee, vformat("Step %d of '%s' runs on before '%s' ends. Set its wait to true to carry on after it.", step.id, p_function.name, callee) });
+		}
+	}
+}
+
 void find_unused_variables(const GraphScript &p_script, const HashSet<StringName> &p_used, Vector<GraphWarning> &r_found) {
 	for (const GraphVariable &variable : p_script.get_declared_variables()) {
 		// An exported variable is read by the inspector and the scene file.
@@ -115,26 +195,34 @@ void find_unused_variables(const GraphScript &p_script, const HashSet<StringName
 
 } // namespace
 
-// shortcut: a variable has no function to hold a flag, so listing unused_variable on any function
-// turns it off for the whole script. Give a variable its own flag when someone needs one.
+// shortcut: a variable has no function to hold a flag, so listing unused_variable or
+// shadowed_member on any function turns it off for the whole script. Give a member its own flag
+// when someone needs one.
 Vector<GraphWarning> GraphWarnings::find(const GraphScript &p_script) {
 	Vector<GraphWarning> found;
 	HashSet<StringName> used_variables;
 	bool variables_ignored = false;
+	bool members_ignored = false;
+	const HashSet<StringName> waiting = find_waiting_functions(p_script);
 	for (const GraphCompiledFunction &function : p_script.get_compiled_functions()) {
 		const GraphFunction *source = p_script.get_function(function.name);
 		ERR_CONTINUE(!source);
 		// The steps count even when the function does not compile, so its error is the only noise.
 		collect_names(*source, "get", "set", used_variables);
 		variables_ignored = variables_ignored || is_ignored(function, UNUSED_VARIABLE);
+		members_ignored = members_ignored || is_ignored(function, SHADOWED_MEMBER);
 		if (function.error.is_empty() && function.start >= 0) {
 			find_unused_locals(function, *source, found);
 			find_unreachable_steps(function, found);
 			find_shadowed_names(p_script, function, found);
+			find_unwaited_calls(function, waiting, found);
 		}
 	}
 	if (!variables_ignored) {
 		find_unused_variables(p_script, used_variables, found);
+	}
+	if (!members_ignored) {
+		find_shadowed_members(p_script, found);
 	}
 	return found;
 }
